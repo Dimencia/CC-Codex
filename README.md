@@ -18,4 +18,5 @@ Server-side compaction is enabled through Responses API context management. The 
 
 ## Planning
 
+- [Modular runtime refactor plan](REFACTOR_PLAN.md)
 - [Cost and context reduction plan](COST_AND_CONTEXT_PLAN.md)
