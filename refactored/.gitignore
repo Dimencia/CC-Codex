@@ -1,0 +1,7 @@
+.lua-language-server/
+node_modules/
+live/data/*.tmp
+live/data/usage.jsonl
+live/artifacts/images/*
+!live/artifacts/images/.gitkeep
+

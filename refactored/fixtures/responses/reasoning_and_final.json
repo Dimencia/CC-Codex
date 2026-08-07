@@ -1,0 +1,27 @@
+{
+  "id": "resp_fixture_reasoning",
+  "output": [
+    {
+      "id": "reasoning_fixture_1",
+      "type": "reasoning",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "Checked the requested action."
+        }
+      ]
+    },
+    {
+      "id": "msg_fixture_reasoning",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "Done."
+        }
+      ]
+    }
+  ]
+}
+

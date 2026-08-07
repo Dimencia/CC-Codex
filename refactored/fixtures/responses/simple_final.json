@@ -1,0 +1,22 @@
+{
+  "id": "resp_fixture_final",
+  "output": [
+    {
+      "id": "msg_fixture_final",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "Ready."
+        }
+      ]
+    }
+  ],
+  "usage": {
+    "input_tokens": 12,
+    "output_tokens": 3,
+    "total_tokens": 15
+  }
+}
+

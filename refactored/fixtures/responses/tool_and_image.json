@@ -1,0 +1,28 @@
+{
+  "id": "resp_fixture_image",
+  "output": [
+    {
+      "id": "image_fixture_1",
+      "type": "image_generation_call",
+      "status": "completed",
+      "result": "iVBORw0KGgo="
+    },
+    {
+      "id": "msg_fixture_image",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "The image is ready."
+        }
+      ]
+    }
+  ],
+  "usage": {
+    "input_tokens": 20,
+    "output_tokens": 8,
+    "total_tokens": 28
+  }
+}
+

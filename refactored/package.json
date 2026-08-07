@@ -1,0 +1,11 @@
+{
+  "name": "cc-codex-refactor-tests",
+  "private": true,
+  "scripts": {
+    "test": "fengari tests/run.lua",
+    "lint:lua": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-lua.ps1"
+  },
+  "devDependencies": {
+    "fengari-node-cli": "0.1.0"
+  }
+}

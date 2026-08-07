@@ -1,0 +1,18 @@
+{
+  "id": "resp_fixture_tool_call",
+  "output": [
+    {
+      "id": "fc_fixture_1",
+      "type": "function_call",
+      "call_id": "call_fixture_1",
+      "name": "execute_cc_lua",
+      "arguments": "{\"code\":\"print('hello')\\nreturn 42\"}"
+    }
+  ],
+  "usage": {
+    "input_tokens": 30,
+    "output_tokens": 10,
+    "total_tokens": 40
+  }
+}
+
