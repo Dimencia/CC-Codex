@@ -182,6 +182,8 @@ function StateStore:load()
             and decoded.last_generated_image_path or nil,
         preferencesModifiedAt = type(decoded.preferences_modified_at) == "number"
             and decoded.preferences_modified_at or nil,
+        systemPromptModifiedAt = type(decoded.system_prompt_modified_at) == "number"
+            and decoded.system_prompt_modified_at or nil,
         instructionsRefresh = decoded.instructions_refresh == true,
         checkpoint = checkpoint,
         conversationLogId = conversationLogId
@@ -205,6 +207,7 @@ function StateStore:save(state)
         previous_response_id = state.previousResponseId,
         last_generated_image_path = state.lastGeneratedImagePath,
         preferences_modified_at = state.preferencesModifiedAt,
+        system_prompt_modified_at = state.systemPromptModifiedAt,
         instructions_refresh = state.instructionsRefresh == true,
         checkpoint = checkpointFor(state.checkpoint),
         conversation_log_id = state.conversationLogId

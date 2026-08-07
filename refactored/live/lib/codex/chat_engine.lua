@@ -469,21 +469,27 @@ local function requestResponse(self, metrics, input, previousResponseId, toolCho
         )
     end
 
-    local update = self.session:instructionUpdate(preferences.modifiedAt)
-    local selected = {}
-    if update == "full" then
-        local systemPrompt, systemError = self.instructionStore:readSystemPrompt()
-        if type(systemPrompt) ~= "string" or systemPrompt == "" then
-            return nil, "Could not read system prompt: " .. tostring(
-                systemError or "the system prompt was invalid or empty"
-            )
-        end
-        selected[#selected + 1] = self.requestBuilder.makeInputMessage(
-            "developer",
-            systemPrompt
+    local systemPrompt, systemError = self.instructionStore:readSystemPrompt()
+    if type(systemPrompt) ~= "table"
+        or type(systemPrompt.content) ~= "string"
+        or type(systemPrompt.modifiedAt) ~= "number" then
+        return nil, "Could not read system prompt: " .. tostring(
+            systemError or "the system prompt document was invalid"
         )
     end
-    if update then
+
+    local update = self.session:instructionUpdate(
+        preferences.modifiedAt,
+        systemPrompt.modifiedAt
+    )
+    local selected = {}
+    if update == "full" or update == "systemPrompt" then
+        selected[#selected + 1] = self.requestBuilder.makeInputMessage(
+            "developer",
+            systemPrompt.content
+        )
+    end
+    if update == "full" or update == "preferences" then
         selected[#selected + 1] = self.requestBuilder.makeInputMessage(
             "developer",
             preferencesInputText(preferences.content)
@@ -502,7 +508,12 @@ local function requestResponse(self, metrics, input, previousResponseId, toolCho
     local response, responseError = self.gateway:createResponse(body)
     if not response then return nil, responseError end
 
-    if update then self.session:markInstructionsSent(preferences.modifiedAt) end
+    if update then
+        self.session:markInstructionsSent(
+            preferences.modifiedAt,
+            systemPrompt.modifiedAt
+        )
+    end
     self.session.pendingCompactThreshold = nil
     return response
 end

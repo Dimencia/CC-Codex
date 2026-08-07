@@ -61,11 +61,12 @@ end
 
 return {
     {
-        name = "reads the immutable system prompt without requiring a modification time",
+        name = "reads the system prompt and its modification time",
         fn = function()
             local fs = fileSystem({ systemPrompt = "main system prompt" })
-            fs.attributes = function() error("system prompt mtime must not be read") end
-            Harness.equal("main system prompt", store(fs):readSystemPrompt())
+            local prompt = assert(store(fs):readSystemPrompt())
+            Harness.equal("main system prompt", prompt.content)
+            Harness.equal(3, prompt.modifiedAt)
         end
     },
     {
@@ -142,6 +143,19 @@ return {
             Harness.falsy(prompt)
             assert(promptError)
             Harness.truthy(promptError:find("System prompt was not found", 1, true))
+        end
+    },
+    {
+        name = "reports a system prompt without a modification time",
+        fn = function()
+            local fs = fileSystem({ systemPrompt = "main system prompt" })
+            fs.attributes = function() return {} end
+            local prompt, promptError = store(fs):readSystemPrompt()
+            Harness.falsy(prompt)
+            Harness.equal(
+                "System prompt has no modification time: data/system_prompt.md",
+                promptError
+            )
         end
     }
 }

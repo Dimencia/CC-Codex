@@ -97,6 +97,7 @@ return {
             assert(state)
             Harness.equal(3, state.version)
             Harness.equal(17, state.preferencesModifiedAt)
+            Harness.equal(nil, state.systemPromptModifiedAt)
             Harness.truthy(state.instructionsRefresh)
             Harness.equal("resp_tool", state.checkpoint.previousResponseId)
         end
@@ -118,6 +119,26 @@ return {
             Harness.equal("conversation-0001", state.conversationLogId)
             Harness.falsy(state.previousResponseId)
             Harness.falsy(state.checkpoint)
+        end
+    },
+    {
+        name = "round trips the system prompt modification time",
+        fn = function()
+            local fs = fileSystem()
+            local encoded
+            local json = {
+                encode = function(value) encoded = value return "encoded" end,
+                decode = function() return encoded end
+            }
+            local store = StateStore.new({ path = "state.json", fs = fs, json = json })
+            Harness.truthy(store:save({
+                previousResponseId = "resp_1",
+                preferencesModifiedAt = 17,
+                systemPromptModifiedAt = 23
+            }))
+            Harness.equal(23, encoded.system_prompt_modified_at)
+            local state = assert(store:load())
+            Harness.equal(23, state.systemPromptModifiedAt)
         end
     },
     {

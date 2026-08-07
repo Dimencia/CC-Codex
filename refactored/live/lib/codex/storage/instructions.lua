@@ -2,6 +2,10 @@
 ---@field content string
 ---@field modifiedAt number
 
+---@class SystemPromptDocument
+---@field content string
+---@field modifiedAt number
+
 ---@class InstructionFileSystem
 ---@field exists fun(path: string): boolean
 ---@field isDir fun(path: string): boolean
@@ -144,7 +148,7 @@ function InstructionStore.new(options)
     }, InstructionStore)
 end
 
----@return string|nil
+---@return SystemPromptDocument|nil
 ---@return string|nil
 function InstructionStore:readSystemPrompt()
     if not self.fs.exists(self.systemPromptPath) then
@@ -158,7 +162,12 @@ function InstructionStore:readSystemPrompt()
     local content, readError = readAndClose(handle)
     if content == nil then return nil, "Could not read system prompt: " .. tostring(readError) end
     if content == "" then return nil, "System prompt is empty: " .. self.systemPromptPath end
-    return content
+    local attributes = self.fs.attributes(self.systemPromptPath)
+    local modifiedAt = attributes and attributes.modified
+    if type(modifiedAt) ~= "number" then
+        return nil, "System prompt has no modification time: " .. self.systemPromptPath
+    end
+    return { content = content, modifiedAt = modifiedAt }
 end
 
 ---@return PreferencesDocument|nil

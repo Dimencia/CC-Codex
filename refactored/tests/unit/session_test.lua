@@ -15,19 +15,21 @@ return {
         name = "selects full instructions first and after compaction but preferences on change",
         fn = function()
             local session = Session.new()
-            Harness.equal("full", session:instructionUpdate(10))
-            session:markInstructionsSent(10)
+            Harness.equal("full", session:instructionUpdate(10, 20))
+            session:markInstructionsSent(10, 20)
             -- Tool continuations in the first turn have no committed response yet.
-            Harness.falsy(session:instructionUpdate(10))
+            Harness.falsy(session:instructionUpdate(10, 20))
             Harness.truthy(session:commit("resp_1", nil, nil))
-            Harness.equal("preferences", session:instructionUpdate(11))
-            session:markInstructionsSent(11)
+            Harness.equal("preferences", session:instructionUpdate(11, 20))
+            session:markInstructionsSent(11, 20)
+            Harness.equal("systemPrompt", session:instructionUpdate(11, 21))
+            session:markInstructionsSent(11, 21)
             session:markCompacted()
-            Harness.equal("full", session:instructionUpdate(11))
-            session:markInstructionsSent(11)
-            Harness.falsy(session:instructionUpdate(11))
+            Harness.equal("full", session:instructionUpdate(11, 21))
+            session:markInstructionsSent(11, 21)
+            Harness.falsy(session:instructionUpdate(11, 21))
             session:reset()
-            Harness.equal("full", session:instructionUpdate(11))
+            Harness.equal("full", session:instructionUpdate(11, 21))
         end
     },
     {

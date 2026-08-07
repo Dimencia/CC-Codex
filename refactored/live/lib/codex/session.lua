@@ -18,6 +18,7 @@
 ---@field previousResponseId string|nil
 ---@field lastGeneratedImagePath string|nil
 ---@field preferencesModifiedAt number|nil Last sent preferences modification time.
+---@field systemPromptModifiedAt number|nil Last sent system prompt modification time.
 ---@field instructionsRefresh boolean|nil
 ---@field checkpoint ContinuationCheckpoint|nil
 ---@field conversationLogId string|nil
@@ -30,6 +31,7 @@
 ---@field activeTurnId integer|nil
 ---@field conversationLogId string|nil
 ---@field private preferencesModifiedAt number|nil Last sent preferences modification time.
+---@field private systemPromptModifiedAt number|nil Last sent system prompt modification time.
 ---@field private instructionsRefresh boolean
 ---@field private continuation ContinuationCheckpoint|nil
 local Session = {}
@@ -68,6 +70,7 @@ function Session.new(snapshot)
         conversationLogId = type(snapshot.conversationLogId) == "string"
             and snapshot.conversationLogId ~= "" and snapshot.conversationLogId or nil,
         preferencesModifiedAt = snapshot.preferencesModifiedAt,
+        systemPromptModifiedAt = snapshot.systemPromptModifiedAt,
         instructionsRefresh = snapshot.instructionsRefresh == true,
         continuation = snapshot.checkpoint
     }, Session)
@@ -124,19 +127,25 @@ function Session:commit(responseId, usage, latestImage)
     return true
 end
 
----@alias InstructionUpdate "full"|"preferences"
+---@alias InstructionUpdate "full"|"preferences"|"systemPrompt"
 
 ---@param preferencesModifiedAt number
+---@param systemPromptModifiedAt number
 ---@return InstructionUpdate|nil
-function Session:instructionUpdate(preferencesModifiedAt)
-    if self.preferencesModifiedAt == nil or self.instructionsRefresh then return "full" end
+function Session:instructionUpdate(preferencesModifiedAt, systemPromptModifiedAt)
+    if self.preferencesModifiedAt == nil or self.systemPromptModifiedAt == nil or self.instructionsRefresh then
+        return "full"
+    end
     if self.preferencesModifiedAt ~= preferencesModifiedAt then return "preferences" end
+    if self.systemPromptModifiedAt ~= systemPromptModifiedAt then return "systemPrompt" end
     return nil
 end
 
 ---@param preferencesModifiedAt number
-function Session:markInstructionsSent(preferencesModifiedAt)
+---@param systemPromptModifiedAt number
+function Session:markInstructionsSent(preferencesModifiedAt, systemPromptModifiedAt)
     self.preferencesModifiedAt = preferencesModifiedAt
+    self.systemPromptModifiedAt = systemPromptModifiedAt
     self.instructionsRefresh = false
 end
 
@@ -185,6 +194,7 @@ function Session:reset()
     self.activeTurnId = nil
     self.conversationLogId = nil
     self.preferencesModifiedAt = nil
+    self.systemPromptModifiedAt = nil
     self.instructionsRefresh = false
     self.continuation = nil
 end
@@ -196,6 +206,7 @@ function Session:durableState()
         previousResponseId = self.previousResponseId,
         lastGeneratedImagePath = self.lastGeneratedImagePath,
         preferencesModifiedAt = self.preferencesModifiedAt,
+        systemPromptModifiedAt = self.systemPromptModifiedAt,
         instructionsRefresh = self.instructionsRefresh,
         checkpoint = self.continuation,
         conversationLogId = self.conversationLogId

@@ -81,7 +81,7 @@ local function fixture(options)
         warnings = {},
         telemetry = {},
         steering = options.steering or {},
-        systemPrompt = "system prompt",
+        systemPrompt = { content = "system prompt", modifiedAt = 20 },
         preferences = { content = "preferences", modifiedAt = 10 },
         responseIndex = 0,
         saveCount = 0,
