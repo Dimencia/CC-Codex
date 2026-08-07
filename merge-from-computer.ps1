@@ -46,6 +46,7 @@ function Test-IgnoredPath {
     $path = Normalize-RelativePath -Path $RelativePath
     if ($path -eq '.settings') { return $true }
     if ($path -eq 'artifacts' -or $path.StartsWith('artifacts/')) { return $true }
+    if ($path -eq 'data/conversations.json') { return $true }
     if ($path -eq 'data/conversations' -or $path.StartsWith('data/conversations/')) { return $true }
     if ($path -match '^data/(codex-state\.json|preferences\.md|usage\.jsonl|tools\.jsonl|host-command-request\.json(?:\.tmp)?|host-command-result\.json(?:\.tmp)?|[^/]+\.tmp)$') { return $true }
     return $false
