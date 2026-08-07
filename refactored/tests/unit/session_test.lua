@@ -51,6 +51,17 @@ return {
         end
     },
     {
+        name = "keeps one restart handoff notice pending until the first response succeeds",
+        fn = function()
+            local session = Session.new()
+            Harness.falsy(session:hasRestartNotice())
+            session:markRestarted()
+            Harness.truthy(session:hasRestartNotice())
+            session:markRestartNoticeSent()
+            Harness.falsy(session:hasRestartNotice())
+        end
+    },
+    {
         name = "normalizes a blank saved response id",
         fn = function()
             local session = Session.new({ previousResponseId = "" })

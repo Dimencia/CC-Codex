@@ -452,6 +452,14 @@ local function preferencesInputText(content)
     }, "\n")
 end
 
+local RESTART_HANDOFF_NOTICE = table.concat({
+    "CC Codex has restarted after source files may have been edited while the previous process or conversation was paused.",
+    "Treat the current deployed filesystem as authoritative.",
+    "Before changing or writing any file, inspect its current contents and verify what remains to be done.",
+    "Do not assume a previous write happened, and do not recreate or overwrite an implementation just because an earlier turn said it would.",
+    "Resume from the actual current state and make only the changes that are still needed."
+}, "\n")
+
 ---@param self ChatEngine
 ---@param metrics TurnMetrics
 ---@param input table[]
@@ -495,6 +503,12 @@ local function requestResponse(self, metrics, input, previousResponseId, toolCho
             preferencesInputText(preferences.content)
         )
     end
+    if self.session:hasRestartNotice() then
+        selected[#selected + 1] = self.requestBuilder.makeInputMessage(
+            "developer",
+            RESTART_HANDOFF_NOTICE
+        )
+    end
     appendItems(selected, input)
 
     local schemas, schemaBytes = snapshotSchemas(self)
@@ -513,6 +527,9 @@ local function requestResponse(self, metrics, input, previousResponseId, toolCho
             preferences.modifiedAt,
             systemPrompt.modifiedAt
         )
+    end
+    if self.session:hasRestartNotice() then
+        self.session:markRestartNoticeSent()
     end
     self.session.pendingCompactThreshold = nil
     return response

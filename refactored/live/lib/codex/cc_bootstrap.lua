@@ -160,6 +160,7 @@ function Bootstrap.build(config)
     local stateStore = StateStore.new({ path = path(config.statePath), fs = fileSystem, json = json })
     local state, stateWarning = stateStore:load()
     local session = Session.new(state)
+    session:markRestarted()
     local instructionStore = InstructionStore.new({
         systemPromptPath = path(config.systemPromptPath),
         fs = fileSystem
@@ -192,7 +193,8 @@ function Bootstrap.build(config)
         session:setConversationLogId(conversationLogId)
         local recorded, recordError = conversationLog:record({
             type = "lifecycle",
-            phase = conversationResumed and "resumed" or "started"
+            phase = conversationResumed and "resumed" or "started",
+            source_changes_pending = true
         })
         if not recorded then conversationLogWarning = recordError end
         if previousConversationLogId ~= conversationLogId then

@@ -89,6 +89,7 @@ local function fixture(options)
     }
     local responses = options.responses or {}
     local session = options.session or Session.new()
+    if options.restarted then session:markRestarted() end
     state.session = session
     local reader = ResponseReader.new(json)
     local engine = ChatEngine.new({
@@ -263,6 +264,28 @@ return {
             Harness.truthy(failure:find("disk unavailable", 1, true))
             Harness.equal(nil, state.session.activeTurnId)
             Harness.equal("disk unavailable", failure:match("disk unavailable"))
+        end
+    },
+    {
+        name = "sends one restart handoff notice before trusting the current filesystem",
+        fn = function()
+            local state = fixture({
+                restarted = true,
+                responses = {
+                    finalResponse("one", "first"),
+                    finalResponse("two", "second")
+                }
+            })
+
+            Harness.truthy(state.engine:runTurn(turn(1, "one")))
+            Harness.truthy(state.engine:runTurn(turn(2, "two")))
+            assertRoles({ "developer", "developer", "developer", "user" }, state.requests[1])
+            Harness.truthy(state.requests[1].input[3].content[1].text:find(
+                "current deployed filesystem",
+                1,
+                true
+            ))
+            assertRoles({ "user" }, state.requests[2])
         end
     },
     {

@@ -33,6 +33,7 @@
 ---@field private preferencesModifiedAt number|nil Last sent preferences modification time.
 ---@field private systemPromptModifiedAt number|nil Last sent system prompt modification time.
 ---@field private instructionsRefresh boolean
+---@field private restartNoticePending boolean
 ---@field private continuation ContinuationCheckpoint|nil
 local Session = {}
 Session.__index = Session
@@ -72,6 +73,7 @@ function Session.new(snapshot)
         preferencesModifiedAt = snapshot.preferencesModifiedAt,
         systemPromptModifiedAt = snapshot.systemPromptModifiedAt,
         instructionsRefresh = snapshot.instructionsRefresh == true,
+        restartNoticePending = false,
         continuation = snapshot.checkpoint
     }, Session)
 end
@@ -151,6 +153,19 @@ end
 
 function Session:markCompacted()
     self.instructionsRefresh = true
+end
+
+function Session:markRestarted()
+    self.restartNoticePending = true
+end
+
+---@return boolean
+function Session:hasRestartNotice()
+    return self.restartNoticePending
+end
+
+function Session:markRestartNoticeSent()
+    self.restartNoticePending = false
 end
 
 ---@param conversationLogId string
