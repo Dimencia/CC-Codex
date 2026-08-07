@@ -98,9 +98,11 @@ while ($true) {
     $result = Wait-MatchingResult -RequestId $requestId
 
     $errorCodeProperty = $result.PSObject.Properties['error_code']
-    $isBusy = $action -eq 'restart'
-        -and $null -ne $errorCodeProperty
-        -and [string] $errorCodeProperty.Value -eq 'busy'
+    $isBusy = (
+        ($action -eq 'restart') -and
+        ($null -ne $errorCodeProperty) -and
+        ([string] $errorCodeProperty.Value -eq 'busy')
+    )
     if ($isBusy) {
         if ([DateTime]::UtcNow -ge $deadline) {
             throw "Timed out waiting for CC Codex to become idle after $TimeoutSeconds seconds."
