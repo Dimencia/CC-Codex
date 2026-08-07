@@ -9,6 +9,7 @@ local ExecuteLua = require("lib.codex.tools.execute_lua")
 local InstructionStore = require("lib.codex.storage.instructions")
 local InstructionTools = require("lib.codex.tools.instructions")
 local MaintenanceTools = require("lib.codex.tools.maintenance")
+local RemoteExecTools = require("lib.codex.tools.remote_exec")
 local RenderImageTools = require("lib.codex.tools.render_image")
 local RequestBuilder = require("lib.codex.responses.request_builder")
 local ResponseClient = require("lib.codex.responses.client")
@@ -248,6 +249,13 @@ function Bootstrap.build(config)
         json = json,
         maxResultCharacters = config.maxToolResultChars,
         validateRestart = restart.validate
+    }))
+    requireRegistration("remote execution tool", RemoteExecTools.register(tools, {
+        rednet = rednet,
+        peripheral = peripheral,
+        ---@diagnostic disable-next-line: assign-type-mismatch
+        json = json,
+        epoch = function() return os.epoch("utc") end
     }))
     local imageWarning = registerOptionalImageTool(config, tools, json, session, path)
 

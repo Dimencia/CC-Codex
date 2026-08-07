@@ -36,6 +36,7 @@ local suiteModules = {
     "tests.unit.state_test",
     "tests.unit.execute_lua_test",
     "tests.unit.registry_test",
+    "tests.unit.remote_exec_test",
     "tests.unit.restart_controller_test",
     "tests.unit.codex_supervisor_test",
     "tests.unit.chat_engine_test",

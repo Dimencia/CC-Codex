@@ -31,7 +31,7 @@ local function withCcGlobals(fn, capture)
     capture.decoded = capture.decoded or {}
     local names = {
         "fs", "shell", "os", "peripheral", "http", "term", "colors",
-        "keys", "write", "print", "sleep", "textutils", "loadfile"
+        "keys", "write", "print", "sleep", "textutils", "loadfile", "rednet"
     }
     local previous = {}
     for _, name in ipairs(names) do previous[name] = _G[name] end
@@ -103,6 +103,12 @@ local function withCcGlobals(fn, capture)
         getNames = function() return {} end,
         getType = function() return nil end,
         wrap = function() return nil end
+    }
+    _G.rednet = {
+        open = function() end,
+        isOpen = function() return false end,
+        send = function() return false end,
+        receive = function() return nil end
     }
     _G.http = { post = function() return nil, "test HTTP adapter must not be called" end }
     _G.term = {

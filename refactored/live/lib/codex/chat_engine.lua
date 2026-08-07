@@ -330,7 +330,7 @@ end
 ---@return ToolDescriptor[]
 ---@return integer encodedBytes
 local function snapshotSchemas(self)
-    local schemas = self.tools:snapshotSchemas()
+    local schemas = self.tools:snapshotSchemas({ session = self.session })
     local configured = self.capabilitySchemas
     ---@type table[]
     local capabilities = {}

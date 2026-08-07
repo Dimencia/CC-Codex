@@ -63,6 +63,21 @@ return {
         end
     },
     {
+        name = "hides unavailable tools and rejects unavailable dispatches",
+        fn = function()
+            local registry = Registry.new()
+            Harness.truthy(registry:register(
+                descriptor("conditional"),
+                function() return "ran" end,
+                function() return false, "no modem" end
+            ))
+            Harness.equal(0, #registry:snapshotSchemas({}))
+            local result, dispatchError = registry:dispatch({ name = "conditional" }, {})
+            Harness.falsy(result)
+            Harness.equal("no modem", dispatchError)
+        end
+    },
+    {
         name = "rejects invalid duplicate and unknown tools",
         fn = function()
             local registry = Registry.new()
