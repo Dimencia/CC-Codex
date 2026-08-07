@@ -370,9 +370,13 @@ reconnected Chat Box from causing duplicate progress, final, or correction
 delivery to one player.
 
 Final assistant text is one model-authored Minecraft component JSON value.
-`runTurn` delivers it with `format = "minecraft_component"`. Chat Box treats the
+`runTurn` delivers it with `format = "minecraft_component"`. For a complete
+component at or below the installed 1,024-character cap, Chat Box treats the
 peripheral's `true` result as acceptance without parsing or validating the inner
-component. Its `"component_rejected"` result appends an explicit developer
+component. If a host- or model-authored component exceeds that cap, the adapter
+flattens its visible text and sends sequential host-authored chunks at or below
+the cap; rich actions and styling cannot be preserved across that fallback.
+Its `"component_rejected"` result appends an explicit developer
 correction message to a continuation from the rejected response ID and sets
 `tool_choice = "none"`.
 The correction requires the same answer as one JSON-only component, visible

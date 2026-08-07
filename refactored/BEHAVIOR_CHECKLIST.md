@@ -75,7 +75,8 @@ claims about a live CC computer, Chat Box peripheral, or Responses request.
       correction notice cap model JSON at 600 characters beneath the installed
       1,024-character peripheral cap, and the adapter preserves returned error
       text. Dropping an oversized hover never changes the raw inner JSON; if the
-      wrapper remains oversized, peripheral rejection starts correction;
+      wrapper remains oversized, the adapter sends visible text in sequential
+      UTF-8-safe chunks rather than sending an over-limit component;
       prompt, chat-engine, and adapter tests.
 - [x] Chat Box serializes logical outbound deliveries and paces every peripheral
       attempt against one cooldown, so tool progress cannot make the following

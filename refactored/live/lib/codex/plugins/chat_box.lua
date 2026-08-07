@@ -33,6 +33,7 @@ local ChatBox = {}
 ChatBox.__index = ChatBox
 
 local SEND_QUEUE_POLL_SECONDS = 0.05
+local CHAT_COMPONENT_MAX_CHARACTERS = 1024
 
 ---@param value string
 ---@return string
@@ -183,14 +184,99 @@ local function withSendTurn(self, operation)
 end
 
 ---@param self ChatBoxAdapter
+---@param text string
+---@return string|nil component
+---@return string|nil error
+local function encodeTextComponent(self, text)
+    local encoded, encodeError = self.options.json.encode({ text = text })
+    if type(encoded) ~= "string" or encoded == "" then
+        return nil, "Chat Box chunk could not be encoded: " .. tostring(encodeError)
+    end
+    return encoded
+end
+
+---@param text string
+---@param index integer
+---@return integer nextIndex
+local function nextTextIndex(text, index)
+    local first = string.byte(text, index)
+    if not first then return index + 1 end
+
+    local width = 1
+    if first >= 240 and first <= 244 then
+        width = 4
+    elseif first >= 224 and first <= 239 then
+        width = 3
+    elseif first >= 192 and first <= 223 then
+        width = 2
+    end
+
+    for offset = 1, width - 1 do
+        local continuation = string.byte(text, index + offset)
+        if not continuation or continuation < 128 or continuation > 191 then
+            return index + 1
+        end
+    end
+    return math.min(#text + 1, index + width)
+end
+
+---@param self ChatBoxAdapter
+---@param component string
+---@return string[]|nil chunks
+---@return string|nil error
+local function chunkComponent(self, component)
+    local plainText, plainError = ComponentText.plainText(component, self.options.json)
+    if not plainText then
+        return nil, "Oversized Chat Box component could not be flattened: " .. tostring(plainError)
+    end
+
+    local chunks = {}
+    local current = ""
+    local index = 1
+    while index <= #plainText do
+        local nextIndex = nextTextIndex(plainText, index)
+        local character = plainText:sub(index, nextIndex - 1)
+        local candidate = current .. character
+        local encoded, encodeError = encodeTextComponent(self, candidate)
+        if not encoded then return nil, encodeError end
+
+        if #encoded <= CHAT_COMPONENT_MAX_CHARACTERS then
+            current = candidate
+        else
+            if current == "" then
+                return nil, "A single text unit exceeds the Chat Box component limit."
+            end
+            local completed, completedError = encodeTextComponent(self, current)
+            if not completed then return nil, completedError end
+            chunks[#chunks + 1] = completed
+            current = character
+            local single, singleError = encodeTextComponent(self, current)
+            if not single then return nil, singleError end
+            if #single > CHAT_COMPONENT_MAX_CHARACTERS then
+                return nil, "A single text unit exceeds the Chat Box component limit."
+            end
+        end
+        index = nextIndex
+    end
+
+    if current ~= "" then
+        local completed, completedError = encodeTextComponent(self, current)
+        if not completed then return nil, completedError end
+        chunks[#chunks + 1] = completed
+    end
+    return chunks
+end
+
+---@param self ChatBoxAdapter
 ---@param chatBox table
 ---@param component string
 ---@param username string
+---@param attempts integer
 ---@return boolean|nil sent
 ---@return string|nil error
-local function sendComponent(self, chatBox, component, username)
+local function sendSingleComponent(self, chatBox, component, username, attempts)
     local lastError = "Chat Box rejected the message."
-    for attempt = 1, 3 do
+    for attempt = 1, attempts do
         local called, result, peripheralError = callChatBox(self, function()
             return chatBox.sendFormattedMessageToPlayer(
                 component,
@@ -204,7 +290,7 @@ local function sendComponent(self, chatBox, component, username)
         lastError = called
             and rejectedMessage("Chat Box rejected the message", result, peripheralError)
             or ("Chat Box send failed: " .. tostring(result))
-        if attempt < 3 then self.options.sleep(self.options.cooldownSeconds or 1.1) end
+        if attempt < attempts then self.options.sleep(self.options.cooldownSeconds or 1.1) end
     end
     return nil, lastError
 end
@@ -215,8 +301,44 @@ end
 ---@param username string
 ---@return boolean|nil sent
 ---@return string|nil error
+local function sendChunkedComponent(self, chatBox, component, username)
+    local chunks, chunkError = chunkComponent(self, component)
+    if not chunks then return nil, chunkError end
+    for index, chunk in ipairs(chunks) do
+        local sent, sendError = sendSingleComponent(self, chatBox, chunk, username, 3)
+        if not sent then
+            return nil, "Chat Box chunk " .. tostring(index) .. "/" .. tostring(#chunks)
+                .. " failed: " .. tostring(sendError)
+        end
+    end
+    return true
+end
+
+---@param self ChatBoxAdapter
+---@param chatBox table
+---@param component string
+---@param username string
+---@return boolean|nil sent
+---@return string|nil error
+local function sendComponent(self, chatBox, component, username)
+    if #component > CHAT_COMPONENT_MAX_CHARACTERS then
+        return sendChunkedComponent(self, chatBox, component, username)
+    end
+    return sendSingleComponent(self, chatBox, component, username, 3)
+end
+
+---@param self ChatBoxAdapter
+---@param chatBox table
+---@param component string
+---@param username string
+---@return boolean|nil sent
+---@return string|nil error
 ---@return 'component_rejected'|nil reason
 local function sendModelComponent(self, chatBox, component, username)
+    if #component > CHAT_COMPONENT_MAX_CHARACTERS then
+        return sendChunkedComponent(self, chatBox, component, username)
+    end
+
     local called, result, peripheralError = callChatBox(self, function()
         return chatBox.sendFormattedMessageToPlayer(
             component,

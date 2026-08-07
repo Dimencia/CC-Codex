@@ -46,9 +46,12 @@ model. It can read that guide, then inspect source modules with
 and verifies the guide alongside the rest of `refactored/live`.
 
 The model authors one rich Minecraft text component for each assistant final. The
-Chat Box adds the outer `<Codex>` label and sends that component without imposing
-terminal limitations on it. A Chat Box rejection receives bounded provider
-correction attempts (three by default) before plain-message fallback. Commentary
+Chat Box adds the outer `<Codex>` label and sends components within the installed
+1,024-character cap without imposing terminal limitations on them. Oversized
+components are flattened into sequential visible-text chunks to avoid a peripheral
+`Message is too long` rejection; rich actions and styling cannot survive that
+fallback. A Chat Box rejection receives bounded provider correction attempts
+(three by default) before plain-message fallback. Commentary
 and tool-status messages remain concise plain text and never start that correction
 flow. Terminal conversation I/O and Chat Box both default on. Terminal flattening
 failure displays the raw payload locally and never triggers provider correction;

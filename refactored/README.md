@@ -27,13 +27,16 @@ only preferences. The old `codex_monitor.lua` launcher is obsolete and is not
 staged.
 
 Each assistant final is one model-authored Minecraft text component. Chat
-Box delivery wraps it with the local `<Codex>` label and retains rich styling,
-hover text, links, and suggested commands. Terminal delivery walks the same
-component and concatenates its `text` fields; it does not constrain what the Chat
-Box receives. If flattening fails, Terminal displays the raw payload rather than
-requesting provider correction. The host does not validate the model's inner
-component; only a non-true Chat Box result starts selective provider correction,
-then plain Chat Box fallback after the retry budget. Commentary and tool-status
+Box delivery wraps components within the installed 1,024-character cap with the
+local `<Codex>` label and retains rich styling, hover text, links, and suggested
+commands. Oversized components are flattened into sequential visible-text chunks
+so the peripheral does not reject them as too long; those fallback chunks cannot
+preserve rich actions or styling. Terminal delivery walks the same component and
+concatenates its `text` fields; it does not constrain what the Chat Box receives.
+If flattening fails, Terminal displays the raw payload rather than requesting
+provider correction. The host does not validate the model's inner component;
+only a non-true Chat Box result starts selective provider correction, then plain
+Chat Box fallback after the retry budget. Commentary and tool-status
 messages remain local-formatted plain text and never enter correction. Terminal
 conversation I/O and Chat Box both default on, while the monitor continues to be
 an independent generated-image renderer.

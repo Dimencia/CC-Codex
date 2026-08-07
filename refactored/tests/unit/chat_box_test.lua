@@ -3,6 +3,7 @@
 local Harness = require("tests.harness")
 local ChatBox = require("lib.codex.plugins.chat_box")
 local Components = require("lib.codex.plugins.chat_components")
+local ComponentText = require("lib.codex.component_text")
 local PackagedFormatter = require("data.chat_messages")
 
 local function publicMethods(value)
@@ -67,6 +68,19 @@ local function deterministicJsonCodec()
         encode = encode,
         decode = function() error("model component must stay opaque") end
     }
+end
+
+local function chunkingJsonCodec()
+    local json = deterministicJsonCodec()
+    json.decode = function(value)
+        local parts = {}
+        for text in value:gmatch('"text":"([^\"]*)"') do
+            parts[#parts + 1] = text
+        end
+        if #parts == 0 then return nil, "no text fields" end
+        return parts
+    end
+    return json
 end
 
 local function peripheral(send, names, sendPlain)
@@ -233,6 +247,72 @@ return {
             Harness.truthy(#wrapped <= 1024)
             Harness.equal(nil, wrapped:find("hoverEvent", 1, true))
             Harness.equal(nil, wrapped:find(raw, rawAt + #raw, true))
+        end
+    },
+    {
+        name = "chunks oversized formatted messages at UTF-8 boundaries",
+        fn = function()
+            local json = chunkingJsonCodec()
+            local smile = string.char(240, 159, 153, 130)
+            local longText = string.rep(smile, 400)
+            local sent = {}
+            local formatter = {
+                formatPlayerMessage = function() return json.encode({ text = "player" }) end,
+                formatAgentMessage = function(message) return json.encode({ text = message }) end
+            }
+            local adapter = ChatBox.new(options({
+                json = json,
+                formatterLoader = function() return formatter end,
+                peripheral = peripheral(function(component)
+                    sent[#sent + 1] = component
+                    return true
+                end)
+            }))
+
+            Harness.truthy(adapter:deliver({
+                adapterId = "chat_box",
+                address = { username = "Player" }
+            }, longText, "progress"))
+            Harness.truthy(#sent > 1)
+
+            local restored = {}
+            for _, component in ipairs(sent) do
+                Harness.truthy(#component <= 1024)
+                local text = assert(ComponentText.plainText(component, json))
+                Harness.equal(0, #text % 4)
+                restored[#restored + 1] = text
+            end
+            Harness.equal(longText, table.concat(restored))
+        end
+    },
+    {
+        name = "chunks oversized model components while preserving visible text",
+        fn = function()
+            local json = chunkingJsonCodec()
+            local smile = string.char(240, 159, 153, 130)
+            local longText = string.rep("Model " .. smile .. " ", 220)
+            local raw = json.encode({ text = longText })
+            local sent = {}
+            local adapter = ChatBox.new(options({
+                json = json,
+                peripheral = peripheral(function(component)
+                    sent[#sent + 1] = component
+                    return true
+                end)
+            }))
+
+            Harness.truthy(adapter:deliver({
+                adapterId = "chat_box",
+                address = { username = "Player" }
+            }, raw, "final", { format = "minecraft_component" }))
+            Harness.truthy(#sent > 1)
+
+            local restored = {}
+            for _, component in ipairs(sent) do
+                Harness.truthy(#component <= 1024)
+                restored[#restored + 1] = assert(ComponentText.plainText(component, json))
+            end
+            Harness.equal("<Codex> " .. longText, table.concat(restored))
         end
     },
     {
