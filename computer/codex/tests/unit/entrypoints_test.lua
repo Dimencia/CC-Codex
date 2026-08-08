@@ -42,21 +42,33 @@ if not pathAvailable(entryPath("codex.lua"))
     return {}
 end
 
+local ABSENT = {}
+
+local function restoreGlobals(previous)
+    for name, value in pairs(previous) do
+        if value == ABSENT then
+            environment[name] = nil
+        else
+            environment[name] = value
+        end
+    end
+end
+
 local function runEntrypoint(relative, globals, ...)
     local previous = {}
     for name, value in pairs(globals) do
-        previous[name] = environment[name]
+        previous[name] = environment[name] == nil and ABSENT or environment[name]
         environment[name] = value
     end
 
     local chunk, loadError = loadfile(entryPath(relative), "t", environment)
     if not chunk then
-        for name, value in pairs(previous) do environment[name] = value end
+        restoreGlobals(previous)
         error(loadError, 0)
     end
 
     local result = table.pack(pcall(chunk, ...))
-    for name, value in pairs(previous) do environment[name] = value end
+    restoreGlobals(previous)
     if not result[1] then error(result[2], 0) end
     return table.unpack(result, 2, result.n)
 end
@@ -83,6 +95,30 @@ local function callsForStartup()
 end
 
 return {
+    {
+        name = "entrypoint runs restore globals that were absent",
+        fn = function()
+            local previousShell = environment.shell
+            local previousMultishell = environment.multishell
+            environment.shell = nil
+            environment.multishell = nil
+
+            local ok, failure = pcall(function()
+                runEntrypoint("codex.lua", {
+                    shell = { run = function() return true end },
+                    multishell = false
+                })
+            end)
+            local restoredShell = environment.shell
+            local restoredMultishell = environment.multishell
+            environment.shell = previousShell
+            environment.multishell = previousMultishell
+
+            if not ok then error(failure, 0) end
+            Harness.equal(nil, restoredShell)
+            Harness.equal(nil, restoredMultishell)
+        end
+    },
     {
         name = "entrypoint paths support the installed bare codex source root",
         fn = function()
