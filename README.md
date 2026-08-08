@@ -7,10 +7,9 @@ render generated images on a monitor.
 ## Layout
 
 - `computer/codex/` is the CC Codex application source tree copied to computers.
-- `computer/startup/` contains the service and disk synchronization startup
-  programs.
-- `computer/disk-source/` contains the bootstrap payload copied to attached
-  writable disks.
+- `computer/startup/` contains the service startup program.
+- `computer/codex/platform/cc/remote_bootstrap.lua` is the standalone worker
+  startup copied to data disks by the `create_worker` tool.
 - `computer/codex/clients/` contains interactive clients such as the terminal
   client; future monitor clients can live beside it.
 - `computer/codex/docs/` is the documentation available to the CC agent;
@@ -38,11 +37,10 @@ The installer resolves the latest published release, downloads one
 uncompressed `CC-Codex-vX.Y.Z.tar` package, validates its USTAR entries, and
 extracts the `computer/` tree before placing the package installer at
 `codex/install.lua`. If a compatible release archive is unavailable, it falls
-back to the GitHub source tree downloader. It disables disk startup in
-`.settings`, prompts for `cc_codex.api_key` only when it is missing, performs an
-initial disk copy, and reboots. After reboot, computers with multishell get a
-disk-watcher tab for future insertions alongside the headless service; without
-multishell, startup performs one disk sync and starts the service.
+back to the GitHub source tree downloader. It prompts for `cc_codex.api_key`
+only when it is missing and reboots. CC Codex assumes multishell and runs the
+headless service in a separate tab after reboot, leaving the main tab for the
+ordinary CraftOS shell.
 
 To update an existing installation, run:
 
@@ -121,11 +119,16 @@ text is ordinary conversation input.
 ## Local settings
 
 Run `codex/setup/set_api_key.lua` on the CC computer to store the provider key in
-ComputerCraft settings if the installer did not prompt for it. The installer
-also sets `shell.allow_disk_startup` to `false`. Runtime state and settings
-remain outside the shared source tree and are ignored by Git.
+ComputerCraft settings if the installer did not prompt for it. Runtime state
+and settings remain outside the shared source tree and are ignored by Git.
 Keep keys out of source, fixtures, logs intended for commit, and runtime
 request files.
+
+The model-visible `create_worker` tool prepares one attached writable data disk
+with `startup/remote_bootstrap.lua` and a root-level per-target authority file.
+Keep the disk attached while rebooting the target. The Codex computer stores the
+matching capability in `codex/data/remote_workers.json`; the authority is
+directional, so the root Codex computer never listens for worker commands.
 
 See [`docs/architecture.md`](docs/architecture.md),
 [`docs/testing.md`](docs/testing.md), and

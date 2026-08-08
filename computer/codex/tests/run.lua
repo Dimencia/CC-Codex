@@ -14,6 +14,21 @@ for _, root in ipairs({ "codex", "computer/codex", ".", ".." }) do
     addPath(root .. "/?/init.lua")
 end
 
+local resultPath
+for _, argument in ipairs({ ... }) do
+    local candidate = argument:match("^%-%-result=(.+)$")
+    if candidate and candidate ~= "" then resultPath = candidate end
+end
+
+local progressPath = resultPath and resultPath .. ".progress"
+local function writeProgress(value)
+    if not progressPath or type(fs) ~= "table" or type(fs.open) ~= "function" then return end
+    local progressFile = fs.open(progressPath, "w")
+    if not progressFile then return end
+    progressFile.write(value)
+    progressFile.close()
+end
+
 local harness = require("tests.harness")
 
 local suites = {}
@@ -40,8 +55,10 @@ local suiteModules = {
     "tests.unit.state_test",
     "tests.unit.execute_lua_test",
     "tests.unit.registry_test",
+    "tests.unit.create_worker_test",
     "tests.unit.remote_exec_test",
     "tests.unit.restart_controller_test",
+    "tests.unit.serializer_test",
     "tests.unit.codex_supervisor_test",
     "tests.unit.chat_engine_test",
     "tests.unit.app_test",
@@ -49,6 +66,7 @@ local suiteModules = {
 }
 
 for _, moduleName in ipairs(suiteModules) do
+    writeProgress("loading " .. moduleName)
     local ok, tests = pcall(require, moduleName)
     if ok then
         suites[moduleName] = tests
@@ -64,7 +82,26 @@ for _, moduleName in ipairs(suiteModules) do
     end
 end
 
-local failures = harness.run(suites)
+writeProgress("running tests")
+local failures, passed, failureDetails = harness.run(suites, function(suiteName, testName)
+    writeProgress("running " .. suiteName .. " :: " .. testName)
+end)
+if resultPath then
+    local resultTempPath = resultPath .. ".tmp"
+    local resultFile, openError = fs.open(resultTempPath, "w")
+    if not resultFile then error(openError or "could not open test result file", 0) end
+    resultFile.write(textutils.serializeJSON({
+        schema = 2,
+        status = failures == 0 and "passed" or "failed",
+        passed = passed,
+        failed = failures,
+        failure_details = failureDetails
+    }))
+    resultFile.close()
+    if fs.exists(resultPath) then fs.delete(resultPath) end
+    fs.move(resultTempPath, resultPath)
+end
+writeProgress(string.format("finished: %d passed, %d failed", passed, failures))
 if failures > 0 then
     error(string.format("Lua test run failed: %d test(s)", failures), 0)
 end

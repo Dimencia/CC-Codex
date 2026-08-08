@@ -23,11 +23,12 @@ RUN curl --fail --location --retry 3 --retry-all-errors \
         "https://maven.squiddev.cc/cc/tweaked/cc-tweaked-1.21.1-forge/${CC_TWEAKED_VERSION}/cc-tweaked-1.21.1-forge-${CC_TWEAKED_VERSION}.jar" \
         --output "/server/mods/cc-tweaked-1.21.1-forge-${CC_TWEAKED_VERSION}.jar"
 
-COPY fixture/eula.txt /server/eula.txt
-COPY fixture/server.properties /server/server.properties
-COPY fixture/user_jvm_args.txt /server/user_jvm_args.txt
-COPY fixture/world /server/world
-COPY run.sh /usr/local/bin/cc-codex-runtime-test
+COPY tests/runtime/fixture/eula.txt /server/eula.txt
+COPY tests/runtime/fixture/server.properties /server/server.properties
+COPY tests/runtime/fixture/user_jvm_args.txt /server/user_jvm_args.txt
+COPY tests/runtime/fixture/world /server/world
+COPY computer/codex /server/world/datapacks/cc-codex-runtime/data/computercraft/lua/rom/cc-codex-source
+COPY tests/runtime/run.sh /usr/local/bin/cc-codex-runtime-test
 
 RUN chmod +x /usr/local/bin/cc-codex-runtime-test
 

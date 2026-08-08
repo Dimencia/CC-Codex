@@ -1,0 +1,53 @@
+name: Runtime Integration
+
+on:
+  pull_request:
+    paths:
+      - computer/**
+      - tests/runtime/**
+      - docs/testing.md
+      - .dockerignore
+      - .github/workflows/runtime-integration.yml
+  push:
+    branches:
+      - master
+    paths:
+      - computer/**
+      - tests/runtime/**
+      - docs/testing.md
+      - .dockerignore
+      - .github/workflows/runtime-integration.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: runtime-integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Build and run real CC fixture
+        shell: pwsh
+        run: |
+          $parameters = @{
+            OutputPath = Join-Path $env:GITHUB_WORKSPACE "tests/runtime/output"
+            TimeoutSeconds = 180
+          }
+          & (Join-Path $env:GITHUB_WORKSPACE "tests/runtime/run.ps1") @parameters
+
+      - name: Upload runtime evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: cc-codex-runtime-integration-${{ github.run_id }}
+          path: tests/runtime/output/
+          if-no-files-found: warn

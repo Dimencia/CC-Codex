@@ -13,6 +13,7 @@ node_modules/
 
 # Real Minecraft runtime smoke output.
 tests/runtime/output/
+tests/runtime/output-diagnostic/
 
 # The fixture's datapack data is source, not ComputerCraft runtime state.
 !tests/runtime/fixture/world/datapacks/cc-codex-runtime/data/

@@ -5,9 +5,66 @@ local resultsPath = resultDir .. "/results.jsonl"
 local resultsTempPath = resultsPath .. ".tmp"
 local summaryPath = resultDir .. "/summary.json"
 local summaryTempPath = summaryPath .. ".tmp"
+local statusPath = resultDir .. "/status.txt"
+local statusTempPath = statusPath .. ".tmp"
+local suiteResultPath = resultDir .. "/lua-suite-summary.json"
+local sourceRoot = "/rom/cc-codex-source"
+local stagedSourceRoot = "/codex"
 
 fs.makeDir(resultDir)
+if fs.exists(statusPath) then fs.delete(statusPath) end
 
+local function nowMillis()
+    if type(os.epoch) == "function" then return os.epoch("utc") end
+    return math.floor(os.clock() * 1000)
+end
+
+local function runLuaSuite()
+    local suiteStarted = nowMillis()
+    if fs.exists(stagedSourceRoot) then fs.delete(stagedSourceRoot) end
+    fs.copy(sourceRoot, stagedSourceRoot)
+    if fs.exists(suiteResultPath) then fs.delete(suiteResultPath) end
+    local suiteOk = shell.run(stagedSourceRoot .. "/tests/run.lua", "--result=" .. suiteResultPath)
+    local suiteData
+    local suiteError
+    if fs.exists(suiteResultPath) then
+        local suiteFile = assert(fs.open(suiteResultPath, "r"))
+        local encoded = suiteFile.readAll()
+        suiteFile.close()
+        local decodedOk, decoded = pcall(textutils.unserializeJSON, encoded)
+        if decodedOk and type(decoded) == "table" then
+            suiteData = decoded
+        else
+            suiteError = "could not decode the Lua suite result"
+        end
+    else
+        suiteError = "Lua suite did not write its result file"
+    end
+    local suitePassed = suiteData and tonumber(suiteData.passed) or 0
+    local suiteFailed = suiteData and tonumber(suiteData.failed) or 1
+    local suiteStatus = suiteData and suiteData.status or "failed"
+    local failureDetails = suiteData and suiteData.failure_details or {}
+    if not suiteOk and suiteStatus == "passed" then
+        suiteStatus = "failed"
+        suiteError = suiteError or "Lua suite process returned failure"
+    end
+
+    return {
+        status = suiteStatus == "passed" and suiteFailed == 0 and suitePassed > 0
+                and "passed" or "failed",
+        total = suitePassed + suiteFailed,
+        passed = suitePassed,
+        failed = suiteFailed,
+        failure_details = failureDetails,
+        elapsed_ms = nowMillis() - suiteStarted,
+        error = suiteError
+    }
+end
+
+local totalStarted = nowMillis()
+local luaSuite = runLuaSuite()
+
+local integrationStarted = nowMillis()
 local resultFile = assert(fs.open(resultsTempPath, "w"))
 local passed = 0
 local failed = 0
@@ -64,13 +121,6 @@ check("wireless modem peripheral", function()
     assert(modem, "no wireless modem attached")
 end)
 
-check("disk drive peripheral", function()
-    local drive = peripheral.find("drive")
-    assert(drive)
-    assert(type(drive.isDiskPresent) == "function")
-    assert(not drive.isDiskPresent())
-end)
-
 check("generic inventory peripheral", function()
     local inventory = peripheral.find("inventory")
     assert(inventory)
@@ -99,14 +149,29 @@ resultFile.close()
 if fs.exists(resultsPath) then fs.delete(resultsPath) end
 fs.move(resultsTempPath, resultsPath)
 
-local status = failed == 0 and "passed" or "failed"
+local integrationElapsed = nowMillis() - integrationStarted
+local integrationStatus = failed == 0 and "passed" or "failed"
+local status = integrationStatus == "passed" and luaSuite.status == "passed" and "passed" or "failed"
 local summary = {
-    schema = 1,
+    schema = 2,
     status = status,
     computer_id = os.getComputerID(),
     passed = passed,
-    failed = failed
+    failed = failed,
+    total_elapsed_ms = nowMillis() - totalStarted,
+    lua_suite = luaSuite,
+    integration = {
+        status = integrationStatus,
+        passed = passed,
+        failed = failed,
+        elapsed_ms = integrationElapsed
+    }
 }
+local statusFile = assert(fs.open(statusTempPath, "w"))
+statusFile.write(status)
+statusFile.close()
+if fs.exists(statusPath) then fs.delete(statusPath) end
+fs.move(statusTempPath, statusPath)
 local summaryFile = assert(fs.open(summaryTempPath, "w"))
 summaryFile.write(textutils.serializeJSON(summary))
 summaryFile.close()

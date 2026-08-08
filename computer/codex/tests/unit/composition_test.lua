@@ -9,6 +9,7 @@ local ImageRenderAdapter = require("platform.cc.adapters.image_render")
 local Img2MonCommand = require("image.command")
 local Terminal = require("platform.cc.adapters.terminal")
 local Text = require("core.text")
+local environment = _ENV
 
 local function publicMethods(subject)
     local methods = {}
@@ -29,12 +30,12 @@ local function withCcGlobals(fn, capture)
     capture.files = capture.files or {}
     capture.decoded = capture.decoded or {}
     local names = {
-        "fs", "shell", "os", "peripheral", "http", "term", "colors",
+        "fs", "shell", "os", "peripheral", "disk", "http", "term", "colors",
         "keys", "write", "print", "sleep", "textutils", "loadfile", "rednet"
     }
     local previous = {}
-    for _, name in ipairs(names) do previous[name] = _G[name] end
-    _G.fs = {
+    for _, name in ipairs(names) do previous[name] = environment[name] end
+    environment.fs = {
         getDir = function() return "" end,
         combine = function(left, right) return left == "" and right or left .. "/" .. right end,
         makeDir = function() end,
@@ -88,41 +89,47 @@ local function withCcGlobals(fn, capture)
         move = function(from, to)
             capture.files[to] = capture.files[from]
             capture.files[from] = nil
-        end
+        end,
+        isReadOnly = function() return false end
     }
-    _G.shell = { getRunningProgram = function() return "codex.lua" end }
-    _G.os = {
+    environment.shell = { getRunningProgram = function() return "codex.lua" end }
+    environment.os = {
+        computerID = function() return 1 end,
         epoch = function() return 0 end,
         pullEventRaw = function() return "terminate" end,
         queueEvent = function() end,
         startTimer = function() return 1 end,
         cancelTimer = function() end
     }
-    _G.peripheral = {
+    environment.peripheral = {
         getNames = function() return {} end,
         getType = function() return nil end,
         wrap = function() return nil end
     }
-    _G.rednet = {
+    environment.disk = {
+        hasData = function() return false end,
+        getMountPath = function() return nil end
+    }
+    environment.rednet = {
         open = function() end,
         isOpen = function() return false end,
         send = function() return false end,
         receive = function() return nil end
     }
-    _G.http = { post = function() return nil, "test HTTP adapter must not be called" end }
-    _G.term = {
+    environment.http = { post = function() return nil, "test HTTP adapter must not be called" end }
+    environment.term = {
         getTextColor = function() return 1 end,
         setTextColor = function() end,
         write = function(value) capture.terminalWrites[#capture.terminalWrites + 1] = value end
     }
-    _G.colors = { white = 1, red = 2 }
-    _G.keys = {}
+    environment.colors = { white = 1, red = 2 }
+    environment.keys = {}
     ---@diagnostic disable-next-line: duplicate-set-field
-    _G.write = function() end
+    environment.write = function() end
     ---@diagnostic disable-next-line: duplicate-set-field
-    _G.print = function() end
-    _G.sleep = function() end
-    _G.textutils = {
+    environment.print = function() end
+    environment.sleep = function() end
+    environment.textutils = {
         serializeJSON = function(value)
             capture.encoded[#capture.encoded + 1] = value
             return "{}"
@@ -130,9 +137,9 @@ local function withCcGlobals(fn, capture)
         unserializeJSON = function(value) return capture.decoded[value] or {} end,
         serialize = function() return "{}" end
     }
-    _G.loadfile = function() return function() end end
+    environment.loadfile = function() return function() end end
     local result = table.pack(pcall(fn))
-    for _, name in ipairs(names) do _G[name] = previous[name] end
+    for _, name in ipairs(names) do environment[name] = previous[name] end
     if not result[1] then error(result[2], 0) end
     return table.unpack(result, 2, result.n)
 end

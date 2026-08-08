@@ -1,8 +1,10 @@
 local Image = require("image.image")
+local Harness = require("tests.harness")
 local Loader = require("image.loader")
 local MonitorRenderer = require("image.monitor_renderer")
 local Palette = require("image.palette")
 local RenderModes = require("image.render_modes")
+local environment = _ENV
 
 local Spec = {}
 
@@ -81,19 +83,25 @@ end
 ---@param runner ImageTestRunner
 function Spec.register(runner)
   runner.test("library loads do not touch CC globals", function()
-    local oldTerm, oldFs, oldPeripheral = _G.term, _G.fs, _G.peripheral
-    local trap = setmetatable({}, { __index = function() error("CC global touched") end })
-    _G.term, _G.fs, _G.peripheral = trap, trap, trap
-    package.loaded["image.palette"] = nil
-    package.loaded["image.loader"] = nil
-    package.loaded["image.monitor_renderer"] = nil
-    local ok, message = pcall(function()
-      require("image.palette")
-      require("image.loader")
-      require("image.monitor_renderer")
-    end)
-    _G.term, _G.fs, _G.peripheral = oldTerm, oldFs, oldPeripheral
-    runner.truthy(ok, tostring(message))
+    local trapped = { fs = true, peripheral = true, term = true }
+    local moduleEnvironment = setmetatable({ require = require }, {
+      __index = function(_, name)
+        if trapped[name] then error("CC global touched: " .. name) end
+        return environment[name]
+      end
+    })
+    moduleEnvironment._G = moduleEnvironment
+
+    for _, relativePath in ipairs({
+      "image/palette.lua",
+      "image/loader.lua",
+      "image/monitor_renderer.lua"
+    }) do
+      local chunk, loadError = loadfile(Harness.sourcePath(relativePath), "t", moduleEnvironment)
+      assert(chunk, loadError)
+      local ok, message = pcall(chunk)
+      runner.truthy(ok, tostring(message))
+    end
   end)
 
   runner.test("image pixel clamps and average rounds", function()
@@ -166,14 +174,14 @@ function Spec.register(runner)
   end)
 
   runner.test("loader never falls back to the global filesystem", function()
-    local previousFs = _G.fs
+    local previousFs = environment.fs
     local opened = false
-    _G.fs = { open = function()
+    environment.fs = { open = function()
       opened = true
       return nil
     end }
     local ok, message = pcall(function() Loader.load("global.ppm") end)
-    _G.fs = previousFs
+    environment.fs = previousFs
     runner.equal(ok, false)
     runner.equal(message, "image loader requires an injected readFile or filesystem adapter")
     runner.equal(opened, false)

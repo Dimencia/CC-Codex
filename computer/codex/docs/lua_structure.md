@@ -17,11 +17,9 @@ concise runtime-facing copy.
 The repository's `computer/codex/` directory is the application source tree.
 The installer copies it to the installed computer, where:
 
-- `startup/cc_codex.lua` starts `codex/service.lua` and `startup/disk_sync.lua`
-  as separate multishell tabs when available. Without multishell it performs
-  one disk sync before starting the service.
-- `startup/disk_sync.lua` copies `disk-source/` to writable attached disks and
-  listens for later `disk` events.
+- `startup/cc_codex.lua` assumes multishell, starts `codex/service.lua` as a
+  background process, keeps the ordinary CraftOS shell in the main tab, and
+  leaves the `codex` terminal client as a manual command.
 - `codex.lua` is the manual terminal client launcher; it opens
   `codex/clients/terminal.lua`.
 - `codex/clients/` contains user-facing clients. A future monitor client can
@@ -44,7 +42,6 @@ The installer copies it to the installed computer, where:
 - `codex/docs/deferred-ideas.md` is the requested-work backlog. It is valid
   implementation context when the user explicitly asks for an idea.
 - `codex/setup/set_api_key.lua` stores `cc_codex.api_key` in local CC settings.
-- `disk-source/` contains the small bootstrap files copied to attached disks.
 
 The installer normally downloads the latest release's uncompressed USTAR
 package, validates it, and creates ordinary files in the computer root. Use
@@ -75,8 +72,11 @@ explicit source-copy workflow to update the computer.
   reader. It does not own CC or presentation behavior.
 - `codex/tools/` contains fixed model-visible tools: `execute_cc_lua`,
   `write_preferences`, conversation listing/naming, compaction/restart,
-  `render_image_on_monitor`, and optional `execute_remote_lua` Rednet
-  execution.
+  `render_image_on_monitor`, `create_worker`, and optional
+  `execute_remote_lua` Rednet execution.
+- `codex/platform/cc/remote_bootstrap.lua` is a standalone worker program. The
+  `create_worker` tool copies it to `startup/` and writes the per-target
+  authority file at the disk root on an attached writable data disk.
 - `codex/platform/cc/adapters/` contains terminal, client-mailbox, Chat Box,
   and image-rendering adapters. Clients use those adapters to submit and receive
   turns from the one service-owned conversation engine.
@@ -92,6 +92,8 @@ These are per-computer state, not shared source:
 
 - `codex/data/preferences.md` - mutable local preferences.
 - `codex/data/codex-state.json` - provider cursor and restart continuation.
+- `codex/data/remote_workers.json` - local parent capabilities for workers
+  created by this computer. It is not provider input and must not be committed.
 - `codex/data/conversations.json` and `codex/data/conversations/` - conversation catalog
   and plaintext diagnostic JSONL logs.
 - `codex/data/usage.jsonl` - aggregate turn metrics.
@@ -100,7 +102,7 @@ These are per-computer state, not shared source:
 - `codex/artifacts/images/` - generated image files.
 - `codex/.codex-restart` - transient supervisor marker used for a validated
   managed restart.
-- `.settings` - CC settings, including the API key and disk-startup policy.
+- `.settings` - CC settings, including the API key.
 
 Do not put credentials or runtime data into source. Do not treat local logs or
 client request/result files as provider history. Runtime files stay local when
@@ -148,11 +150,12 @@ There are three separate paths. Do not confuse them:
 2. **CC runtime -> host repository.** Files edited through CC are local to the
    installed computer. Copy the intended changes back to the repository before
    committing; the CC agent does not own Git branching, commits, or merges.
-3. **CC -> another CC computer.** `execute_remote_lua` uses a wireless or ender
-   modem and Rednet with a unique `codex_execution:<timestamp>-<counter>`
-   protocol. It sends only the supplied Lua source and waits for that computer's
-   response. The target must have a compatible Rednet listener; this feature
-   does not synchronize source, conversation state, or agent identity.
+3. **CC -> another CC computer.** `create_worker` prepares a disk; after the
+   target is restarted with that disk attached, `execute_remote_lua` sends an
+   authenticated request over a wireless modem using a unique
+   `rednet_worker:<timestamp>-<counter>` protocol. The target worker accepts
+   only its configured parent capability and never starts a local shell. This
+   feature does not synchronize source, conversation state, or agent identity.
 
 The CC agent cannot directly invoke the host agent's Git logic. Use the shared
 source files for code handoff and explicit host-side review before committing.
@@ -184,10 +187,22 @@ so.
 ## Safety and authority boundaries
 
 `execute_cc_lua` can execute arbitrary Lua with the normal CC authority of the
-computer. Rednet execution can affect the selected remote computer. Inspect
-current state before changing files or the world. Keep world changes, external
-model calls, and remote execution separate from ordinary offline source
-inspection.
+computer. Rednet execution can affect the selected remote computer. The Codex
+computer is the authority root: it listens for no worker protocol, so workers
+cannot call it back. A worker may be controlled only by its configured parent
+capability and can be used by that parent to prepare descendants.
+
+Rednet is not a cryptographic or player-authentication boundary. A player who
+can edit a worker disk/computer, spoof the server's computer identity, or gain
+server-level ComputerCraft access can bypass this scheme. Multiplayer worlds
+still need protected computer blocks, controlled disk access, and server-side
+permissions for a hard player boundary. Inspect current state before changing
+files or the world. Keep world changes, external model calls, and remote
+execution separate from ordinary offline source inspection.
+
+Do not copy one root capability to every descendant. Child propagation must use
+new per-edge capabilities and an explicit parent hop; this slice does not
+silently copy itself to every disk.
 
 When a task depends on current implementation, inspect this guide first and
 then read only the relevant module. Keep reads bounded and verify every write

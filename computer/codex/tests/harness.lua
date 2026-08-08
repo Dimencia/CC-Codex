@@ -119,10 +119,14 @@ function Harness.raises(expectedPattern, fn)
 end
 
 ---@param suites table<string, TestCase[]>
+---@param onTest fun(suiteName: string, testName: string)|nil
 ---@return integer failures
-function Harness.run(suites)
+---@return integer passed
+---@return table[] failureDetails
+function Harness.run(suites, onTest)
     local passed = 0
     local failed = 0
+    local failureDetails = {}
     local suiteNames = {}
     for name in pairs(suites) do
         suiteNames[#suiteNames + 1] = name
@@ -132,6 +136,7 @@ function Harness.run(suites)
     for _, suiteName in ipairs(suiteNames) do
         local tests = suites[suiteName]
         for _, test in ipairs(tests) do
+            if onTest then onTest(suiteName, test.name) end
             local ok, failure = xpcall(test.fn, function(message)
                 if debug and type(debug.traceback) == "function" then
                     local traced, trace = pcall(debug.traceback, tostring(message), 2)
@@ -144,6 +149,11 @@ function Harness.run(suites)
                 print(string.format("PASS %s :: %s", suiteName, test.name))
             else
                 failed = failed + 1
+                failureDetails[#failureDetails + 1] = {
+                    suite = suiteName,
+                    test = test.name,
+                    error = tostring(failure)
+                }
                 print(string.format("FAIL %s :: %s", suiteName, test.name))
                 print(failure)
             end
@@ -151,7 +161,7 @@ function Harness.run(suites)
     end
 
     print(string.format("RESULT %d passed, %d failed", passed, failed))
-    return failed
+    return failed, passed, failureDetails
 end
 
 return Harness

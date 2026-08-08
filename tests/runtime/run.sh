@@ -6,19 +6,20 @@ output_dir=/output
 server_log="$output_dir/server-console.log"
 timeout_seconds="${CC_CODEX_TIMEOUT_SECONDS:-180}"
 
+now_ms() {
+    value="$(date +%s%3N 2>/dev/null || true)"
+    case "$value" in
+        ''|*N*) value="$(($(date +%s) * 1000))" ;;
+    esac
+    printf '%s' "$value"
+}
+
+runtime_started_ms="$(now_ms)"
+
 mkdir -p "$output_dir"
 rm -rf "$output_dir/computer-fs"
 rm -rf "$output_dir/world-debug"
 rm -f "$output_dir/cc-summary.json" "$output_dir/server-latest.log"
-
-if [ -f /input/anomaly.jar ]; then
-    cp /input/anomaly.jar /server/mods/anomaly.jar
-fi
-
-if [ "${REQUIRE_ATMONS:-0}" = "1" ] && [ ! -f /server/mods/anomaly.jar ]; then
-    echo "ATMons jar was required but was not mounted at /input/anomaly.jar." >&2
-    exit 2
-fi
 
 console_pipe="/tmp/cc-codex-runtime-console.$$"
 mkfifo "$console_pipe"
@@ -49,6 +50,10 @@ rm -f "$console_pipe"
 trap - EXIT
 set -e
 
+runtime_finished_ms="$(now_ms)"
+runtime_elapsed_ms=$((runtime_finished_ms - runtime_started_ms))
+printf '{"schema":1,"container_elapsed_ms":%s}\n' "$runtime_elapsed_ms" > "$output_dir/runtime-timing.json"
+
 if [ -f /server/logs/latest.log ]; then
     cp /server/logs/latest.log "$output_dir/server-latest.log"
 fi
@@ -65,7 +70,7 @@ if [ -n "$summary_path" ]; then
 fi
 
 if [ "$server_exit" -eq 124 ]; then
-    echo "Minecraft runtime smoke timed out after ${timeout_seconds}s." >&2
+    echo "Minecraft runtime integration timed out after ${timeout_seconds}s." >&2
     exit 124
 fi
 
@@ -74,7 +79,8 @@ if [ ! -f "$output_dir/cc-summary.json" ]; then
     exit 1
 fi
 
-if ! grep -Eq '"status"[[:space:]]*:[[:space:]]*"passed"' "$output_dir/cc-summary.json"; then
+status_path="$(dirname "$summary_path")/status.txt"
+if [ ! -f "$status_path" ] || [ "$(tr -d '\r\n' < "$status_path")" != "passed" ]; then
     echo "The CC runtime test reported failure:" >&2
     cat "$output_dir/cc-summary.json" >&2
     exit 1
@@ -85,4 +91,4 @@ if [ "$server_exit" -ne 0 ]; then
     exit "$server_exit"
 fi
 
-echo "CC Codex runtime smoke passed."
+echo "CC Codex runtime integration passed."

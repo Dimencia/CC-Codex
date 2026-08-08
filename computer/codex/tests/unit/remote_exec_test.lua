@@ -34,9 +34,30 @@ local function dependencies(options)
                 if value == "arguments" then
                     return { target = options.target or 42, code = "return 7" }
                 end
+                if value == "credentials" then
+                    return {
+                        version = 1,
+                        workers = {
+                            [tostring(options.target or 42)] = {
+                                capability = "capability-" .. tostring(options.target or 42)
+                            }
+                        }
+                    }
+                end
                 return nil, "invalid"
             end
         },
+        fs = {
+            exists = function(path) return path == "data/remote_workers.json" end,
+            isDir = function() return false end,
+            open = function()
+                return {
+                    readAll = function() return "credentials" end,
+                    close = function() end
+                }
+            end
+        },
+        credentialPath = "data/remote_workers.json",
         epoch = function()
             now = now + (options.epochStep or 1)
             return now
@@ -71,9 +92,11 @@ return {
             assert(result)
             Harness.truthy(result.ok)
             Harness.equal(42, result.target)
-            Harness.equal("codex_execution:1001-1", result.protocol)
+            Harness.equal("rednet_worker:1001-1", result.protocol)
             Harness.equal(42, deps.sent().target)
-            Harness.equal("return 7", deps.sent().code)
+            Harness.equal("return 7", deps.sent().code.code)
+            Harness.equal(1, deps.sent().code.version)
+            Harness.equal("capability-42", deps.sent().code.capability)
             Harness.equal(result.protocol, deps.sent().protocol)
             Harness.equal(7, result.remote.value)
         end
@@ -92,8 +115,8 @@ return {
                 name = "execute_remote_lua",
                 arguments = { target = 42, code = "return 2" }
             }))
-            Harness.equal("codex_execution:1000-1", first.protocol)
-            Harness.equal("codex_execution:1000-2", second.protocol)
+            Harness.equal("rednet_worker:1000-1", first.protocol)
+            Harness.equal("rednet_worker:1000-2", second.protocol)
         end
     },
     {

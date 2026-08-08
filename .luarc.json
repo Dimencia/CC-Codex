@@ -15,7 +15,8 @@
   ],
   "workspace.ignoreDir": [
     ".lua-language-server",
-    "node_modules"
+    "node_modules",
+    "tests/runtime/output"
   ],
   "runtime.builtin": {
     "io": "disable",

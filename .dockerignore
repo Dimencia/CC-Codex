@@ -1,0 +1,4 @@
+.git/
+.lua-language-server/
+.tools/
+tests/runtime/output/

@@ -5,6 +5,7 @@ local ArtifactStore = require("storage.artifacts")
 local ChatEngine = require("core.chat_engine")
 local ClientMailbox = require("platform.cc.adapters.client_mailbox")
 local Commands = require("core.commands")
+local CreateWorkerTools = require("tools.create_worker")
 local ExecuteLua = require("tools.execute_lua")
 local InstructionStore = require("storage.instructions")
 local InstructionTools = require("tools.instructions")
@@ -164,6 +165,7 @@ function Bootstrap.build(config)
         delete = function(value) return fs.delete(value) end,
         move = function(from, to) return fs.move(from, to) end,
         makeDir = function(value) return fs.makeDir(value) end,
+        isReadOnly = function(value) return fs.isReadOnly(value) end,
         combine = function(left, right) return fs.combine(left, right) end
     }
     local restart = RestartController.new({
@@ -269,11 +271,26 @@ function Bootstrap.build(config)
         maxResultCharacters = config.maxToolResultChars,
         validateRestart = restart.validate
     }))
+    requireRegistration("create-worker tool", CreateWorkerTools.register(tools, {
+        fs = fileSystem,
+        ---@diagnostic disable-next-line: assign-type-mismatch
+        disk = disk,
+        peripheral = peripheral,
+        ---@diagnostic disable-next-line: assign-type-mismatch
+        json = json,
+        sourcePath = path("platform/cc/remote_bootstrap.lua"),
+        credentialPath = path("data/remote_workers.json"),
+        computerId = os.computerID,
+        epoch = function() return os.epoch("utc") end,
+        random = function() return math.random(0, 2147483647) end
+    }))
     requireRegistration("remote execution tool", RemoteExecTools.register(tools, {
         rednet = rednet,
         peripheral = peripheral,
         ---@diagnostic disable-next-line: assign-type-mismatch
         json = json,
+        fs = fileSystem,
+        credentialPath = path("data/remote_workers.json"),
         epoch = function() return os.epoch("utc") end
     }))
     local imageWarning = registerOptionalImageTool(config, tools, json, session, path)

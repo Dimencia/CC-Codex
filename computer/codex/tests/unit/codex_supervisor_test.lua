@@ -1,21 +1,22 @@
 local Harness = require("tests.harness")
+local environment = _ENV
 
 local function runSupervisor(outcomes)
     local previous = {
-        fs = _G.fs,
-        shell = _G.shell,
-        printError = _G.printError
+        fs = environment.fs,
+        shell = environment.shell,
+        printError = environment.printError
     }
     local marker = false
     local runs = 0
     local errors = {}
-    _G.fs = {
+    environment.fs = {
         combine = function(left, right) return left .. "/" .. right end,
         getDir = function() return "computer/codex" end,
         exists = function() return marker end,
         delete = function() marker = false end
     }
-    _G.shell = {
+    environment.shell = {
         resolve = function(path) return path end,
         getRunningProgram = function() return "computer/codex/service.lua" end,
         run = function()
@@ -25,12 +26,12 @@ local function runSupervisor(outcomes)
             return outcome.completed == true
         end
     }
-    _G.printError = function(message) errors[#errors + 1] = message end
-    local chunk = assert(loadfile(Harness.sourcePath("service.lua")))
+    environment.printError = function(message) errors[#errors + 1] = message end
+    local chunk = assert(loadfile(Harness.sourcePath("service.lua"), "t", environment))
     local result = table.pack(pcall(chunk))
-    _G.fs = previous.fs
-    _G.shell = previous.shell
-    _G.printError = previous.printError
+    environment.fs = previous.fs
+    environment.shell = previous.shell
+    environment.printError = previous.printError
     if not result[1] then error(result[2], 0) end
     return runs, errors
 end
@@ -38,24 +39,24 @@ end
 local function runManagedChild(apiKey)
     local moduleName = "platform.cc.bootstrap"
     local previous = {
-        fs = _G.fs,
-        shell = _G.shell,
-        settings = _G.settings,
-        http = _G.http,
-        printError = _G.printError,
+        fs = environment.fs,
+        shell = environment.shell,
+        settings = environment.settings,
+        http = environment.http,
+        printError = environment.printError,
         bootstrap = package.loaded[moduleName],
         packagePath = package.path
     }
     local observed = { definitions = 0, reads = 0, builds = 0, runs = 0, checks = 0 }
-    _G.fs = {
+    environment.fs = {
         combine = function(left, right) return left .. "/" .. right end,
         getDir = function() return "computer/codex" end
     }
-    _G.shell = {
+    environment.shell = {
         resolve = function(path) return path end,
         getRunningProgram = function() return "computer/codex/service.lua" end
     }
-    _G.settings = {
+    environment.settings = {
         define = function(name, options)
             observed.definitions = observed.definitions + 1
             observed.definedName = name
@@ -67,13 +68,13 @@ local function runManagedChild(apiKey)
             return apiKey
         end
     }
-    _G.http = {
+    environment.http = {
         checkURL = function()
             observed.checks = observed.checks + 1
             return true
         end
     }
-    _G.printError = function() end
+    environment.printError = function() end
     package.loaded[moduleName] = {
         build = function(config)
             observed.builds = observed.builds + 1
@@ -85,14 +86,14 @@ local function runManagedChild(apiKey)
     }
 
     local result = table.pack(pcall(function()
-        local chunk = assert(loadfile(Harness.sourcePath("service.lua")))
+        local chunk = assert(loadfile(Harness.sourcePath("service.lua"), "t", environment))
         return chunk("--codex-managed-child")
     end))
-    _G.fs = previous.fs
-    _G.shell = previous.shell
-    _G.settings = previous.settings
-    _G.http = previous.http
-    _G.printError = previous.printError
+    environment.fs = previous.fs
+    environment.shell = previous.shell
+    environment.settings = previous.settings
+    environment.http = previous.http
+    environment.printError = previous.printError
     package.loaded[moduleName] = previous.bootstrap
     package.path = previous.packagePath
     return result, observed
@@ -105,19 +106,19 @@ end
 
 local function runApiKeySetter(apiKey)
     local previous = {
-        read = _G.read,
-        settings = _G.settings,
-        write = _G.write,
-        print = _G.print,
-        printError = _G.printError,
-        term = _G.term
+        read = environment.read,
+        settings = environment.settings,
+        write = environment.write,
+        print = environment.print,
+        printError = environment.printError,
+        term = environment.term
     }
     local observed = { definitions = 0, output = {}, saves = 0 }
-    _G.read = function(mask)
+    environment.read = function(mask)
         observed.mask = mask
         return apiKey
     end
-    _G.settings = {
+    environment.settings = {
         define = function(name, options)
             observed.definitions = observed.definitions + 1
             observed.definedName = name
@@ -133,23 +134,23 @@ local function runApiKeySetter(apiKey)
         end
     }
     ---@diagnostic disable-next-line: duplicate-set-field
-    _G.write = function(...) appendOutput(observed.output, ...) end
+    environment.write = function(...) appendOutput(observed.output, ...) end
     ---@diagnostic disable-next-line: duplicate-set-field
-    _G.print = function(...) appendOutput(observed.output, ...) end
-    _G.printError = function(...) appendOutput(observed.output, ...) end
-    _G.term = { write = function(...) appendOutput(observed.output, ...) end }
+    environment.print = function(...) appendOutput(observed.output, ...) end
+    environment.printError = function(...) appendOutput(observed.output, ...) end
+    environment.term = { write = function(...) appendOutput(observed.output, ...) end }
 
     local result = table.pack(pcall(function()
-    local chunk, loadError = loadfile(Harness.sourcePath("setup/set_api_key.lua"))
+        local chunk, loadError = loadfile(Harness.sourcePath("setup/set_api_key.lua"), "t", environment)
         if not chunk then error(loadError, 0) end
         return chunk()
     end))
-    _G.read = previous.read
-    _G.settings = previous.settings
-    _G.write = previous.write
-    _G.print = previous.print
-    _G.printError = previous.printError
-    _G.term = previous.term
+    environment.read = previous.read
+    environment.settings = previous.settings
+    environment.write = previous.write
+    environment.print = previous.print
+    environment.printError = previous.printError
+    environment.term = previous.term
     return result, observed
 end
 

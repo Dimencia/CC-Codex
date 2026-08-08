@@ -2,11 +2,14 @@
 ---@field rednet table
 ---@field peripheral table
 ---@field json ExecuteLuaJsonCodec
+---@field fs WorkerFileSystem
+---@field credentialPath string
 ---@field epoch fun(string): number
+
+local worker = require("tools.create_worker")
 
 local RemoteExec = {}
 
-local PROTOCOL_PREFIX = "codex_execution:"
 local DEFAULT_TIMEOUT = 60
 local MAX_TIMEOUT = 300
 local MAX_CODE_CHARACTERS = 200000
@@ -17,8 +20,9 @@ local DESCRIPTOR = {
     description = table.concat({
         "Execute a Lua source chunk on a remote CC:Tweaked client over Rednet. ",
         "The client must be reachable through a wrapped wireless or ender modem. ",
-        "The tool generates a unique codex_execution protocol, waits for the ",
-        "client's response, and returns the transport status plus remote result."
+        "The tool generates a unique " .. worker.protocolPrefix .. ":<timestamp>-<counter> protocol, ",
+        "authenticates with the capability created by create_worker, waits for the client's ",
+        "response, and returns the transport status plus remote result."
     }),
     parameters = {
         type = "object",
@@ -85,7 +89,7 @@ end
 local function nextProtocol(deps, counters)
     local timestamp = math.floor(deps.epoch("utc"))
     counters[timestamp] = (counters[timestamp] or 0) + 1
-    return PROTOCOL_PREFIX .. tostring(timestamp) .. "-" .. tostring(counters[timestamp])
+    return worker.protocolPrefix .. ":" .. tostring(timestamp) .. "-" .. tostring(counters[timestamp])
 end
 
 local function now(deps)
@@ -119,8 +123,19 @@ local function execute(deps, counters, call)
         return { ok = false, error = "Remote execution is unavailable: no usable wireless or ender modem is wrapped." }
     end
 
+    local capability, capabilityError = worker.loadCapability(
+        deps.fs,
+        deps.json,
+        deps.credentialPath,
+        target
+    )
+    if not capability then
+        return { ok = false, target = target, error = capabilityError }
+    end
+
     local protocol = nextProtocol(deps, counters)
-    local sendOk, sent = pcall(deps.rednet.send, target, args.code, protocol)
+    local request = worker.request(protocol, args.code, capability)
+    local sendOk, sent = pcall(deps.rednet.send, target, request, protocol)
     if not sendOk then
         return { ok = false, target = target, protocol = protocol, error = "Rednet send failed: " .. tostring(sent) }
     end
@@ -176,6 +191,8 @@ function RemoteExec.register(registry, deps)
         and type(deps.rednet) == "table"
         and type(deps.peripheral) == "table"
         and type(deps.json) == "table"
+        and type(deps.fs) == "table"
+        and type(deps.credentialPath) == "string"
         and type(deps.epoch) == "function", "remote execution dependencies are required")
     local counters = {}
     return registry:register(

@@ -3,14 +3,11 @@
 The repository is the source of truth. The installer copies ordinary files and
 directories from `computer/` into a ComputerCraft computer:
 
-- `computer/startup/cc_codex.lua` starts the service and disk-source watcher
-  in separate multishell tabs when multishell is available; otherwise it does
-  one disk-source sync before starting the service.
+- `computer/startup/cc_codex.lua` assumes multishell and starts the service in a
+  separate tab, leaving the main tab as the ordinary CraftOS shell.
 - `computer/codex.lua` is the manual terminal-client launcher.
 - `computer/codex/` contains the service, clients, core, platform adapters,
   providers, storage, tools, image code, docs, and tests.
-- `computer/disk-source/` is copied to attached writable disks so they carry a
-  small bootstrap payload.
 - `codex/data/`, `codex/artifacts/`, `.settings`, and client request/result files
   stay local to the computer and are not repository source.
 
@@ -20,10 +17,6 @@ this same directory is `codex/docs/`. Read `codex/docs/lua_structure.md` before
 inspecting or changing individual modules. It includes the source map,
 self-edit/restart workflow, and CC/remote integration boundaries.
 The service is started by `startup/cc_codex.lua` when the CC runtime launches.
-The installer also runs `startup/disk_sync.lua` once before rebooting. On
-computers with multishell, the startup watcher repeats that synchronization for
-later disk insertions; the non-multishell fallback only performs the one sync.
-
 The root `docs/` directory is host-side documentation and navigation. The
 CC-facing `computer/codex/docs/deferred-ideas.md` is also valid implementation
 context: the CC agent may implement one of those ideas when the user asks it

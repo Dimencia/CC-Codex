@@ -9,13 +9,11 @@ local rawBase = "https://raw.githubusercontent.com/" .. repository .. "/" .. bra
 local apiTreeUrl = "https://api.github.com/repos/" .. repository .. "/git/trees/" .. branch .. "?recursive=1"
 local releasesApiUrl = "https://api.github.com/repos/" .. repository .. "/releases/latest"
 local apiKeySetting = "cc_codex.api_key"
-local diskStartupSetting = "shell.allow_disk_startup"
 local sourcePrefix = "computer/"
 local downloadWorkerCount = 8
 local maxArchiveBytes = 8 * 1024 * 1024
 
 local runningProgram
-local runningDirectory
 local computerRoot
 local selfPath
 
@@ -38,21 +36,6 @@ local function rootPath(relative)
         error("Installer runtime has not been initialized.", 0)
     end
     return combine(computerRoot, relative)
-end
-
-local function renameSelf()
-    local name = fs.getName(runningProgram)
-    if name == ".cc-codex-install-running.lua" then return runningProgram end
-
-    local candidate = combine(runningDirectory, ".cc-codex-install-running.lua")
-    deleteIfPresent(candidate)
-    local ok, moveError = pcall(fs.move, runningProgram, candidate)
-    if ok then return candidate end
-
-    -- Some ComputerCraft versions/filesystems may refuse to move the file
-    -- which is currently executing. The installer can still proceed safely.
-    printError("Could not rename the running installer: " .. tostring(moveError))
-    return runningProgram
 end
 
 local bit = bit32
@@ -427,7 +410,8 @@ local function installManagedInstaller(source)
 
     local destination = rootPath("codex/install.lua")
     if selfPath == destination then
-        printError("Could not replace the active installer; it will update on the next run.")
+        -- ComputerCraft may not replace a program while it is executing. The
+        -- application tree is still updated; leave this entry point in place.
         return
     end
     local pending = destination .. ".new"
@@ -571,14 +555,6 @@ local function saveSettings()
 end
 
 local function configureSettings()
-    settings.define(diskStartupSetting, {
-        description = "Allow startup programs from inserted disks.",
-        type = "boolean",
-        default = true
-    })
-    settings.set(diskStartupSetting, false)
-    saveSettings()
-
     settings.define(apiKeySetting, {
         description = "OpenAI API key used by CC Codex.",
         type = "string"
@@ -593,12 +569,6 @@ local function configureSettings()
     if type(apiKey) ~= "string" or not apiKey:find("%S") then
         error("CC Codex API key was not configured.", 0)
     end
-end
-
-local function syncDisksOnce()
-    local syncPath = rootPath("startup/disk_sync.lua")
-    if not fs.exists(syncPath) then error("The disk synchronization program was not installed.", 0) end
-    if not shell.run(syncPath, "--once") then error("Initial disk synchronization failed.", 0) end
 end
 
 local function parseArguments(arguments)
@@ -629,15 +599,19 @@ local function initializeRuntime()
         runningProgram = runningProgram .. ".lua"
     end
 
-    -- The installer lives at the computer root on first launch and in codex/
-    -- on later launches. In both cases the parent of codex/ is the computer root.
-    runningDirectory = fs.getDir(runningProgram)
-    computerRoot = runningDirectory
-    if fs.getName(runningDirectory) == "codex" then
-        computerRoot = fs.getDir(runningDirectory)
+    local resolvedProgram = shell.resolve(runningProgram)
+    if type(resolvedProgram) == "string" and resolvedProgram ~= "" then
+        runningProgram = resolvedProgram
     end
 
-    selfPath = renameSelf()
+    -- Installation always targets the main computer filesystem rather than the
+    -- directory containing the bootstrap.
+    computerRoot = "/"
+
+    -- Never rename or delete the program which is currently executing. The
+    -- bootstrap can remain at the computer root, while codex/install.lua is
+    -- replaced only when it is not the active entry point.
+    selfPath = runningProgram
 end
 
 local function installFromSourceTree()
@@ -668,9 +642,6 @@ local function main(arguments)
     initializeRuntime()
     installPayload(options)
     configureSettings()
-    syncDisksOnce()
-    local installedPath = rootPath("codex/install.lua")
-    if selfPath ~= installedPath then deleteIfPresent(selfPath) end
     print("CC Codex installed. Rebooting...")
     os.reboot()
 end

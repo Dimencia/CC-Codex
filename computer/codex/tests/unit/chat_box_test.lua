@@ -1,6 +1,7 @@
 ---@diagnostic disable: missing-fields, missing-return
 
 local Harness = require("tests.harness")
+local environment = _ENV
 local ChatBox = require("platform.cc.adapters.chat_box")
 local Components = require("platform.cc.adapters.chat_components")
 local ComponentText = require("core.component_text")
@@ -331,9 +332,9 @@ return {
     {
         name = "packaged formatter serializes plain agent text instead of splicing JSON",
         fn = function()
-            local previousTextutils = _G.textutils
+            local previousTextutils = environment.textutils
             local serialized
-            _G.textutils = {
+            environment.textutils = {
                 serializeJSON = function(value)
                     serialized = value
                     return "serialized-component"
@@ -346,7 +347,7 @@ return {
                 "progress",
                 "Reasoned locally."
             )
-            _G.textutils = previousTextutils
+            environment.textutils = previousTextutils
             Harness.truthy(called)
             Harness.equal("serialized-component", component)
             Harness.equal(plainText, serialized.extra[4].text)

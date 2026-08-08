@@ -15,11 +15,10 @@ normally downloads the latest release's uncompressed USTAR package, validates
 and extracts its `computer/` tree, and keeps the GitHub source-tree downloader
 as a compatibility fallback. `--archive-url` can select an exact package for a
 release or CI smoke test. The installed `codex/` directory is not a symlink or
-junction. In the repository, `computer/startup/disk_sync.lua` owns the
-separate disk-copy lifecycle and `computer/startup/cc_codex.lua` opens that
-watcher and the headless service in separate multishell tabs when available.
-Without multishell it performs one disk sync before starting the service. After
-installation these paths are `startup/...` on the CC computer.
+junction. In the repository, `computer/startup/cc_codex.lua` assumes multishell,
+starts the headless service as a background process, and keeps the ordinary
+CraftOS shell in the main tab. After installation these paths are `startup/...`
+on the CC computer.
 
 ## Boundaries
 
@@ -46,6 +45,13 @@ installation these paths are `startup/...` on the CC computer.
   contains terminal, Chat Box, and client mailbox adapters. `image/`
   handles image decoding and monitor rendering separately from conversation.
 
+`tools/create_worker.lua` is the disk boundary. It writes the standalone
+`platform/cc/remote_bootstrap.lua` under `startup/` and a per-target authority
+file at the disk root on one attached writable data disk, and stores the matching parent
+capability in local `codex/data/remote_workers.json`. `tools/remote_exec.lua`
+uses that local capability and sends a unique `rednet_worker:<timestamp>-<counter>`
+request envelope.
+
 ## State and trust boundaries
 
 The provider owns model-visible conversation history. CC-local durable state
@@ -58,6 +64,21 @@ be committed or placed in runtime request files.
 Computer-local `codex/data/`, `codex/artifacts/`, `.settings`, and client
 request/result files are not shared between computers. The repository source
 under `computer/` is copied into each computer independently.
+
+Worker authority is directional. The root Codex computer is an outbound-only
+authority and has no worker listener. Each infected computer accepts requests
+only from its configured parent capability; a worker can prepare descendants,
+but no descendant is authorized to command its parent. This controls the
+computer-to-computer topology, not the player or server: Rednet itself is not a
+cryptographic identity boundary, so multiplayer deployments still need protected
+computer blocks, controlled disk access, and server-side permissions.
+
+Do not solve propagation by copying one root whitelist or bearer credential to
+every descendant. A future automatic propagation helper must mint a new
+capability per parent-child edge and route ancestor work through the chain;
+otherwise compromising one worker grants control of every worker. The current
+slice keeps propagation explicit through a parent worker's normal CC execution
+and makes the authority boundary visible instead of silently spreading files.
 
 ## Change rule
 
