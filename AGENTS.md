@@ -93,12 +93,16 @@ claim decisions. The PR coordinator is a separate role that owns deduplicated
 feature worker owns its claimed item, branch, and pull request until merge or
 an explicit handoff; publishing a PR does not end that ownership.
 
-Every long-running agent task chooses one stable callsign, prefixes its task
-title and internal or GitHub messages with that name, and includes
+Every agent identity has one stable callsign across its tasks and branches. A
+genuinely new worker chooses or accepts an unused callsign; existing workers
+retain theirs. Prefix the task title and internal or GitHub messages with that
+name, and include
 `Agent: <callsign> (<role>)` in roadmap claims, PR bodies, reviews, fix comments,
 merge notes, reports, and handoffs. Names make concurrent agents distinguishable
-but never replace work-item IDs, branches, PR numbers, or head SHAs. Keep the
-required `codex/*` branch format unchanged.
+but never replace work-item IDs, branches, PR numbers, or head SHAs. Never use a
+callsign as a temporary task or PR label, rename another worker during a
+handoff, or assign the same callsign to multiple agents. Keep the required
+`codex/*` branch format unchanged.
 
 - For every task that changes tracked files, use the repository-local
   `parallel-pr-worker` skill unless the user explicitly asks for read-only

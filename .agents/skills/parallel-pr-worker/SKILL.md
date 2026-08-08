@@ -16,8 +16,11 @@ it, busy-poll it, or create a scheduled follow-up.
 
 1. Confirm the current directory is inside the intended Git repository.
 2. Read the root `AGENTS.md` and any more-specific applicable instructions.
-3. Choose or confirm one stable callsign, prefix the task title and messages
-   with it, and use `Agent: <callsign> (<role>)` in authored GitHub artifacts.
+3. Confirm the agent's persistent callsign; choose an unused name only for a
+   genuinely new worker. Keep it across tasks and branches, prefix the task
+   title and messages with it, and use `Agent: <callsign> (<role>)` in authored
+   GitHub artifacts. Never use it as a temporary PR label or rename another
+   worker during handoff.
 4. Run `git status --short --branch` and `git worktree list`.
 5. Determine the default branch from `origin/HEAD`, falling back to the
    documented repository convention.

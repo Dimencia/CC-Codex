@@ -20,9 +20,10 @@ SCHEDULED_COORDINATOR_PROMPT.md
 
 Codex discovers repository skills under `.agents/skills`.
 
-Long-running tasks use a stable human-readable callsign in their task title,
-roadmap claim, PR body, comments, reviews, and handoffs. Callsigns never replace
-the required branch name, work-item ID, PR number, or head SHA.
+Each agent identity uses one stable human-readable callsign across tasks and
+branches, including its task title, roadmap claim, PR body, comments, reviews,
+and handoffs. Callsigns are not temporary task labels and never replace the
+required branch name, work-item ID, PR number, or head SHA.
 
 ## GitHub access
 

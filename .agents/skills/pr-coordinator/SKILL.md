@@ -15,8 +15,9 @@ requests. The feature worker remains responsible for its branch and PR until
 merge or explicit reassignment; an automated fix request does not transfer that
 ownership.
 
-Choose or confirm one stable callsign, prefix the task title and every internal
-or GitHub message with `[<callsign>]`, and include
+Confirm the coordinator's persistent callsign; choose an unused name only for a
+genuinely new coordinator identity. Keep it across tasks and branches, prefix
+the task title and every internal or GitHub message with `[<callsign>]`, and include
 `Agent: <callsign> (PR coordinator)` in comments, merge notes, and reports.
 
 ## Cost controls

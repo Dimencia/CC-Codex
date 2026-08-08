@@ -19,14 +19,16 @@ IDs are in
 
 ## Agent identity
 
-Every long-running task chooses one stable, human-readable callsign. Puck may
-suggest it; the task may choose another. Prefix the task title with the name,
-prefix internal and GitHub messages with `[<callsign>]`, and add
+Every agent identity keeps one stable, human-readable callsign across tasks and
+branches. Puck may suggest an unused name for a genuinely new worker; existing
+workers retain their established identities. Prefix the task title with the
+name, prefix internal and GitHub messages with `[<callsign>]`, and add
 `Agent: <callsign> (<role>)` to roadmap claims, PR bodies, reviews, fix or
 escalation comments, merge notes, and handoffs. Keep the branch, PR number,
 work-item ID, and head SHA where relevant: the name helps humans distinguish
-workers but is not an authorization or lock. Do not alter required branch names
-to include the callsign.
+workers but is not an authorization or lock. Never use a callsign as a temporary
+task or PR label, reuse it for another agent, or rename a worker during handoff.
+Do not alter required branch names to include the callsign.
 
 ## Ready-to-Active update is the lock
 
