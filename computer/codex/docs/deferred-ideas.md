@@ -41,11 +41,10 @@ below even while an item is active so its contract remains readable.
 Ready, in order:
 
 1. `CC-004` - deterministic player/provider integration tests
-2. `CC-005` - reviewable file patch and diff tools
-3. `CC-006` - conflict-aware update detection
-4. `CC-009` - image renderer measurement and fast path
-5. `CC-007` - bounded asynchronous jobs and goals
-6. `CC-008` - local searchable memory
+2. `CC-006` - conflict-aware update detection
+3. `CC-009` - image renderer measurement and fast path
+4. `CC-007` - bounded asynchronous jobs and goals
+5. `CC-008` - local searchable memory
 
 Active claims:
 
@@ -53,6 +52,7 @@ Active claims:
 | --- | --- | --- |
 | `CC-002` | `codex/cc-002-chatbox-format-call` / PR #3 | Active simplification slice |
 | `CC-003` | `codex/cc-003-client-scoped-mailboxes` | Active; duplicate work was detected, so do not claim |
+| `CC-005` | `codex/file-patch-tool-9a7e` | Worktree allocated; awaiting first implementation commit |
 
 Claiming is an atomic documentation update on `master`, not a branch-name
 convention. Before feature edits, create a fresh roadmap-only branch from the
