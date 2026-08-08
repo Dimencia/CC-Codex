@@ -92,7 +92,9 @@ The fixture creates a command computer and several peripherals through a
 datapack. Its ROM payload copies `computer/codex/` to writable `/codex`, then
 runs the canonical `/codex/tests/run.lua` program with CraftOS's native
 per-program `require`. It executes every test currently registered by that
-runner; no second hardcoded test count is maintained.
+runner; no second hardcoded test count is maintained. The repository-root
+launcher and startup-hook contract tests run in the host checkout and are
+omitted when those sibling files are not present in the staged `/codex` tree.
 
 The guest writes integration results, the Lua-suite result and last-test
 progress, a combined summary, and a filesystem probe. The wrapper copies the
@@ -108,15 +110,16 @@ Run the CC-only fixture locally with Docker Desktop running:
 ```
 
 A measured cached local run completed in 17.1 seconds, including 0.46 seconds
-for all 210 registered Lua tests. An uncached image build took 39.1 seconds on
+for the registered Lua suite. An uncached image build took 39.1 seconds on
 the same machine, so a fresh local build and run was about 54 seconds. GitHub
 runner and network performance will vary.
 
 ## GitHub Actions
 
-The `CI` workflow repeats the Lua suite, installer TAR-parser tests, and
-installer/startup syntax checks for pull requests and pushes to `master`. The
-separate `Runtime Integration` workflow runs the real CC-only fixture on pull
+The `CI` workflow repeats the Lua suite, installer package-validation tests, and
+syntax checks for the installer, public launcher, startup hook, and standalone
+worker bootstrap on pull requests and pushes to `master`. The separate
+`Runtime Integration` workflow runs the real CC-only fixture on pull
 requests, relevant `master` changes, or manually. Every pull request runs the
 fixture even when its changed paths would not otherwise match the push filter.
 Configure its `integration`
