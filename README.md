@@ -60,9 +60,10 @@ source-tree path also uses `raw.githubusercontent.com`.
 
 ## Automated releases
 
-The `CI` workflow runs the Lua test suite, installer TAR-parser tests, and
-installer/startup syntax checks on pull requests and pushes to `master`. After
-a successful `master` push, the separate `Release` workflow increments the
+The `CI` workflow runs the Lua test suite, installer package-validation tests, and
+syntax checks for the installer, public launcher, startup hook, and standalone
+worker bootstrap on pull requests and pushes to `master`. After a successful
+`master` push, the separate `Release` workflow increments the
 patch number after the latest semantic `vMAJOR.MINOR.PATCH` tag or release,
 packages `install.lua` and `computer/` into an uncompressed TAR, and publishes
 a GitHub release with the TAR and standalone installer attached.

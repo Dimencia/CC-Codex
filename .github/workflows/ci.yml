@@ -25,15 +25,17 @@ jobs:
       - name: Run Lua tests
         run: lua5.2 computer/codex/tests/run.lua
 
-      - name: Test installer TAR parser
+      - name: Test installer package validation
         run: lua5.2 tests/installer/run.lua
 
-      - name: Check installer and startup syntax
+      - name: Check shipped entrypoint syntax
         run: |
           lua5.2 -e '
             local files = {
               "install.lua",
-              "computer/startup/cc_codex.lua"
+              "computer/codex.lua",
+              "computer/startup/cc_codex.lua",
+              "computer/codex/platform/cc/remote_bootstrap.lua"
             }
             for _, path in ipairs(files) do
               assert(loadfile(path), path)
