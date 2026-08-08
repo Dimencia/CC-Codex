@@ -14,7 +14,7 @@ if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
 
 & gh auth status *> $null
 if ($LASTEXITCODE -ne 0) {
-    throw 'GitHub CLI is not authenticated. Use the connected GitHub app or run: gh auth login'
+    throw 'GitHub CLI cannot authenticate in this process. Use the connected GitHub app. On Windows Codex, compare whoami: a sandbox identity cannot read the interactive user keyring, so rerun this bounded command outside the sandbox with narrow approval. Reauthenticate only if gh auth status also fails for the interactive user.'
 }
 
 $ghArguments = @(

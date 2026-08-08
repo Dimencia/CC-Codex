@@ -36,6 +36,21 @@ gh auth status
 The GitHub identity needs permission to push branches, create pull requests,
 comment on pull requests, and merge according to repository rules.
 
+### Windows Codex sandbox identity
+
+Codex commands can run as a sandbox account such as `codexsandboxonline` while
+environment paths still point at the interactive user's profile. Windows
+Credential Manager encrypts the GitHub CLI token for the interactive identity,
+so the sandbox cannot retrieve it. This can make `gh auth status` report an
+invalid token even though the same command succeeds in the user's terminal.
+
+Check `whoami` before asking the user to authenticate again. Prefer the
+connected GitHub app for repository and pull-request operations. For local Git
+pushes or CLI-only operations, run only the required command outside the
+sandbox with a narrowly scoped approval. Do not copy the token into the
+sandbox, store it through `GH_TOKEN` or `--insecure-storage`, print it, or switch
+to SSH merely to work around the identity boundary.
+
 ## Native Codex review
 
 Enable **Code review** and **Automatic reviews** in the Codex settings for the

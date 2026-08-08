@@ -23,6 +23,16 @@ scheduled follow-up.
    `gh auth status` as the fallback.
 6. Run `git fetch --prune origin` when network access is available.
 
+On Windows, compare `whoami` with the interactive user's identity before
+diagnosing failed CLI authentication. A Codex sandbox account cannot decrypt
+another user's Windows Credential Manager entry even when `USERPROFILE` points
+at that user's files. If `gh` works for the user but fails in the sandbox,
+prefer the GitHub app and run only the necessary authenticated `git` or `gh`
+command outside the sandbox with a narrow approval. Do not repeatedly ask the
+user to log in, expose the token through `GH_TOKEN`, use
+`gh auth login --insecure-storage`, print the token, or switch to SSH as a
+credential workaround.
+
 If the checkout is the default branch, do not edit it. Report that the task
 must be started or handed off into Codex **Worktree** mode. A detached HEAD in
 a Codex-created worktree is valid.

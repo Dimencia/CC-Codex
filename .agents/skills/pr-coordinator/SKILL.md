@@ -17,6 +17,10 @@ delegations, and merge decisions for `codex/*` pull requests.
 - Use the connected GitHub app for queue and PR operations.
 - When `gh` is installed and authenticated, the bundled
   `scripts/Get-CodexPrQueue.ps1` is an optional compact queue fast path.
+- On Windows, if `gh` succeeds for the interactive user but fails under a
+  Codex sandbox identity, use the GitHub app or run the bounded queue command
+  outside the sandbox with narrow approval. Do not move the user's token into
+  the sandbox or misdiagnose the keyring boundary as expired authentication.
 - Do not scan source or load diffs during the initial queue pass.
 - Deep-inspect only a PR with a new failure, conflict, review result, or
   merge-ready state.

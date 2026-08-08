@@ -104,6 +104,17 @@ and notable risks or limitations. Workers do not merge their own pull requests,
 poll for review status, or create recurring tasks. The dedicated coordinator
 owns explicit `@codex review` requests, `@codex fix` delegation, and merging.
 
+On Windows, Codex shell commands may run as a sandbox account such as
+`codexsandboxonline` while `USERPROFILE` still points at the interactive user's
+profile. That sandbox identity cannot decrypt the user's Windows Credential
+Manager entries, so `gh auth status` can incorrectly report an invalid token
+even when GitHub CLI works for the user. Compare `whoami` before diagnosing an
+authentication failure. Prefer the connected GitHub app, or run only the
+required authenticated `git`/`gh` command outside the sandbox with a narrowly
+scoped approval. Do not copy a token into the sandbox, use `GH_TOKEN` or
+`--insecure-storage` as a workaround, print a token, or switch to SSH merely to
+bypass this identity boundary.
+
 During review, flag unintended compatibility breaks, blocking waits in
 asynchronous paths, unowned background work, lost exceptions, unsafe shared
 state, missing server-side authorization, untrusted path or command handling,
