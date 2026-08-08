@@ -38,6 +38,11 @@ clear implementation that preserves the real contracts.
 Workers may claim only IDs in the Ready queue. The detailed specifications stay
 below even while an item is active so its contract remains readable.
 
+Queue mode: **Stabilization**. Ready remains ordered for the next round, but no
+new claim may start until the roadmap steward clears this mode. First make the
+current PR queue green, reviewed at each current head, and mergeable; resolve or
+explicitly reassign every owner-action blocker.
+
 Ready, in order:
 
 1. `CC-004` - deterministic player/provider integration tests
@@ -50,9 +55,8 @@ Active claims:
 
 | ID | Agent | Owning branch or PR | State |
 | --- | --- | --- | --- |
-| `CC-002` | Unconfirmed legacy owner | `codex/cc-002-chatbox-format-call` / PR #3 | Reviewed and green; awaiting coordinator merge decision |
-| `CC-003` | Sprocket | `codex/cc-003-client-scoped-mailboxes` / PR #4 | Active; duplicate work was detected, so do not claim |
-| `CC-005` | Switchboard; handoff required | `codex/file-patch-tool-9a7e` / PR #7 | Blocked: conflict plus validation, zero-count hunk, final-newline, and restart-marker safety findings; automation did not update the PR head |
+| `CC-003` | Sprocket | `codex/cc-003-client-scoped-mailboxes` / PR #4 | Owner action: resolve conflict and bound abandoned scoped result files; duplicate work was detected, so do not claim |
+| `CC-005` | Unassigned; handoff required | `codex/file-patch-tool-9a7e` / PR #7 | Blocked: conflict plus validation, zero-count hunk, final-newline, and restart-marker safety findings; automation did not update the PR head |
 
 Claiming is an atomic documentation update on `master`, not a branch-name
 convention. Before feature edits, create a fresh roadmap-only branch from the
@@ -89,6 +93,12 @@ merge and cleanup path. Each worker that opens a pull request also
 checks every other open pull request and reviews each head that lacks an
 adequate current review; reviewing another item is read-only and does not
 transfer its claim.
+
+Use queue backpressure instead of creating more half-finished work. When several
+PRs are open or any PR has an unresolved owner-action escalation, the roadmap
+steward may set Stabilization mode. Workers then follow up on owned PRs, QA
+refreshes current-head evidence, the coordinator triages and merges, and nobody
+claims Ready work until the steward clears the mode.
 
 #### CC-002 Continuous simplification and documentation audits
 

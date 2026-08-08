@@ -109,6 +109,13 @@ either wakes the original worker or explicitly assigns a replacement to the
 same branch. No other worker edits that branch without this handoff, and no one
 starts a duplicate implementation.
 
+When the PR queue backs up, the roadmap steward sets the canonical queue to
+Stabilization mode. Ready priorities stay visible but are temporarily
+unclaimable. Feature workers finish owned PRs, QA refreshes current-head review
+evidence, and the coordinator triages and merges. The steward clears the mode
+only after owner-action blockers are resolved or explicitly reassigned and the
+remaining queue is green, reviewed, and mergeable.
+
 ## Peer review rotation
 
 After a worker opens its own pull request, it must list all other open pull

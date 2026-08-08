@@ -27,7 +27,8 @@ it, busy-poll it, or create a scheduled follow-up.
 7. Run `git fetch --prune origin` when network access is available, then use
    the refreshed `origin/master` as the normal task base instead of trusting a
    possibly stale local `master`.
-8. For roadmap work, select only an ID in the canonical Ready queue. Before
+8. For roadmap work, stop if the canonical queue declares Stabilization mode.
+   Otherwise select only an ID in Ready. Before
    feature edits, create a fresh roadmap-only branch from `origin/master`, move
    that ID to Active with the intended feature branch, commit only the roadmap
    file, and run `git push origin HEAD:master` without force. Move only the

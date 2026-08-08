@@ -183,6 +183,10 @@ push is rejected, fetch the winning `master`, do not retry the same claim, and
 choose another Ready ID. Create the feature branch from the updated
 `origin/master` only after the claim is visible there.
 
+Do not claim Ready work while the roadmap declares Stabilization mode. During
+that mode, resume owned PRs first, resolve actionable feedback, branch-caused CI
+failures, and conflicts, and wait for the roadmap steward to reopen claims.
+
 The roadmap steward uses the same documentation-only direct-to-`master` path
 for reprioritization, completion, abandonment, stale-claim cleanup, and the
 repository agent instructions needed to operate that queue safely. Feature pull
