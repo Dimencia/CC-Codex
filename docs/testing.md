@@ -109,6 +109,18 @@ Run the CC-only fixture locally with Docker Desktop running:
 & .\tests\runtime\run.ps1
 ```
 
+Treat this fixture as routine validation, not as an optional external live
+action. Run it locally for changes that can affect shipped ComputerCraft
+behavior whenever Docker is available, and require the GitHub `Runtime
+Integration` check to pass on the exact current PR head before merge. A native
+Lua pass is necessary but does not replace the real headless Minecraft run.
+
+Report external boundaries separately. The fixture does not prove a live model
+request, installer download from GitHub, deployment or restart of a persistent
+computer, real-player/world interaction, or a remote target. Do not summarize a
+passed fixture as "no live ComputerCraft testing"; name the fixture and then
+name only the remaining external boundaries.
+
 A measured cached local run completed in 17.1 seconds, including 0.46 seconds
 for the registered Lua suite. An uncached image build took 39.1 seconds on
 the same machine, so a fresh local build and run was about 54 seconds. GitHub
@@ -122,8 +134,8 @@ worker bootstrap on pull requests and pushes to `master`. The separate
 `Runtime Integration` workflow runs the real CC-only fixture on pull
 requests, relevant `master` changes, or manually. Every pull request runs the
 fixture even when its changed paths would not otherwise match the push filter.
-Configure its `integration`
-job as a required check when it should gate merges. The `Release` workflow
+The coordinator treats its `integration` job as a required exact-head merge
+gate. The `Release` workflow
 listens for the completed `CI` run and continues only after a successful
 `master` push. It then packages the installer payload as an uncompressed TAR
 and increments the patch number from the latest semantic `vMAJOR.MINOR.PATCH`

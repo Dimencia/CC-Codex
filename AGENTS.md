@@ -48,8 +48,8 @@ runtime-composition change:
   setting, test, safety boundary, installation, or deployment step;
 - update the concise CC-facing documentation as well when the running CC agent
   needs the changed information; and
-- report which documentation was checked and which live boundaries were not
-  validated.
+- report which documentation was checked, which routine validation environments
+  passed, and which genuinely external boundaries were not validated.
 
 Always run the native offline Lua suite from the repository root after changing
 Lua source, tests, or runtime composition. This is a required validation gate
@@ -73,9 +73,22 @@ Run the host-only LuaLS check from the repository root:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File host/checks/check-lua.ps1
 ```
 
-Live model requests, Minecraft interaction, and remote execution are separate
-actions. Do not invoke them while doing offline source work unless the user
-explicitly asks for that live action.
+Every pull request must pass the `Runtime Integration` workflow at its exact
+current head. For Lua, startup, installer, service, client, image, peripheral,
+or runtime-composition changes, also run the real headless Minecraft/CC:Tweaked
+Docker fixture locally when Docker is available before handing the branch off:
+
+```powershell
+& .\tests\runtime\run.ps1
+```
+
+The Docker fixture is routine repository validation, not an external live
+action. Do not describe ComputerCraft or Minecraft as wholly untested when this
+fixture passed; report the fixture result separately from any boundary it does
+not cover. A live model request, deployment or restart of a persistent target,
+real-player/world interaction, and remote execution remain separate actions.
+Do not invoke those external actions unless the user explicitly authorizes
+them.
 
 API keys belong in ComputerCraft settings and must not be committed. The
 repository ignores local runtime state; do not put secrets in source, test

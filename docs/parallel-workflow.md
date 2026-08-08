@@ -93,7 +93,8 @@ Each handoff states:
 - exact behavior changed;
 - files and contracts affected;
 - tests and checks run, with results;
-- live boundaries not tested;
+- local Docker/CC fixture result and exact-head `Runtime Integration` result;
+- genuinely external boundaries not tested, separate from routine integration;
 - documentation audited or updated;
 - simplification performed, or why no safe simplification was available;
 - remaining risks and follow-up IDs.
@@ -148,9 +149,13 @@ submitting comments or approval.
 The PR coordinator triages current evidence, requests review or fixes once per
 head, escalates stalled fixes to the owner, and merges only a fully ready PR.
 The feature worker updates its branch, resolves conflicts deliberately, and
-reruns the required gates. Merge one architectural boundary at a time.
-Deployment, ComputerCraft restart, live model requests, and Minecraft
-interaction remain separate explicitly authorized actions.
+reruns the required gates. A PR is not merge-ready without a successful
+`Runtime Integration` check on its exact current head. Changes that can affect
+shipped CC behavior should also carry a local real-server Docker fixture result
+when Docker is available. This fixture is routine validation; deployment or
+restart of a persistent ComputerCraft target, live model requests, and
+real-player/world interaction remain separate explicitly authorized actions.
+Merge one architectural boundary at a time.
 
 After merge, the PR coordinator may delete the remote branch and remove its
 worktree. Workers never delete a branch merely because it looks stale. A stale
