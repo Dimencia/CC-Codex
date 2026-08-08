@@ -20,6 +20,11 @@ SCHEDULED_COORDINATOR_PROMPT.md
 
 Codex discovers repository skills under `.agents/skills`.
 
+Each agent identity uses one stable human-readable callsign across tasks and
+branches, including its task title, roadmap claim, PR body, comments, reviews,
+and handoffs. Callsigns are not temporary task labels and never replace the
+required branch name, work-item ID, PR number, or head SHA.
+
 ## GitHub access
 
 The connected GitHub app is the preferred interface for pull-request reads and
@@ -66,7 +71,10 @@ For each coding task:
 2. Select **Worktree** beneath the composer.
 3. Fetch/prune `origin`, then select the intended base branch, normally the
    refreshed `origin/master` rather than a possibly stale local `master`.
-4. Ask for the change normally.
+4. For roadmap work, claim only a Ready ID by atomically moving it to Active on
+   `master` as documented in `AGENTS.md`; a rejected push must choose again.
+5. Create the feature branch from the winning claim commit and ask for the
+   change normally.
 
 `AGENTS.md` directs write tasks to the `parallel-pr-worker` skill. To force it
 explicitly, mention:
@@ -76,10 +84,12 @@ Use $parallel-pr-worker and implement <task>.
 ```
 
 The worker creates a unique branch, validates, commits, pushes, and opens or
-updates a pull request. Roadmap workers first reserve the stable item branch as
-documented in `docs/parallel-workflow.md`. After publishing, the worker reviews
-every other open pull-request head that lacks an adequate current independent
-review, then stops; it does not poll.
+updates a pull request. Roadmap workers first move only the short queue entry
+from Ready to Active as documented in `docs/parallel-workflow.md`; the detailed
+specification stays in place for QA. After publishing, the worker reviews every
+other open pull-request head that lacks an adequate current independent review,
+then waits without polling. The worker still owns its PR and addresses review,
+CI, and conflict follow-up whenever that task is resumed.
 
 ## Coordinator task
 
@@ -111,6 +121,8 @@ steward remains a separate task and owns priorities, not merges.
 - Hidden SHA markers in coordinator comments prevent duplicate review and fix
   jobs.
 - A new commit has a new SHA, allowing exactly one new review request.
+- If an automated fix does not push a commit, an owner-action marker makes the
+  stalled handoff visible to the original worker, roadmap steward, and user.
 - The coordinator merges only one pull request per pass so later decisions use
   the updated base.
 - Deleting the remote branch after merge is safe. Clean up local branches and

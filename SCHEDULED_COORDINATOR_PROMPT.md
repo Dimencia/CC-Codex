@@ -10,7 +10,7 @@ low-cost model with low reasoning effort, and run no more frequently than every
 ```text
 Every 60 minutes, while at least one open GitHub pull request has a head branch beginning with codex/, return to this coordinator task and run the $pr-coordinator skill exactly once.
 
-This is one bounded pass, not a polling loop. Do not sleep or check repeatedly inside a run. Start with compact PR queue state. Do not load diffs, review threads, or CI logs unless the compact state shows a new conflict, failure, review result, or merge-ready candidate. Never duplicate an action already marked for the same head SHA. Merge at most one pull request per run.
+This is one bounded pass, not a polling loop. Do not sleep or check repeatedly inside a run. Start with compact PR queue state. Do not load diffs, review threads, or CI logs unless the compact state shows a new conflict, failure, review result, or merge-ready candidate. Never duplicate an action already marked for the same head SHA. If a delegated fix has finished or failed without changing the head, post one owner-action escalation and report it to the roadmap steward or user; do not repeat the delegation. Sign every comment and report with your stable agent callsign. Merge at most one pull request per run.
 
 If there are no open codex/* pull requests, report once that the queue is empty and end this monitoring task. If no state changed and no action is needed, respond only: No coordinator action.
 ```
