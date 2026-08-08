@@ -9,7 +9,9 @@ block. Its ROM payload is transport only: the autorun copies the repository's
 `computer/codex/` tree to the command computer's writable `/codex` directory,
 then starts `/codex/tests/run.lua` with `shell.run`. The suite therefore uses
 CraftOS's normal per-program `require` and the same writable layout as an
-installed computer without exercising the installer.
+installed computer without exercising the installer. The repository-root
+launcher and startup-hook contract tests are host-only because those sibling
+files are not part of the staged `/codex` tree.
 
 The program writes:
 
@@ -44,7 +46,7 @@ Linux container ownership cannot block the final timing report.
 
 On the measured development machine, a cached run took 17.1 seconds end to end:
 2.2 seconds to build, 14.9 seconds to start/run/stop the fixture, and 0.46
-seconds for all 210 currently registered Lua tests inside CraftOS. A deliberately
+seconds for the registered Lua suite inside CraftOS. A deliberately
 uncached image build took 39.1 seconds, making a fresh local build plus fixture
 about 54 seconds. GitHub runner and network timing will vary; the workflow has a
 15-minute job timeout and the server process has a 180-second timeout.

@@ -109,6 +109,35 @@ assert(requestedUrl:match("/releases/latest$"))
 assert(archiveUrl == "https://github.com/example/package.tar")
 assert(releaseTag == "v1.2.3")
 
+local function releaseFailure(status, payload, decoded, pattern)
+    local savedHttp = _G.http
+    local savedTextutils = _G.textutils
+    _G.http = {
+        get = function()
+            return {
+                getResponseCode = function() return status or 200 end,
+                readAll = function() return payload or "payload" end,
+                close = function() end
+            }
+        end
+    }
+    _G.textutils = {
+        unserializeJSON = function()
+            if decoded == false then error("bad JSON", 0) end
+            return decoded
+        end
+    }
+    raises(function() installer.latestReleaseArchive() end, pattern)
+    _G.http = savedHttp
+    _G.textutils = savedTextutils
+end
+
+releaseFailure(503, "unavailable", nil, "HTTP GET returned 503")
+releaseFailure(nil, "not-json", false, "invalid latest%-release JSON")
+releaseFailure(nil, "release", { tag_name = "latest", assets = {} }, "invalid latest%-release tag")
+releaseFailure(nil, "release", { tag_name = "v1.2.3" }, "has no assets")
+releaseFailure(nil, "release", { tag_name = "v1.2.3", assets = {} }, "has no CC%-Codex%-v1%.2%.3%.tar asset")
+
 local function parsePath(path)
     return installer.parseTar(makeTar({ { path = path, content = "x" } }))
 end
@@ -119,6 +148,12 @@ raises(function() parsePath("computer\\escape.lua") end, "unsafe path")
 raises(function()
     installer.parseTar(makeTar({ { path = "computer/link", kind = "symlink" } }))
 end, "not supported")
+raises(function()
+    installer.parseTar(makeTar({
+        { path = "install.lua", content = "return true" },
+        { path = "install.lua", content = "return false" }
+    }))
+end, "duplicate path")
 
 local unexpected = installer.parseTar(makeTar({
     { path = "install.lua", content = "return true" },
@@ -127,8 +162,21 @@ local unexpected = installer.parseTar(makeTar({
 }))
 raises(function() installer.validatePackage(unexpected) end, "unexpected path")
 
+local onlyComputer = installer.parseTar(makeTar({
+    { path = "computer", kind = "directory" }
+}))
+raises(function() installer.validatePackage(onlyComputer) end, "missing install.lua")
+
+local onlyInstaller = installer.parseTar(makeTar({
+    { path = "install.lua", content = "return true" }
+}))
+raises(function() installer.validatePackage(onlyInstaller) end, "missing computer/")
+
+raises(function() installer.parseArguments({ "--archive-url" }) end, "needs a URL")
+raises(function() installer.parseArguments({ "--unknown" }) end, "Unknown installer argument")
+
 local badChecksum = package:sub(1, 1) .. string.char(string.byte(package, 2) + 1)
     .. package:sub(3)
 raises(function() installer.parseTar(badChecksum) end, "checksum")
 
-print("Installer TAR tests passed.")
+print("Installer package tests passed.")
