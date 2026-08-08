@@ -101,6 +101,17 @@ harmless diagnostics.
 
 ## Shared source and local runtime
 
+Install or repair the source links for any exact ComputerCraft computer path with:
+
+```powershell
+.\install.ps1 -TargetPath 'C:\Minecraft\saves\My World\computercraft\computer\3'
+.\install.ps1 -TargetPath 'C:\Minecraft\saves\My World\computercraft\computer\3' -WhatIf
+```
+
+The installer creates only `startup.lua`, `codex.lua`, and `lib`. It preserves
+local runtime data, artifacts, and settings. Use `-Force` only when replacing
+existing source entries; conflicting entries are backed up next to the target.
+
 Computer 3 is wired directly to the repository at:
 
 `C:\Users\Dimen\curseforge\minecraft\Instances\All the Mons - ATMons (1)\saves\CC Test\computercraft\computer\3`
