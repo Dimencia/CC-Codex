@@ -9,3 +9,4 @@
 # Local test and editor tooling.
 node_modules/
 .lua-language-server/
+.tools/

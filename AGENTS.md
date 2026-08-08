@@ -32,13 +32,20 @@ When changing Lua that is already loaded, restart the CC Codex process on the
 target ComputerCraft computer. This means the program running in CC, not the
 Codex desktop application or this agent session.
 
-Run the in-game suite on the ComputerCraft computer:
+Run the offline Lua suite from the repository root:
+
+```text
+lua computer/codex/tests/run.lua
+```
+
+The same suite can also run on the ComputerCraft computer after an in-game
+source edit:
 
 ```text
 lua codex/tests/run.lua
 ```
 
-Run the host-side LuaLS check from the repository root:
+Run the host-only LuaLS check from the repository root:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File host/checks/check-lua.ps1

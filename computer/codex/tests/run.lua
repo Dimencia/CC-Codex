@@ -67,5 +67,5 @@ end
 
 local failures = harness.run(suites)
 if failures > 0 then
-    error(string.format("CC test run failed: %d test(s)", failures), 0)
+    error(string.format("Lua test run failed: %d test(s)", failures), 0)
 end

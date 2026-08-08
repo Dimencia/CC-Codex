@@ -156,24 +156,20 @@ The CC agent cannot directly invoke the host agent's Git or deployment logic.
 Use the shared source files for code handoff, the host mailbox for host-initiated
 runtime control, and explicit host-side review before committing or deploying.
 
-## Validation
+## In-game test runner
 
-Run the complete fake-boundary suite on the computer:
+The shared Lua test suite can be run on this computer after an in-game source
+edit:
 
 ```text
 lua codex/tests/run.lua
 ```
 
-The suite covers portable policy, composition, CC-facing service/setup
-boundaries, and image decoding/rendering without contacting a model or changing
-the world. Run the host-side LuaLS check from the repository root with:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File host/checks/check-lua.ps1
-```
-
-These checks do not replace live CC, peripheral, mailbox, Rednet, HTTP, or
-model checks.
+It covers portable policy, composition, CC-facing service/setup boundaries, and
+image decoding/rendering with fake boundaries. It does not contact a model or
+change the world. The repository-root testing guide owns the separate offline
+host run and host tooling; those details are not part of the deployed CC
+runtime.
 
 ## Requested future work
 

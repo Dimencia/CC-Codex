@@ -26,21 +26,26 @@ together to the ComputerCraft computer.
 
 ## Test and lint checks
 
-Run the complete fake-boundary suite on the ComputerCraft computer:
+The same Lua test suite can run offline from the checkout:
+
+```text
+lua computer/codex/tests/run.lua
+```
+
+After installation, CC Codex can run that suite against the deployed source:
 
 ```text
 lua codex/tests/run.lua
 ```
 
-Run the host-side static check from the repository root:
+Only the host runs the LuaLS static check:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File host/checks/check-lua.ps1
 ```
 
-The in-game suite uses fakes and fixtures and never contacts a model. Passing it
-does not prove a live Chat Box peripheral, monitor, network request, or model
-run.
+Both test commands use fakes and fixtures and never contact a model or change
+the Minecraft world. LuaLS is host-only tooling.
 
 ## Install the shared source
 
