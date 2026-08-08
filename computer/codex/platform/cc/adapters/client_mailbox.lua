@@ -21,6 +21,7 @@
 ---@field critical boolean
 ---@field options ClientMailboxOptions
 ---@field stopped boolean
+---@field preferLegacy boolean
 local ClientMailbox = {}
 ClientMailbox.__index = ClientMailbox
 
@@ -93,7 +94,8 @@ function ClientMailbox.new(options)
         id = "client_mailbox",
         critical = false,
         options = options,
-        stopped = false
+        stopped = false,
+        preferLegacy = false
     }, ClientMailbox)
 end
 
@@ -252,31 +254,56 @@ function ClientMailbox:poll()
     local names, listError = listFiles(self.options.fs, self.options.requestDirectory)
     if not names then return nil, "Could not inspect client requests: " .. tostring(listError) end
     table.sort(names)
+    local scopedPath
+    local scopedId
     for _, name in ipairs(names) do
-        local scopedId = type(name) == "string" and name:match(REQUEST_FILE_PATTERN) or nil
-        if scopedId then
-            return processRequest(
-                self,
-                self.options.fs.combine(self.options.requestDirectory, name),
-                scopedId,
-                scopedResultPath(self, scopedId)
-            )
+        local candidateId = type(name) == "string" and name:match(REQUEST_FILE_PATTERN) or nil
+        if candidateId then
+            scopedId = candidateId
+            scopedPath = self.options.fs.combine(self.options.requestDirectory, name)
+            break
         end
     end
 
+    local legacyAvailable = false
     if self.options.legacyRequestPath then
         local requestExists, existsError = pathExists(self.options.fs, self.options.legacyRequestPath)
         if requestExists == nil then
             return nil, "Could not inspect legacy client request: " .. tostring(existsError)
         end
-        if requestExists then
-            return processRequest(
-                self,
-                self.options.legacyRequestPath,
-                nil,
-                self.options.legacyResultPath
-            )
-        end
+        legacyAvailable = requestExists
+    end
+
+    local function processScoped()
+        if not scopedId or not scopedPath then return false end
+        local consumed, processError = processRequest(
+            self,
+            scopedPath,
+            scopedId,
+            scopedResultPath(self, scopedId)
+        )
+        if consumed ~= nil then self.preferLegacy = true end
+        return consumed, processError
+    end
+
+    local function processLegacy()
+        if not legacyAvailable or not self.options.legacyRequestPath then return false end
+        local consumed, processError = processRequest(
+            self,
+            self.options.legacyRequestPath,
+            nil,
+            self.options.legacyResultPath
+        )
+        if consumed ~= nil then self.preferLegacy = false end
+        return consumed, processError
+    end
+
+    if self.preferLegacy then
+        if legacyAvailable then return processLegacy() end
+        if scopedId then return processScoped() end
+    else
+        if scopedId then return processScoped() end
+        if legacyAvailable then return processLegacy() end
     end
     return false
 end

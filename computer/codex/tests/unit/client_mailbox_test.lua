@@ -122,6 +122,31 @@ return {
         end
     },
     {
+        name = "alternates legacy and scoped traffic during rollout",
+        fn = function()
+            local fs = fileSystem({
+                ["requests/client-a.json"] = "request-a",
+                ["requests/client-b.json"] = "request-b",
+                ["client-request.json"] = "legacy-request"
+            })
+            local encoded, submitted = {}, {}
+            local adapter = mailbox(fs, {
+                ["request-a"] = { id = "client-a", action = "chat", text = "first" },
+                ["request-b"] = { id = "client-b", action = "chat", text = "second" },
+                ["legacy-request"] = { id = "legacy-1", action = "chat", text = "old" }
+            }, encoded, submitted)
+
+            Harness.truthy(adapter:poll())
+            Harness.equal("client-a", submitted[1].route.requestId)
+            Harness.truthy(adapter:poll())
+            Harness.equal("legacy-1", submitted[2].route.requestId)
+            Harness.truthy(submitted[2].route.legacyMailbox)
+            Harness.truthy(adapter:poll())
+            Harness.equal("client-b", submitted[3].route.requestId)
+            Harness.equal(3, #submitted)
+        end
+    },
+    {
         name = "keeps a mismatched request id on the request file result",
         fn = function()
             local fs = fileSystem({ ["requests/client-a.json"] = "mismatch" })
