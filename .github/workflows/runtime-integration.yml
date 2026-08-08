@@ -2,12 +2,6 @@ name: Runtime Integration
 
 on:
   pull_request:
-    paths:
-      - computer/**
-      - tests/runtime/**
-      - docs/testing.md
-      - .dockerignore
-      - .github/workflows/runtime-integration.yml
   push:
     branches:
       - master
