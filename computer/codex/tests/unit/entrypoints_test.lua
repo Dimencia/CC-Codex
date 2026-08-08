@@ -1,9 +1,12 @@
 local Harness = require("tests.harness")
 local environment = _ENV
 
-local function entryPath(relative)
-    local root = Harness.sourceRoot
+local function entryPathForRoot(root, relative)
     local suffix = "/codex"
+    if root == "codex" then
+        if relative == "codex.lua" then return "codex.lua" end
+        return "startup/cc_codex.lua"
+    end
     if root:sub(-#suffix) == suffix then
         local prefix = root:sub(1, #root - #suffix)
         local base = prefix == "" and ""
@@ -14,6 +17,10 @@ local function entryPath(relative)
     end
     if relative == "codex.lua" then return "computer/codex.lua" end
     return "computer/startup/cc_codex.lua"
+end
+
+local function entryPath(relative)
+    return entryPathForRoot(Harness.sourceRoot, relative)
 end
 
 local function pathAvailable(path)
@@ -76,6 +83,16 @@ local function callsForStartup()
 end
 
 return {
+    {
+        name = "entrypoint paths support the installed bare codex source root",
+        fn = function()
+            Harness.equal("codex.lua", entryPathForRoot("codex", "codex.lua"))
+            Harness.equal(
+                "startup/cc_codex.lua",
+                entryPathForRoot("codex", "startup/cc_codex.lua")
+            )
+        end
+    },
     {
         name = "startup keeps the shell focused after opening the service tab",
         fn = function()
