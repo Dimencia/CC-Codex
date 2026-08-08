@@ -55,6 +55,8 @@ local function fakeDependencies()
         root = "codex",
         backupDirectory = "codex/data/patch-backups",
         epoch = function() return 100 end,
+        validate = function() return true end,
+        maxValidationCharacters = 120000,
         maxResultCharacters = 12000
     }
 end
@@ -76,6 +78,49 @@ return {
             Harness.equal(2, applied.added)
             Harness.equal(1, applied.removed)
             Harness.equal(4, applied.newLines)
+        end
+    },
+    {
+        name = "places zero-count insertions after their anchor and preserves beginning inserts",
+        fn = function()
+            local afterAnchor = assert(FilePatch.parse(table.concat({
+                "--- a/core/app.lua",
+                "+++ b/core/app.lua",
+                "@@ -3,0 +4 @@",
+                "+tail",
+                ""
+            }, "\n")))
+            local applied, applyError = FilePatch.apply(afterAnchor, "first\nold\nlast\n")
+            assert(applied, applyError)
+            Harness.equal("first\nold\nlast\ntail\n", applied.content)
+
+            local atBeginning = assert(FilePatch.parse(table.concat({
+                "--- a/core/app.lua",
+                "+++ b/core/app.lua",
+                "@@ -0,0 +1 @@",
+                "+first",
+                ""
+            }, "\n")))
+            applied, applyError = FilePatch.apply(atBeginning, "old\n")
+            assert(applied, applyError)
+            Harness.equal("first\nold\n", applied.content)
+        end
+    },
+    {
+        name = "adds a final newline when the old side was unterminated",
+        fn = function()
+            local parsed = assert(FilePatch.parse(table.concat({
+                "--- a/core/app.lua",
+                "+++ b/core/app.lua",
+                "@@ -1 +1 @@",
+                "-old",
+                "\\ No newline at end of file",
+                "+new",
+                ""
+            }, "\n")))
+            local applied, applyError = FilePatch.apply(parsed, "old")
+            assert(applied, applyError)
+            Harness.equal("new\n", applied.content)
         end
     },
     {
@@ -143,6 +188,38 @@ return {
         end
     },
     {
+        name = "rejects invalid Lua before creating a temporary file or backup",
+        fn = function()
+            local deps = fakeDependencies()
+            deps.files["codex/core/app.lua"] = "return 1\n"
+            deps.validate = function(path, content)
+                local chunk, syntaxError = load(content, "=" .. path, "t", {})
+                if not chunk then return false, syntaxError end
+                return true
+            end
+            local registry = Registry.new()
+            Harness.truthy(FilePatch.register(registry, deps))
+            local patch = table.concat({
+                "--- a/core/app.lua",
+                "+++ b/core/app.lua",
+                "@@ -1 +1 @@",
+                "-return 1",
+                "+local =",
+                ""
+            }, "\n")
+
+            registry:dispatch({
+                name = "apply_file_patch",
+                arguments = { path = "core/app.lua", patch = patch, apply = true }
+            })
+            Harness.falsy(deps.json.last.ok)
+            Harness.truthy(deps.json.last.error:find("Pre%-publication validation failed"))
+            Harness.equal("return 1\n", deps.files["codex/core/app.lua"])
+            Harness.falsy(deps.files["codex/core/app.lua.codex-patch.tmp"])
+            Harness.falsy(deps.files["codex/data/patch-backups/core_app.lua-100-1.bak"])
+        end
+    },
+    {
         name = "rejects runtime data and traversal paths before opening files",
         fn = function()
             local deps = fakeDependencies()
@@ -160,6 +237,18 @@ return {
             })
             Harness.falsy(deps.json.last.ok)
             Harness.truthy(deps.json.last.error:find("traversal", 1, true))
+            registry:dispatch({
+                name = "apply_file_patch",
+                arguments = { path = ".codex-restart", patch = "not used", apply = false }
+            })
+            Harness.falsy(deps.json.last.ok)
+            Harness.truthy(deps.json.last.error:find("Runtime control", 1, true))
+            registry:dispatch({
+                name = "apply_file_patch",
+                arguments = { path = "state.json", patch = "not used", apply = false }
+            })
+            Harness.falsy(deps.json.last.ok)
+            Harness.truthy(deps.json.last.error:find("Only Codex source", 1, true))
         end
     }
 }

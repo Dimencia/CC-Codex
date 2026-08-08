@@ -113,8 +113,10 @@ Add a narrow file-patch tool before adding broad autonomous editing. Accept a
 standard unified patch or a smaller explicitly documented patch format. The
 workflow must provide preview, path confinement, stale-base detection,
 syntax/validation hooks, a recoverable backup or atomic replacement, a concise
-diff result, and clear failures. Do not expose an unrestricted generic file
-dispatcher.
+diff result, and clear failures. The first slice keeps patches inside the
+Codex source boundary, rejects runtime control/state paths, and validates Lua
+syntax without executing candidate code before replacement. Do not expose an
+unrestricted generic file dispatcher.
 
 Follow with read-only diff and review commands so the agent and player can see
 pending changes before restart or synchronization. This is the CC analogue of

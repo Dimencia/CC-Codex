@@ -18,26 +18,55 @@
 ---@field root string
 ---@field backupDirectory string
 ---@field epoch fun(): number
+---@field validate fun(path: string, content: string): boolean|nil, string|nil
 ---@field maxPatchCharacters integer|nil
+---@field maxValidationCharacters integer|nil
 ---@field maxResultCharacters integer|nil
 
 local FilePatch = {}
+
+local DEFAULT_MAX_VALIDATION_CHARACTERS = 120000
+local SOURCE_DIRECTORIES = {
+    clients = true,
+    core = true,
+    docs = true,
+    formatters = true,
+    image = true,
+    platform = true,
+    providers = true,
+    setup = true,
+    storage = true,
+    tests = true,
+    tools = true
+}
+local RUNTIME_PATH_NAMES = {
+    [".codex-restart"] = true,
+    [".settings"] = true,
+    ["client-request.json"] = true,
+    ["client-result.json"] = true,
+    ["codex-state.json"] = true,
+    ["conversations.json"] = true,
+    ["preferences.md"] = true,
+    ["remote_workers.json"] = true,
+    ["usage.jsonl"] = true
+}
 
 local DESCRIPTOR = {
     type = "function",
     name = "apply_file_patch",
     description = table.concat({
-        "Preview or apply one unified diff to a source file below the CC Codex root. ",
+        "Preview or apply one unified diff to a source file in the CC Codex source boundary. ",
         "The patch must validate against the current file before any write. Set apply=false ",
         "to preview only; set apply=true to publish atomically and retain a recoverable backup. ",
-        "Runtime data and artifacts cannot be patched."
+        "Lua candidates pass bounded syntax validation without execution before publication. ",
+        "Runtime data, artifacts, and control/state paths cannot be patched."
     }),
     parameters = {
         type = "object",
         properties = {
             path = {
                 type = "string",
-                description = "Source path relative to the running Codex root, such as core/app.lua."
+                description = "Source path in the running Codex source boundary, such as core/app.lua."
             },
             patch = {
                 type = "string",
@@ -74,6 +103,12 @@ local function encode(deps, value)
         return '{"ok":false,"error":"File patch result exceeded its output budget."}'
     end
     return encoded
+end
+
+local function boundedText(value, limit)
+    local text = tostring(value)
+    if #text <= limit then return text end
+    return text:sub(1, limit) .. "..."
 end
 
 local function splitLines(value)
@@ -244,7 +279,12 @@ local function applyPatch(parsed, currentContent)
     local noNewlineNew = false
 
     for _, hunk in ipairs(parsed.hunks) do
-        local start = hunk.oldStart == 0 and 1 or hunk.oldStart
+        local start
+        if hunk.oldCount == 0 then
+            start = hunk.oldStart == 0 and 1 or hunk.oldStart + 1
+        else
+            start = hunk.oldStart == 0 and 1 or hunk.oldStart
+        end
         if start < cursor or start > #oldLines + 1 then
             return nil, string.format("Hunk starts at old line %d, but the current file is at line %d.", start, cursor)
         end
@@ -276,8 +316,8 @@ local function applyPatch(parsed, currentContent)
     if noNewlineOld and oldHasFinalNewline then
         return nil, "Patch expects the old file to have no final newline, but it does."
     end
-    local newHasFinalNewline = not noNewlineNew and oldHasFinalNewline
-    if #oldLines == 0 then newHasFinalNewline = not noNewlineNew and parsed.hasFinalNewline end
+    local newHasFinalNewline = not noNewlineNew and (oldHasFinalNewline or noNewlineOld)
+    if #oldLines == 0 then newHasFinalNewline = not noNewlineNew end
     local content = table.concat(output, "\n")
     if #output > 0 and newHasFinalNewline then content = content .. "\n" end
     return {
@@ -307,6 +347,17 @@ local function validRelativePath(value)
         or value == "artifacts" or value:sub(1, 10) == "artifacts/" then
         return nil, "Runtime data and artifacts cannot be patched."
     end
+    for segment in value:gmatch("[^/]+") do
+        if RUNTIME_PATH_NAMES[segment] or segment:match("%.codex%-patch%.tmp$") then
+            return nil, "Runtime control and state paths cannot be patched."
+        end
+    end
+    if value ~= "service.lua" then
+        local root = value:match("^([^/]+)")
+        if not SOURCE_DIRECTORIES[root] then
+            return nil, "Only Codex source paths can be patched."
+        end
+    end
     return value
 end
 
@@ -329,6 +380,26 @@ local function writeFile(fs, path, content)
     if not ok then
         pcall(handle.close)
         return nil, "Could not write temporary patch file: " .. tostring(writeError)
+    end
+    return true
+end
+
+local function validateCandidate(deps, relativePath, content)
+    local maxCharacters = deps.maxValidationCharacters or DEFAULT_MAX_VALIDATION_CHARACTERS
+    if #content > maxCharacters then
+        return nil, string.format(
+            "Pre-publication validation skipped: candidate exceeds the %d-character limit.",
+            maxCharacters
+        )
+    end
+    local ok, valid, validationError = pcall(deps.validate, relativePath, content)
+    if not ok then
+        return nil, "Pre-publication validation failed: " .. boundedText(valid, 1000)
+    end
+    if valid ~= true then
+        return nil, "Pre-publication validation failed: " .. boundedText(
+            validationError or "candidate was rejected", 1000
+        )
     end
     return true
 end
@@ -449,6 +520,8 @@ local function patch(deps, call, counter)
     end
     local applied, applyError = applyPatch(parsed, current)
     if not applied then return { ok = false, error = applyError }, counter end
+    local valid, validationError = validateCandidate(deps, relativePath, applied.content)
+    if not valid then return { ok = false, error = validationError }, counter end
 
     local result = {
         ok = true,
@@ -495,7 +568,8 @@ function FilePatch.register(registry, deps)
         and type(deps.json) == "table"
         and type(deps.root) == "string"
         and type(deps.backupDirectory) == "string"
-        and type(deps.epoch) == "function", "file patch dependencies are required")
+        and type(deps.epoch) == "function"
+        and type(deps.validate) == "function", "file patch dependencies are required")
     local counter = 0
     return registry:register(DESCRIPTOR, function(call)
         local result

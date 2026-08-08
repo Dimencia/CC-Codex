@@ -66,6 +66,19 @@ local function requireRegistration(label, registered, failure)
     if not registered then error("Could not register " .. label .. ": " .. tostring(failure), 0) end
 end
 
+---@param relativePath string
+---@param content string
+---@return boolean|nil
+---@return string|nil
+local function validateFilePatch(relativePath, content)
+    if relativePath:sub(-4) ~= ".lua" then return true end
+    -- Compilation checks syntax only. The returned chunk is deliberately never called,
+    -- and an empty environment prevents candidate code from resolving CC globals.
+    local chunk, loadError = load(content, "=" .. relativePath, "t", {})
+    if not chunk then return nil, "Lua syntax validation failed: " .. tostring(loadError) end
+    return true
+end
+
 ---@param config CodexConfig
 ---@param json StateJsonCodec
 ---@param submit fun(text: string, route: ReplyRoute): boolean|nil, string|nil
@@ -263,7 +276,9 @@ function Bootstrap.build(config)
         root = base,
         backupDirectory = path("data/patch-backups"),
         epoch = function() return os.epoch("utc") end,
+        validate = validateFilePatch,
         maxPatchCharacters = 24000,
+        maxValidationCharacters = 120000,
         maxResultCharacters = config.maxToolResultChars
     }))
     requireRegistration("write_preferences", InstructionTools.register(tools, {

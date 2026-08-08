@@ -193,10 +193,13 @@ Preserve the current source, provider, CC, and adapter boundaries while doing
 so.
 
 The `apply_file_patch` tool is the first file-patch slice. It accepts one
-unified diff for a source file below the running Codex root, validates exact
-context before writing, supports preview-only calls, and retains an existing
-file under `data/patch-backups/` when an applied patch succeeds. It does not
-patch runtime data or artifacts and does not delete files.
+unified diff for a source file in the running Codex source boundary, validates
+exact context before writing, supports preview-only calls, and retains an
+existing file under `data/patch-backups/` when an applied patch succeeds. Lua
+candidates pass a bounded syntax-only `load` check in an empty environment
+before publication; the returned chunk is never executed. Runtime data,
+artifacts, and control/state paths such as `.codex-restart` are rejected, and
+the tool does not delete files.
 
 ## Safety and authority boundaries
 
