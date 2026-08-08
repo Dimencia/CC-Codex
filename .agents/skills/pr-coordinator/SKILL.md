@@ -10,7 +10,15 @@ description: Perform one low-usage coordination pass over open GitHub pull reque
 Use GitHub as the source of truth and perform exactly one bounded coordination
 pass. Do not poll, sleep, schedule another run, or modify feature code locally.
 The coordinator alone owns explicit `@codex review` requests, `@codex fix`
-delegations, and merge decisions for `codex/*` pull requests.
+delegations, owner-action escalation, and merge decisions for `codex/*` pull
+requests. The feature worker remains responsible for its branch and PR until
+merge or explicit reassignment; an automated fix request does not transfer that
+ownership.
+
+Confirm the coordinator's persistent callsign; choose an unused name only for a
+genuinely new coordinator identity. Keep it across tasks and branches, prefix
+the task title and every internal or GitHub message with `[<callsign>]`, and include
+`Agent: <callsign> (PR coordinator)` in comments, merge notes, and reports.
 
 ## Cost controls
 
@@ -36,6 +44,7 @@ Search the PR discussion before posting an action:
 - Review fix: `<!-- codex-coordinator:fix-review:<HEAD_SHA> -->`
 - CI fix: `<!-- codex-coordinator:fix-ci:<HEAD_SHA> -->`
 - Conflict fix: `<!-- codex-coordinator:fix-conflict:<HEAD_SHA> -->`
+- Owner action: `<!-- codex-coordinator:owner-action:<HEAD_SHA> -->`
 
 A marker applies only to its exact head SHA.
 
@@ -48,8 +57,7 @@ mergeability, review decision, and aggregate checks. Stop if the queue is empty.
 Evaluate each PR in this order:
 
 1. Leave drafts alone unless they need user attention.
-2. For a conflict, post one `@codex` conflict-resolution task with its marker;
-   if already marked for this SHA, report it blocked.
+2. For a conflict, post one `@codex` conflict-resolution task with its marker.
 3. For a branch-caused required-check failure, post one scoped `@codex` CI-fix
    task with its marker. Do not delegate infrastructure, credential, cancelled,
    flaky, or unrelated base failures.
@@ -58,11 +66,21 @@ Evaluate each PR in this order:
    post `@codex review` with the review marker.
 6. For unresolved legitimate P0 or P1 findings, post one scoped `@codex` review
    fix task with its marker.
-7. A PR is merge-ready only when it is non-draft, mergeable, required checks
+7. If a fix marker already exists for the same SHA and the delegated task has
+   finished or failed without pushing a new commit, post one owner-action
+   escalation instead of repeating `@codex`. Name the unresolved conflict,
+   check, or review finding and report the PR to the roadmap steward or user.
+   If an execution is still visibly active, wait for the next pass.
+8. A PR is merge-ready only when it is non-draft, mergeable, required checks
    pass, a completed Codex review applies to the latest SHA with no unresolved
    actionable P0/P1 findings, and no required approval is missing.
 
-Use these exact action templates:
+Prefix each action below with these two lines, then use the exact template:
+
+```text
+[<CALLSIGN>]
+Agent: <CALLSIGN> (PR coordinator)
+```
 
 ```text
 @codex update this pull-request branch from its base branch, resolve the merge conflicts without changing the intended feature scope, run the relevant tests, and push the resolution to this pull request. Do not merge it.
@@ -86,6 +104,15 @@ Use these exact action templates:
 @codex evaluate every actionable P0 and P1 finding in the latest Codex review. Fix the legitimate findings with minimal scope, add or update regression tests where appropriate, run relevant validation, and push the fixes to this pull request. Do not merge it.
 
 <!-- codex-coordinator:fix-review:<HEAD_SHA> -->
+```
+
+```text
+Owner action required: the automated fix attempt did not update this head. The
+worker that owns this branch must resolve <BLOCKER>, run the relevant validation,
+and push the fix. If that worker is unavailable, the roadmap steward must
+explicitly reassign this same branch before anyone edits it.
+
+<!-- codex-coordinator:owner-action:<HEAD_SHA> -->
 ```
 
 Choose the oldest merge-ready PR unless dependency ordering or risk clearly
