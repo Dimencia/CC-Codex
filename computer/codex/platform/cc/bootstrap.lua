@@ -4,7 +4,6 @@ local App = require("core.app")
 local ArtifactStore = require("storage.artifacts")
 local ChatEngine = require("core.chat_engine")
 local ClientMailbox = require("platform.cc.adapters.client_mailbox")
-local CommandMailbox = require("platform.cc.adapters.command_mailbox")
 local Commands = require("core.commands")
 local ExecuteLua = require("tools.execute_lua")
 local InstructionStore = require("storage.instructions")
@@ -311,38 +310,6 @@ function Bootstrap.build(config)
         })
         console = terminal
     end
-    local mailbox = CommandMailbox.new({
-        fs = fileSystem,
-        json = json,
-        requestPath = path("data/host-command-request.json"),
-        resultPath = path("data/host-command-result.json"),
-        executeLua = function(code) return executeLua:executeResult(code) end,
-        prepareRestart = function()
-            if session.activeTurnId ~= nil or queue:length() > 0 then
-                return nil, "CC Codex is busy; retry the restart shortly.", "busy"
-            end
-            local durable = session:durableState()
-            if durable then
-                local saved, saveError = stateStore:save(durable)
-                if not saved then
-                    return nil,
-                        "Could not save conversation state before restart: " .. tostring(saveError),
-                        "state_save_failed"
-                end
-            end
-            local requested, restartError = restart:request()
-            if not requested then
-                return nil,
-                    "Could not prepare CC Codex restart: " .. tostring(restartError),
-                    "restart_failed"
-            end
-            return true
-        end,
-        finishRestart = function()
-            runtime:requestShutdown("host_command_restart")
-        end,
-        onError = function(message) console:error("Host command mailbox: " .. message) end
-    })
     local clientMailbox = ClientMailbox.new({
         fs = fileSystem,
         json = json,
@@ -358,7 +325,6 @@ function Bootstrap.build(config)
         inputs[#inputs + 1] = terminal
         adapters[terminal.id] = terminal
     end
-    inputs[#inputs + 1] = mailbox
     if config.clientEnabled then
         inputs[#inputs + 1] = clientMailbox
         adapters[clientMailbox.id] = clientMailbox

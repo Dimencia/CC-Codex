@@ -2,28 +2,44 @@
 
 The same Lua suite runs in both environments. The offline host run is the
 normal validation path; the in-game run lets CC Codex verify edits against the
-currently installed source tree.
+current runtime source tree.
+
+Installation and disk synchronization are separate runtime smoke checks. The
+offline suite does not contact GitHub, change `.settings`, write disks, or
+reboot a computer.
 
 ## Offline host tests
 
-From the repository root, run the suite with a Lua 5.2-compatible interpreter:
+Offline execution is expected and is part of the normal test workflow. The
+checkout has a portable native Windows Lua 5.2.4 installation at
+`.tools/lua52/`: the interpreter is `.tools/lua52/lua52.exe` and its adjacent
+`lua52.dll` supplies the runtime. The directory is ignored by Git and is not
+copied to the ComputerCraft computer.
 
-```text
-lua computer/codex/tests/run.lua
+From the repository root, run the suite with that installed interpreter:
+
+```powershell
+& ".\.tools\lua52\lua52.exe" computer\codex\tests\run.lua
+```
+
+To verify the interpreter itself:
+
+```powershell
+& ".\.tools\lua52\lua52.exe" -v
 ```
 
 This reads the checkout directly, uses fake CC boundaries and synthetic
 fixtures, and does not require a Minecraft world, model request, or CC API key.
 The focused image suite is also available offline as:
 
-```text
-lua computer/codex/tests/image/run.lua
+```powershell
+& ".\.tools\lua52\lua52.exe" computer\codex\tests\image\run.lua
 ```
 
 ## In-game CC tests
 
-After the source is installed on a ComputerCraft computer, run the same suite
-through the deployed path:
+On a ComputerCraft computer with the source tree available, run the same suite
+through the runtime path:
 
 ```text
 lua codex/tests/run.lua
@@ -52,5 +68,13 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File host/checks/check-lua.ps
 ```
 
 The test suite and LuaLS check are complementary. Neither replaces a separate
-approved smoke check for a real event loop, HTTP request, Chat Box, monitor,
-source link, mailbox, Rednet target, or live model.
+approved smoke check for the installer's GitHub requests, real event loop,
+HTTP request, disk event, Chat Box, monitor, Rednet target, or live model.
+
+## GitHub Actions
+
+The `CI` workflow repeats the Lua suite and installer/startup syntax checks for
+pull requests and pushes to `master`. The `Release` workflow listens for the
+completed `CI` run and continues only after a successful `master` push. It then
+packages the installer payload and increments the patch number from the latest
+semantic `vMAJOR.MINOR.PATCH` tag or release.

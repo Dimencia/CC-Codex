@@ -58,12 +58,13 @@ the provider system prompt as part of the same task.
 
 ## Git-backed source synchronization
 
-If the CC computer and host agent both edit the application, replace live
-source links with independent Git working trees. Define explicit branches and
-merge points for computer-local changes, host changes, and upstream releases.
-Do not auto-resolve source conflicts or replace a running checkout while the
-service is active. A Git client may run inside CC, or an approved Minecraft
-server mod may provide repository operations when native Git is impractical.
+If the CC computer and host agent both edit the application, define explicit
+Git-backed synchronization between their independent source copies. Define
+branches and merge points for computer-local changes, host changes, and
+upstream releases. Do not auto-resolve source conflicts or replace a running
+checkout while the service is active. A Git client may run inside CC, or an
+approved Minecraft server mod may provide repository operations when native Git
+is impractical.
 
 Longer term, support opt-in GitHub authentication and reviewable pull requests
 for user-approved CC changes. Never let model output silently push, merge, or

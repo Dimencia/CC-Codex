@@ -3,7 +3,6 @@ local App = require("core.app")
 local CcBootstrap = require("platform.cc.bootstrap")
 local ChatBox = require("platform.cc.adapters.chat_box")
 local ChatComponents = require("platform.cc.adapters.chat_components")
-local CommandMailbox = require("platform.cc.adapters.command_mailbox")
 local Commands = require("core.commands")
 local Config = require("core.config")
 local ImageRenderAdapter = require("platform.cc.adapters.image_render")
@@ -155,7 +154,6 @@ return {
             Harness.equal("deliver,error,info,new,run,stop", publicMethods(Terminal))
             Harness.equal("deliver,new,run,stop", publicMethods(ChatBox))
             Harness.equal("agentComponent,agentText,new,player", publicMethods(ChatComponents))
-            Harness.equal("new,poll,run,stop", publicMethods(CommandMailbox))
             Harness.equal("new,render", publicMethods(ImageRenderAdapter))
             Harness.equal("run", publicMethods(Img2MonCommand))
             Harness.equal("toAscii", publicMethods(Text))
@@ -177,77 +175,13 @@ return {
             end)
             Harness.equal(0, #warnings)
             Harness.truthy(hasInput(app, "terminal"))
-            Harness.truthy(hasInput(app, "command_mailbox"))
             Harness.truthy(hasInput(app, "chat_box"))
-            local mailbox
-            for _, adapter in ipairs(app.inputs) do
-                if adapter.id == "command_mailbox" then mailbox = adapter end
-            end
-            Harness.falsy(assert(mailbox).critical)
             Harness.equal(nil, app.moduleManager)
             local foundRender = false
             for _, schema in ipairs(app.chatEngine.tools:snapshotSchemas()) do
                 if schema.name == "render_image_on_monitor" then foundRender = true end
             end
             Harness.truthy(foundRender)
-        end
-    },
-    {
-        name = "bootstrap wires mailbox Lua execution and rejects restart while a turn is busy",
-        fn = function()
-            local capture = {
-                files = {
-                    ["data/host-command-request.json"] = "lua-request"
-                },
-                decoded = {
-                    ["lua-request"] = {
-                        id = "lua-1",
-                        action = "lua",
-                        code = "return 42"
-                    },
-                    ["restart-request"] = {
-                        id = "restart-1",
-                        action = "restart"
-                    }
-                }
-            }
-            local mailbox
-            local runtime
-            withCcGlobals(function()
-                local app = CcBootstrap.build(Config.new({
-                    apiKey = "test",
-                    chatBoxEnabled = false
-                }))
-                runtime = app.runtime
-                for _, adapter in ipairs(app.inputs) do
-                    if adapter.id == "command_mailbox" then mailbox = adapter end
-                end
-                assert(mailbox)
-                Harness.truthy(mailbox:poll())
-                app.session.activeTurnId = 7
-                capture.files["data/host-command-request.json"] = "restart-request"
-                Harness.truthy(mailbox:poll())
-            end, capture)
-
-            local luaResult
-            local restartResult
-            for _, encoded in ipairs(capture.encoded) do
-                if encoded.id == "lua-1" then luaResult = encoded end
-                if encoded.id == "restart-1" then restartResult = encoded end
-            end
-            assert(luaResult)
-            Harness.equal("lua-1", luaResult.id)
-            Harness.equal("lua", luaResult.action)
-            Harness.truthy(luaResult.ok)
-            Harness.arrayEqual({ "42" }, luaResult.returned)
-            assert(restartResult)
-            Harness.equal("restart-1", restartResult.id)
-            Harness.equal("restart", restartResult.action)
-            Harness.falsy(restartResult.ok)
-            Harness.equal("busy", restartResult.error_code)
-            Harness.falsy(runtime.stopping)
-            Harness.equal(nil, capture.files["data/host-command-request.json"])
-            Harness.equal("{}\n", capture.files["data/host-command-result.json"])
         end
     },
     {
@@ -406,7 +340,6 @@ return {
             end)
             Harness.equal(0, #warnings)
             Harness.falsy(hasInput(app, "terminal"))
-            Harness.truthy(hasInput(app, "command_mailbox"))
             Harness.truthy(hasInput(app, "chat_box"))
             local delivered, deliveryError = app.chatEngine.deliver(
                 { adapterId = "terminal" },

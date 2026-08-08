@@ -32,7 +32,7 @@ end
 
 return {
     {
-        name = "exposes the fixed host command set and leaves ordinary chat alone",
+        name = "exposes the fixed local command set and leaves ordinary chat alone",
         fn = function()
             local commands = fixture()
             local names = {}

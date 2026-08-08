@@ -30,7 +30,6 @@ local suiteModules = {
     "tests.unit.conversation_catalog_test",
     "tests.unit.turn_metrics_test",
     "tests.unit.component_text_test",
-    "tests.unit.command_mailbox_test",
     "tests.unit.terminal_test",
     "tests.unit.image_render_test",
     "tests.unit.composition_test",

@@ -6,33 +6,76 @@ render generated images on a monitor.
 
 ## Layout
 
-- `computer/codex/` is the shared live CC Codex application tree.
+- `computer/codex/` is the CC Codex application source tree copied to computers.
+- `computer/startup/` contains the service and disk synchronization startup
+  programs.
+- `computer/disk-source/` contains the bootstrap payload copied to attached
+  writable disks.
 - `computer/codex/clients/` contains interactive clients such as the terminal
   client; future monitor clients can live beside it.
-- `computer/codex/docs/` is the documentation deployed with the CC agent;
+- `computer/codex/docs/` is the documentation available to the CC agent;
   `lua_structure.md` is its implementation and integration guide, and
   `deferred-ideas.md` is its requested-work backlog.
 - `computer/codex/tests/` contains the Lua and fixture tests. The complete suite
-  runs natively on a ComputerCraft computer.
-- `host/` contains Windows-side commands, deployment, and checks.
+  runs with native Lua both offline on the host and on a ComputerCraft computer.
+- `host/checks/` contains Windows-side static checks.
 - `docs/` contains the short architecture, testing, and future-ideas notes.
-- `host/deployment/install.ps1` creates or repairs the current development
-  source links for a CC computer.
-- `host/commands/cc-command.ps1` is the host-side administrative mailbox
-  client.
 
-The implementation and test runner are source under `computer/` and deploy
-together to the ComputerCraft computer.
+The CC application and test runner are kept under `computer/`; the top-level
+`install.lua` is the separate bootstrap. Installed computers use ordinary
+copies; there are no symlinks or junctions.
+
+## Install on a ComputerCraft computer
+
+With HTTP enabled, run these commands from the computer's shell:
+
+```text
+wget https://raw.githubusercontent.com/Dimencia/CC-Codex/master/install.lua install.lua
+install
+```
+
+The installer verifies its local and upstream SHA-256 hashes, hands off to a
+different upstream installer when needed, downloads every file under `computer/`
+using eight bounded download workers, and places the installer at
+`codex/install.lua`. It disables disk startup in `.settings`, prompts for
+`cc_codex.api_key` only when it is missing, performs an initial disk copy, and
+reboots. After reboot, computers with multishell get a disk-watcher tab for
+future insertions alongside the headless service; without multishell, startup
+performs one disk sync and starts the service.
+
+To update an existing installation, run:
+
+```text
+codex/install
+```
+
+The installer preserves computer-local runtime data and settings. It needs
+access to both `raw.githubusercontent.com` and `api.github.com`.
+
+## Automated releases
+
+The `CI` workflow runs the Lua test suite and installer/startup syntax checks on
+pull requests and pushes to `master`. After a successful `master` push, the
+separate `Release` workflow increments the patch number after the latest
+semantic `vMAJOR.MINOR.PATCH` tag or release, packages `install.lua` and
+`computer/` into a zip, and publishes a GitHub release with the zip and
+standalone installer attached.
 
 ## Test and lint checks
 
-The same Lua test suite can run offline from the checkout:
+Run the same Lua test suite offline from the checkout. This repository's
+portable native Lua 5.2.4 executable is installed at
+`.tools/lua52/lua52.exe`:
 
-```text
-lua computer/codex/tests/run.lua
+```powershell
+& ".\.tools\lua52\lua52.exe" computer\codex\tests\run.lua
 ```
 
-After installation, CC Codex can run that suite against the deployed source:
+The offline run is expected during ordinary host-side editing; it does not
+require a Minecraft world, model request, or CC API key.
+
+On a ComputerCraft computer with the source tree available, CC Codex can run
+that suite in-game:
 
 ```text
 lua codex/tests/run.lua
@@ -47,64 +90,34 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File host/checks/check-lua.ps
 Both test commands use fakes and fixtures and never contact a model or change
 the Minecraft world. LuaLS is host-only tooling.
 
-## Install the shared source
-
-```powershell
-.\host\deployment\install.ps1 -TargetPath 'C:\Minecraft\saves\My World\computercraft\computer\3'
-.\host\deployment\install.ps1 -TargetPath 'C:\Minecraft\saves\My World\computercraft\computer\3' -WhatIf
-```
-
-The current development installer manages `startup.lua`, `codex.lua`, and the
-`codex/` application directory. It preserves
-computer-local runtime data, artifacts, settings, and mailbox files. Use
-`-Force` only when replacing existing source entries; conflicts are backed up
-next to the target.
-
-Computer 3 currently points at:
-
-`C:\Users\Dimen\curseforge\minecraft\Instances\All the Mons - ATMons (1)\saves\CC Test\computercraft\computer\3`
-
-Editing the repository source changes the linked computer immediately. If the
-Lua was already loaded, restart the CC Codex process before testing it.
-
 ## Runtime behavior
 
 The `computer/codex/service.lua` headless service owns restart iteration. The
 portable modules under `computer/codex/core/` own conversation and scheduling
 policy; provider, storage, tool, image, and ComputerCraft adapter boundaries are
-separate directories. Terminal, Chat Box, monitor rendering, and the host
-mailbox are separate adapters.
+separate directories. Terminal, Chat Box, and monitor rendering are separate
+adapters.
 
-Responses conversation history stays server-side. Local state stores only the
-provider cursor, restart continuation, refresh metadata, and local diagnostic
-identifiers. Conversation logs and verbose tool output are plaintext local
-diagnostics and may contain sensitive world data.
+Responses conversation history stays server-side. Local state stores the
+provider cursor, restart continuation, instruction refresh metadata, latest
+generated-image path, and conversation-log identifier. Separate local files
+hold preferences, conversation catalog and diagnostic logs, usage records,
+image artifacts, and client mailbox messages; these may contain sensitive world
+data.
 
 The model authors rich Minecraft component JSON for assistant finals. Chat Box
 keeps rich output when accepted; terminal extracts visible text, and monitor
-rendering remains independent. Host commands use a leading `!`; slash-prefixed
+rendering remains independent. Local commands use a leading `!`; slash-prefixed
 text is ordinary conversation input.
-
-## Host mailbox
-
-Use `-WhatIf` for a mutation-free description:
-
-```powershell
-.\host\commands\cc-command.ps1 -Code 'return peripheral.getNames()' -WhatIf
-.\host\commands\cc-command.ps1 -Restart -ComputerNumber 3 -WhatIf
-```
-
-Without `-WhatIf`, the client writes a request into the selected computer's
-local mailbox and waits for the result. Restart is accepted only when the CC
-Codex turn is idle. The mailbox is a local administrative channel, not a
-provider or credential channel.
 
 ## Local settings
 
 Run `codex/setup/set_api_key.lua` on the CC computer to store the provider key in
-ComputerCraft settings. Runtime state and settings remain outside the shared
-source tree and are ignored by Git. Keep keys out of source, fixtures, logs
-intended for commit, and mailbox requests.
+ComputerCraft settings if the installer did not prompt for it. The installer
+also sets `shell.allow_disk_startup` to `false`. Runtime state and settings
+remain outside the shared source tree and are ignored by Git.
+Keep keys out of source, fixtures, logs intended for commit, and runtime
+request files.
 
 See [`docs/architecture.md`](docs/architecture.md),
 [`docs/testing.md`](docs/testing.md), and

@@ -1,0 +1,91 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+    branches:
+      - master
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-master
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'master'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Install packaging tools
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y zip
+
+      - name: Determine next patch version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          tags="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/tags?per_page=100" --jq '.[].name')"
+          releases="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" --jq '.[].tag_name')"
+          latest="$(
+            printf '%s\n%s\n' "$tags" "$releases" |
+              grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' |
+              sort -V |
+              tail -n 1 || true
+          )"
+
+          if [[ -z "$latest" ]]; then
+            latest="v0.0.0"
+          fi
+
+          version="${latest#v}"
+          IFS=. read -r major minor patch <<< "$version"
+          next="v${major}.${minor}.$((patch + 1))"
+
+          echo "tag=$next" >> "$GITHUB_OUTPUT"
+          echo "version=${next#v}" >> "$GITHUB_OUTPUT"
+          echo "Next release: $next"
+
+      - name: Build install archive
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist/CC-Codex
+          cp install.lua dist/CC-Codex/install.lua
+          cp -R computer dist/CC-Codex/computer
+          (
+            cd dist
+            zip -qr "CC-Codex-v${VERSION}.zip" CC-Codex
+          )
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" \
+            "dist/CC-Codex-v${VERSION}.zip" \
+            install.lua \
+            --target "${{ github.event.workflow_run.head_sha }}" \
+            --title "CC Codex ${VERSION}" \
+            --generate-notes \
+            --fail-on-no-commits
