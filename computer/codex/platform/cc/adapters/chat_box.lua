@@ -164,6 +164,25 @@ local function rejectedMessage(message, result, peripheralError)
 end
 
 ---@param self ChatBoxAdapter
+---@param chatBox table
+---@param component string
+---@param username string
+---@return boolean called
+---@return any result
+---@return string|nil error
+local function callFormattedComponent(self, chatBox, component, username)
+    return callChatBox(self, function()
+        return chatBox.sendFormattedMessageToPlayer(
+            component,
+            username,
+            '{"text":" "}',
+            "  ",
+            "&f"
+        )
+    end)
+end
+
+---@param self ChatBoxAdapter
 ---@param operation fun(): boolean|nil, string|nil, string|nil
 ---@return boolean|nil first
 ---@return string|nil second
@@ -277,15 +296,8 @@ end
 local function sendSingleComponent(self, chatBox, component, username, attempts)
     local lastError = "Chat Box rejected the message."
     for attempt = 1, attempts do
-        local called, result, peripheralError = callChatBox(self, function()
-            return chatBox.sendFormattedMessageToPlayer(
-                component,
-                username,
-                '{"text":" "}',
-                "  ",
-                "&f"
-            )
-        end)
+        local called, result, peripheralError =
+            callFormattedComponent(self, chatBox, component, username)
         if called and result == true then return true end
         lastError = called
             and rejectedMessage("Chat Box rejected the message", result, peripheralError)
@@ -339,15 +351,8 @@ local function sendModelComponent(self, chatBox, component, username)
         return sendChunkedComponent(self, chatBox, component, username)
     end
 
-    local called, result, peripheralError = callChatBox(self, function()
-        return chatBox.sendFormattedMessageToPlayer(
-            component,
-            username,
-            '{"text":" "}',
-            "  ",
-            "&f"
-        )
-    end)
+    local called, result, peripheralError =
+        callFormattedComponent(self, chatBox, component, username)
     if not called then return nil, "Chat Box send failed: " .. tostring(result) end
     if result ~= true then
         return nil,
