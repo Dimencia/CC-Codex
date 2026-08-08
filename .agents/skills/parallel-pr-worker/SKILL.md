@@ -24,6 +24,16 @@ Do not merge it, poll it, or create a scheduled follow-up.
 6. Run `git fetch --prune origin` when network access is available, then use
    the refreshed `origin/master` as the normal task base instead of trusting a
    possibly stale local `master`.
+7. For roadmap work, select only an ID in the canonical Ready queue. Before
+   feature edits, create a fresh roadmap-only branch from `origin/master`, move
+   that ID to Active with the intended feature branch, commit only the roadmap
+   file, and run `git push origin HEAD:master` without force. Move only the
+   queue entry; keep the detailed task specification in place for QA and review.
+   Do not push the
+   roadmap branch as a pull request. A rejected push lost the claim race: fetch
+   and choose another Ready ID instead of retrying the same claim. If repository
+   protection rejects all direct roadmap pushes, stop without feature edits and
+   report that the claim could not be acquired.
 
 On Windows, compare `whoami` with the interactive user's identity before
 diagnosing failed CLI authentication. A Codex sandbox account cannot decrypt
@@ -39,13 +49,10 @@ If the checkout is the default branch, do not edit it. Report that the task
 must be started or handed off into Codex **Worktree** mode. A detached HEAD in
 a Codex-created worktree is valid.
 
-For a roadmap item, inspect remote `codex/cc-*` branches and reserve the exact
-`codex/cc-NNN-short-slug` branch before the first source edit. Make a unique
-empty `Claim CC-NNN` commit and push without force; begin only if that push
-creates the remote branch. If it already exists or the push is rejected,
-another worker owns the item. For other work, keep an existing task-specific
-`codex/` branch or create `codex/<short-task-slug>-<unique-suffix>` from the
-intended base and verify it before editing.
+After a roadmap claim is visible on `origin/master`, create its feature branch
+from that commit. For non-roadmap work, if the current branch starts with
+`codex/`, keep it; otherwise create `codex/<short-task-slug>-<unique-suffix>`
+from the intended base before the first edit and verify the resulting branch.
 
 ## Establish scope and implement
 

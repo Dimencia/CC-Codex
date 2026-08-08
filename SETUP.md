@@ -66,7 +66,10 @@ For each coding task:
 2. Select **Worktree** beneath the composer.
 3. Fetch/prune `origin`, then select the intended base branch, normally the
    refreshed `origin/master` rather than a possibly stale local `master`.
-4. Ask for the change normally.
+4. For roadmap work, claim only a Ready ID by atomically moving it to Active on
+   `master` as documented in `AGENTS.md`; a rejected push must choose again.
+5. Create the feature branch from the winning claim commit and ask for the
+   change normally.
 
 `AGENTS.md` directs write tasks to the `parallel-pr-worker` skill. To force it
 explicitly, mention:

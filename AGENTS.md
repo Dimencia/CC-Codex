@@ -147,3 +147,26 @@ asynchronous paths, unowned background work, lost exceptions, unsafe shared
 state, missing server-side authorization, untrusted path or command handling,
 injection risks, secret exposure, and consequential behavior changes without a
 practical regression test.
+
+### Atomic roadmap claims
+
+For roadmap work, a remote feature branch is not the lock: different slugs can
+create multiple branches for one ID. A worker may select only an ID listed in
+the Ready queue in `computer/codex/docs/deferred-ideas.md`.
+
+Before any feature edit, create a fresh roadmap-only branch from the latest
+fetched `origin/master`, move the ID from Ready to Active with the intended
+feature branch name, commit only that roadmap file, and push the commit directly
+to `master` without force. Move only the queue entry; never remove or relocate
+the detailed task specification, which QA and reviewers still need. The first
+fast-forward push owns the item. If the
+push is rejected, fetch the winning `master`, do not retry the same claim, and
+choose another Ready ID. Create the feature branch from the updated
+`origin/master` only after the claim is visible there.
+
+The roadmap steward uses the same documentation-only direct-to-`master` path
+for reprioritization, completion, abandonment, stale-claim cleanup, and the
+repository agent instructions needed to operate that queue safely. Feature pull
+requests do not edit the queue. This exception never permits direct product
+source, tests, CI workflows, installer behavior, or runtime changes on
+`master`.

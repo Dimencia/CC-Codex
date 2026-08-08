@@ -33,25 +33,59 @@ Every change must include a small simplification and documentation audit:
 The goal is not to minimize line count at any cost. The goal is the smallest
 clear implementation that preserves the real contracts.
 
+## Ready queue and active claims
+
+Workers may claim only IDs in the Ready queue. The detailed specifications stay
+below even while an item is active so its contract remains readable.
+
+Ready, in order:
+
+1. `CC-004` - deterministic player/provider integration tests
+2. `CC-005` - reviewable file patch and diff tools
+3. `CC-006` - conflict-aware update detection
+4. `CC-009` - image renderer measurement and fast path
+5. `CC-007` - bounded asynchronous jobs and goals
+6. `CC-008` - local searchable memory
+
+Active claims:
+
+| ID | Owning branch or PR | State |
+| --- | --- | --- |
+| `CC-002` | `codex/cc-002-chatbox-format-call` / PR #3 | Active simplification slice |
+| `CC-003` | `codex/cc-003-client-scoped-mailboxes` | Active; duplicate work was detected, so do not claim |
+
+Claiming is an atomic documentation update on `master`, not a branch-name
+convention. Before feature edits, create a fresh roadmap-only branch from the
+latest fetched `origin/master`, remove the ID from Ready, add it to Active with
+the intended feature branch, commit, and push that commit directly to
+`master` without force. The first fast-forward push wins. If the push is
+rejected, fetch again and choose another Ready item; never reapply the same
+claim on top of the winner.
+
+After the claim reaches `master`, create the feature branch from that new
+`origin/master`. Completion, abandonment, and stale-claim recovery are separate
+roadmap-only updates by the roadmap steward. Feature PRs never edit this queue.
+
 ## Priority order
 
 ### P0 - make parallel change safe
 
 #### CC-001 Parallel branches, worktrees, and claims
 
-Use `docs/parallel-workflow.md` from the host checkout. One worker owns one
-work-item ID, branch, and worktree. The remote branch reservation is the claim;
-workers must claim before editing. The roadmap steward owns roadmap ordering and
-periodic stale-claim review.
+Use the root `AGENTS.md` and repository `parallel-pr-worker` skill. One worker
+owns one work-item ID, feature branch, and worktree. The accepted Ready-to-Active
+commit on `master` is the claim; a remote feature branch is evidence of work,
+not the lock. The roadmap steward owns ordering and stale-claim review.
 
 Fold the older Git-backed source-synchronization idea into this item. Host
 checkouts, ComputerCraft-local copies, and released source are separate. Do not
 auto-resolve conflicts, replace a running source tree, or let model output
 silently push, merge, or create pull requests.
 
-Done means two independent workers can start from the same base, only one can
-claim a particular item, separate items do not share a checkout, and there is a
-documented merge and cleanup path. Each worker that opens a pull request also
+Done means two independent workers can start from the same base, only one
+Ready-to-Active push can claim a particular item, the losing push stops before
+feature edits, separate items do not share a checkout, and there is a documented
+merge and cleanup path. Each worker that opens a pull request also
 checks every other open pull request and reviews each head that lacks an
 adequate current review; reviewing another item is read-only and does not
 transfer its claim.
@@ -76,7 +110,8 @@ merges difficult.
 
 The first slice already exists: startup launches `codex/service.lua`, the
 service owns the conversation engine, and the terminal client uses a mailbox.
-Finish it in small migrations:
+Client-scoped mailbox work is actively claimed; do not start another copy.
+Finish the remaining work in small migrations after that claim lands:
 
 1. Define service discovery, readiness, single-instance behavior, request
    ownership, delivery, client disconnect, shutdown, and restart contracts.
@@ -201,6 +236,18 @@ they need. Add MCP or remote tool discovery only after schema cost, trust,
 authentication, timeout, and availability behavior are measured. Do not make
 every external integration visible on every turn.
 
+#### CC-015 Redacted local diagnostic bundle
+
+Add one bounded, user-invoked diagnostic export for support and autonomous
+debugging. Include application and release versions, enabled feature flags,
+recent structured errors, aggregate timing/usage counters, active client IDs,
+and source-manifest hashes. Exclude API keys, prompt contents, conversation
+text, tool arguments/results, and world data by default.
+
+Keep the bundle local unless the user explicitly chooses to share it. Prefer a
+small JSON or text artifact assembled from existing state over a resident
+telemetry service, upload path, or new logging framework.
+
 ### P3 - experiments, not foundations
 
 #### CC-012 Manual model profiles before automatic selection
@@ -267,9 +314,16 @@ Official comparison references:
 
 ## Roadmap steward review checklist
 
+Roadmap-only changes use a fresh documentation branch from the latest
+`origin/master` and are pushed directly to `master` without a pull request.
+The same commit may update repository agent instructions needed to operate the
+queue safely. Never use this path for Lua, tests, CI workflows, installer
+behavior, or other product implementation changes.
+
 When periodically updating this roadmap:
 
-1. Fetch/prune branches and inventory active `codex/cc-*` claims.
+1. Fetch `origin/master`, inspect the Active claims table, and compare it with
+   open PRs and remote `codex/cc-*` branches.
 2. Review merged work, draft reviews, validation evidence, blockers, and claim
    age. Never infer completion from a branch name alone.
 3. Mark dependencies and split oversized items before assigning more workers.
