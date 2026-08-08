@@ -118,7 +118,9 @@ The `CI` workflow repeats the Lua suite, installer package-validation tests, and
 syntax checks for the installer, public launcher, startup hook, and standalone
 worker bootstrap on pull requests and pushes to `master`. The separate
 `Runtime Integration` workflow runs the real CC-only fixture on pull
-requests, relevant `master` changes, or manually. Configure its `integration`
+requests, relevant `master` changes, or manually. Every pull request runs the
+fixture even when its changed paths would not otherwise match the push filter.
+Configure its `integration`
 job as a required check when it should gate merges. The `Release` workflow
 listens for the completed `CI` run and continues only after a successful
 `master` push. It then packages the installer payload as an uncompressed TAR

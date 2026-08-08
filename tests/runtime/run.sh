@@ -52,7 +52,7 @@ set -e
 
 runtime_finished_ms="$(now_ms)"
 runtime_elapsed_ms=$((runtime_finished_ms - runtime_started_ms))
-printf '{"schema":1,"container_elapsed_ms":%s}\n' "$runtime_elapsed_ms" > "$output_dir/runtime-timing.json"
+printf '{"schema":1,"container_elapsed_ms":%s}\n' "$runtime_elapsed_ms" > "$output_dir/container-timing.json"
 
 if [ -f /server/logs/latest.log ]; then
     cp /server/logs/latest.log "$output_dir/server-latest.log"

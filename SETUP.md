@@ -64,7 +64,8 @@ For each coding task:
 
 1. Create a new Codex task.
 2. Select **Worktree** beneath the composer.
-3. Select the intended base branch, normally `master`.
+3. Fetch/prune `origin`, then select the intended base branch, normally the
+   refreshed `origin/master` rather than a possibly stale local `master`.
 4. Ask for the change normally.
 
 `AGENTS.md` directs write tasks to the `parallel-pr-worker` skill. To force it
@@ -75,7 +76,10 @@ Use $parallel-pr-worker and implement <task>.
 ```
 
 The worker creates a unique branch, validates, commits, pushes, and opens or
-updates a pull request. It then stops; it does not poll.
+updates a pull request. Roadmap workers first reserve the stable item branch as
+documented in `docs/parallel-workflow.md`. After publishing, the worker reviews
+every other open pull-request head that lacks an adequate current independent
+review, then stops; it does not poll.
 
 ## Coordinator task
 
@@ -91,15 +95,16 @@ This consumes no idle usage between passes.
 
 ## Optional scheduling
 
-Only schedule the single coordinator task, never each worker. Use
+Only schedule the single PR coordinator task, never each worker. Use
 `SCHEDULED_COORDINATOR_PROMPT.md`, a low-cost model, low reasoning, and an
 hourly cadence. End the schedule when the `codex/*` PR queue is empty.
 
 ## Recommended GitHub protections
 
 Configure branch protection or repository rules for `master` so direct pushes
-are rejected and required CI checks must pass. Keep the coordinator as the only
-process instructed to merge Codex worker pull requests.
+are rejected and required CI checks must pass. Keep the PR coordinator as the
+only process instructed to merge Codex worker pull requests. The roadmap
+steward remains a separate task and owns priorities, not merges.
 
 ## Operational notes
 

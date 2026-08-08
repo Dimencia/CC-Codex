@@ -133,4 +133,6 @@ directional, so the root Codex computer never listens for worker commands.
 
 See [`docs/architecture.md`](docs/architecture.md),
 [`docs/testing.md`](docs/testing.md), and
-[`docs/deferred-ideas.md`](docs/deferred-ideas.md).
+[`docs/deferred-ideas.md`](docs/deferred-ideas.md). Multiple autonomous workers
+must also follow [`docs/parallel-workflow.md`](docs/parallel-workflow.md) so one
+roadmap item has one claimed branch and worktree.
