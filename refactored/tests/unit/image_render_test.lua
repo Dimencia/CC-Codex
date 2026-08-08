@@ -9,7 +9,7 @@ return {
             local loadedPath
             local received
             local adapter = ImageRenderAdapter.new({
-                renderScript = "img2mon.lua",
+                renderScript = "lib/img2mon.lua",
                 loadfile = function(path)
                     loadedPath = path
                     return function(...)
@@ -23,7 +23,7 @@ return {
             local rendered, selected = adapter:render("fixture.png", "right")
             Harness.truthy(rendered)
             Harness.equal("right", selected)
-            Harness.equal("img2mon.lua", loadedPath)
+            Harness.equal("lib/img2mon.lua", loadedPath)
             Harness.arrayEqual({ "yield", "run" }, events)
             Harness.arrayEqual({ "fixture.png", "right", "--mode=teletext" }, received)
         end
@@ -32,13 +32,13 @@ return {
         name = "adapter reports an img2mon load failure",
         fn = function()
             local adapter = ImageRenderAdapter.new({
-                renderScript = "img2mon.lua",
+                renderScript = "lib/img2mon.lua",
                 loadfile = function() return nil, "missing script" end,
                 yieldBeforeRun = function() error("must not yield before a failed load", 0) end
             })
             local rendered, renderError = adapter:render("fixture.png", "right")
             Harness.falsy(rendered)
-            Harness.equal("Could not load img2mon.lua: missing script", renderError)
+            Harness.equal("Could not load lib/img2mon.lua: missing script", renderError)
         end
     }
 }

@@ -4,7 +4,7 @@ local Harness = require("tests.harness")
 local ChatBox = require("lib.codex.plugins.chat_box")
 local Components = require("lib.codex.plugins.chat_components")
 local ComponentText = require("lib.codex.component_text")
-local PackagedFormatter = require("data.chat_messages")
+local PackagedFormatter = require("lib.chat_messages")
 
 local function publicMethods(value)
     local names = {}

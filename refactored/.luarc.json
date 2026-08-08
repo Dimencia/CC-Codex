@@ -4,8 +4,8 @@
   "runtime.path": [
     "?.lua",
     "?/init.lua",
-    "live/?.lua",
-    "live/?/init.lua"
+    "../computer/?.lua",
+    "../computer/?/init.lua"
   ],
   "workspace.checkThirdParty": false,
   "workspace.library": [

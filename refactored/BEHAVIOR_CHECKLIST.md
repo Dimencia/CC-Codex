@@ -18,7 +18,7 @@ claims about a live CC computer, Chat Box peripheral, or Responses request.
       monitor rendering remain separate adapters; source review and adapter tests.
 - [x] Public ports have LuaLS annotations and comments describe ordering or data
       safety invariants; LuaLS and source review.
-- [x] `data/system_prompt.md` is the required immutable system prompt and mutable
+- [x] `lib/docs/system_prompt.md` is the required immutable system prompt and mutable
       preferences live separately in `data/preferences.md`; source and
       instruction-store tests.
 - [x] A missing preferences file is created atomically with an editable default
@@ -117,12 +117,9 @@ claims about a live CC computer, Chat Box peripheral, or Responses request.
       empty legacy module or artifact directories are not staged; bootstrap and
       the artifact store create mutable image directories when needed; source
       review and composition/artifact tests.
-- [x] Root `deploy.ps1` copies `refactored/live` to computer `3` by default,
-      accepts `-ComputerNumber`, and reports without writing under `-DryRun`;
-      source review and safe dry-run execution.
-- [x] Deployment is non-destructive and preserves target-only `/.settings`,
-      `data/preferences.md`, and `data/codex-state.json`; source review. A real
-      copy remains gated below.
+- [x] Computer `3` shares `startup.lua`, `codex.lua`, and `lib/` with the
+      repository through file links and a directory junction while preserving
+      target-local mutable files.
 - [x] CC-local `set_api_key` writes plaintext setting `cc_codex.api_key`; root
       `codex.lua` owns loading it and no Windows environment variable supplies
       the credential; supervisor/setup tests and source review.
@@ -160,15 +157,12 @@ claims about a live CC computer, Chat Box peripheral, or Responses request.
 - [ ] Obtain explicit approval before a live Responses/model request.
 - [ ] Collect representative approved-run telemetry before changing model,
       reasoning, service tier, output, compaction, or tool-round defaults.
-- [ ] Before any live-tree change, review `deploy.ps1 -DryRun` for the intended
-      computer number, obtain explicit deployment approval, preserve a rollback
-      point, and confirm target-only settings/preferences/state remain present
-      before retiring legacy files.
-- [ ] Obtain explicit approval before touching the live CC computer or deploying.
+- [ ] Before changing live source links, confirm computer 3 is idle and preserve
+      a rollback point for the link targets.
 - [ ] Obtain separate explicit approval before invoking `cc-command.ps1` without
       `-WhatIf`; publishing a request is a live-tree mutation even when no model
-      call or deployment occurs.
+      call occurs.
 
-The staged tree contains no usable secret. Running `set_api_key` places one in
-CC-local plaintext settings, making the computer directory and save backups part
-of the credential trust boundary. The live CC folder remains untouched.
+The source tree contains no usable secret. Running `lib/set_api_key.lua` places
+one in CC-local plaintext settings, making the computer directory and save
+backups part of the credential trust boundary. Runtime state remains local.

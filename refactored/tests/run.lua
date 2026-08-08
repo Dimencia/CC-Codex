@@ -6,8 +6,8 @@ end
 
 addPath("./?.lua")
 addPath("./?/init.lua")
-addPath("./live/?.lua")
-addPath("./live/?/init.lua")
+addPath("../computer/?.lua")
+addPath("../computer/?/init.lua")
 
 local harness = require("tests.harness")
 

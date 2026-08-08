@@ -1,11 +1,11 @@
 # CC Codex Lua layout
 
 This is a short implementation map for the model running inside CC:Tweaked.
-It describes the deployed program, not player preferences or higher-priority
+It describes the live program, not player preferences or higher-priority
 system instructions. Read it with `execute_cc_lua` when a task depends on the
 implementation.
 
-All paths below are relative to the CC computer root. The deployed program is
+All paths below are relative to the CC computer root. The live program is
 under the directory containing `codex.lua`.
 
 ## Entry points
@@ -13,10 +13,10 @@ under the directory containing `codex.lua`.
 - `codex.lua` is the supervisor and composition entry point. It loads the API
   key from CC settings, builds the application, and restarts a managed child
   when a restart marker is requested.
-- `set_api_key.lua` is a one-purpose interactive setup program. It stores the
+- `lib/set_api_key.lua` is a one-purpose interactive setup program. It stores the
   API key as the CC setting `cc_codex.api_key`; it is not part of the agent
   runtime.
-- `img2mon.lua` is the standalone image-to-monitor command used by the image
+- `lib/img2mon.lua` is the standalone image-to-monitor command used by the image
   renderer. It is not the main chat loop.
 
 ## Source tree
@@ -47,15 +47,15 @@ under the directory containing `codex.lua`.
 
 ## Data and runtime files
 
-- `data/system_prompt.md` is the deployed host instruction document. It is
-  replaced by deployment and is sent to the provider as a system instruction.
-- `data/lua_structure.md` is this reference map. It is read-only documentation
+- `lib/docs/system_prompt.md` is the shared host instruction document sent to
+  the provider as a system instruction.
+- `lib/docs/lua_structure.md` is this reference map. It is read-only documentation
   and is not automatically sent to the provider.
-- `data/chat_messages.lua` formats local terminal/chat messages.
+- `lib/chat_messages.lua` formats local terminal/chat messages.
 - `data/preferences.md` is mutable local preference text. The application
-  creates it on first run and deployment preserves it.
-- `data/codex-state.json` stores restart continuation state. Deployment
-  preserves it.
+  creates it on first run and each computer keeps its own copy.
+- `data/codex-state.json` stores restart continuation state. Each computer
+  keeps its own copy.
 - `data/conversations.json` stores conversation names, selection, and provider
   cursors. `data/conversations/` contains diagnostic JSONL logs.
 - `data/usage.jsonl` contains aggregate turn metrics.
@@ -69,16 +69,17 @@ under the directory containing `codex.lua`.
 
 ## Change and inspection rules
 
-Deployment copies the repository's `refactored/live/` tree into the computer.
-Source changes are not live until deployment copies them; a requested
-`restart_codex` reloads the already-deployed source after validation. Do not
-edit or delete source, state, logs, mailbox files, or settings unless the
-player explicitly asks for that operation.
+The computer's `startup.lua` and `codex.lua` are file links into the repository,
+and its `lib/` directory is a directory junction into the repository. Source
+changes are therefore immediately visible; restart Codex after changing loaded
+Lua. Runtime state, logs, mailbox files, artifacts, and settings remain local
+to each computer. Do not edit or delete source, state, logs, mailbox files, or
+settings unless the player explicitly asks for that operation.
 
 For a small inspection, use `execute_cc_lua` with code like:
 
 ```lua
-local handle, openError = fs.open("data/lua_structure.md", "r")
+local handle, openError = fs.open("lib/docs/lua_structure.md", "r")
 if not handle then return openError end
 local content = handle.readAll()
 handle.close()

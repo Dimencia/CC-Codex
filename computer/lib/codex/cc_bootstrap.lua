@@ -96,7 +96,7 @@ local function registerOptionalImageTool(config, tools, json, session, path)
     local loaded, ImageRenderAdapter = pcall(require, "lib.codex.adapters.image_render")
     if not loaded then return "Image rendering is unavailable: " .. tostring(ImageRenderAdapter) end
     local constructed, adapter = pcall(ImageRenderAdapter.new, {
-        renderScript = path("img2mon.lua"),
+        renderScript = path("lib/img2mon.lua"),
         loadfile = loadfile,
         yieldBeforeRun = function()
             os.queueEvent("codex_img2mon_start")
@@ -163,6 +163,7 @@ function Bootstrap.build(config)
     session:markRestarted()
     local instructionStore = InstructionStore.new({
         systemPromptPath = path(config.systemPromptPath),
+        preferencesPath = path("data/preferences.md"),
         fs = fileSystem
     })
     local artifactStore = ArtifactStore.new({

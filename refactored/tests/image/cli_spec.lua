@@ -26,7 +26,7 @@ function Spec.register(runner)
       _G = _G,
     }
     for key, value in pairs(overrides or {}) do environment[key] = value end
-    local chunk, loadError = loadfile("live/img2mon.lua", "t", environment)
+    local chunk, loadError = loadfile("../computer/lib/img2mon.lua", "t", environment)
     runner.truthy(chunk, tostring(loadError))
     ---@cast chunk function
     local ok, message = pcall(chunk, table.unpack(arguments))

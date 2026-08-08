@@ -574,7 +574,7 @@ The version-3 JSON fields are exactly `version`, `previous_response_id`,
 - `replacePreferences`
 
 `readSystemPrompt` reads the required immutable prompt from
-`data/system_prompt.md`. `readPreferences` reads `data/preferences.md` and its
+`lib/docs/system_prompt.md`. `readPreferences` reads `data/preferences.md` and its
 modification time; if that file is absent, it creates a small editable default by
 the same temporary-file publication discipline. `replacePreferences` changes
 only the preferences file. A missing system prompt remains a visible startup or
@@ -627,61 +627,19 @@ messages; Responses remains the model-visible history authority. The
 conversation controls. The model can suggest `!conversation` commands with
 `suggest_command`, but local command submission remains the approval boundary.
 
-## Deployment boundary
+## Live source boundary
 
-### `deploy.ps1` - non-destructive host copy
+The repository-root `computer/` directory is the source of truth for the
+ComputerCraft program. On computer 3, `startup.lua` and `codex.lua` are file
+symlinks to `computer/`, and `lib/` is a directory junction to `computer/lib`.
+The same arrangement can be made for another computer without sharing its
+runtime state.
 
-Public parameters: optional `-ComputerNumber` (default `3`) and switch `-DryRun`.
-
-The source is exactly `refactored/live`. The exact computer base directory is:
-
-`C:\Users\Dimen\curseforge\minecraft\Instances\All the Mons - ATMons (1)\saves\CC Test\computercraft\computer`
-
-The destination is the selected computer-number child. The script copies staged
-paths but does not mirror or delete target-only content. In particular it must
-preserve target `/.settings`, `data/preferences.md`, and
-`data/codex-state.json`. A real copy verifies every written file by comparing its
-SHA-256 hash with the staged source. `-DryRun` reports the plan without changing
-the target. A non-dry-run invocation is a separate explicit deployment action,
-not implied by building, testing, documenting, or dry-running the replacement.
-
-### `merge-from-computer.ps1` - controlled reverse merge
-
-The script defaults to a read-only report for computer `3`. It compares the
-repository's `refactored/live` tree with the selected computer and the immutable
-baseline captured by `deploy.ps1` under `.codex/deployments/computer-N/`. The
-baseline is required for automatic three-way decisions; `-BaseRoot` may supply
-an independently preserved pre-edit snapshot. Source-owned code and prompt
-files are eligible, while CC settings, runtime state, logs, conversations,
-artifacts, and mailbox files are ignored.
-
-Without `-Apply`, no repository or computer file is changed. `-Apply` refuses to
-write if the baseline is absent or any file has an unresolved conflict, creates
-a repository backup under `.codex/merge-backups/computer-N/`, and then applies
-only clean computer-side changes and clean three-way merges. This is a separate
-explicit action from deployment and must not be inferred from a preview.
-
-### Git-backed computer workflow
-
-`git-computer.ps1` provides `Status`, one-time `Initialize`, and
-`FetchToRepository` actions. Initialization creates a Git checkout on
-`codex/computer-N-work`, records the current source tree, and ignores CC
-credentials plus runtime state. It must be performed only when the computer is
-idle. Fetching adds or verifies a local repository remote and fetches the branch;
-it does not merge or update the repository working tree.
-
-`deploy.ps1 -GitBranch <branch>` is the preferred deployment path after both
-trees have history. It requires a clean computer checkout and performs only a
-fast-forward merge from a committed local repository branch. The existing
-file-copy mode remains available for bootstrapping and recovery.
-
-The normal task order is fetch first, create a new `codex/<task-slug>` branch,
-then merge `computer-N/codex/computer-N-work` into that new branch. Computer
-history is never merged directly into `master` as part of task startup. After a
-completed task is committed, the same task branch is deployed with a reviewed
-dry run, and `cc-command.ps1 -Restart -ComputerNumber N` is used to restart the
-target through the host/CC bridge. Both non-dry-run operations are explicit
-live-tree mutations and require an idle, clean target.
+Only source is shared. Each computer owns its own `data/`, `artifacts/`, and
+`.settings`; those paths contain state, logs, conversations, generated images,
+the administrative mailbox, and credentials. Editing source from either the
+repository or ComputerCraft changes the same repository files. Restart after
+editing Lua that is already loaded.
 
 ### `cc-command.ps1` - administrative mailbox client
 
@@ -689,8 +647,8 @@ Public parameters: exactly one of `-Code` or `-Restart`, optional
 `-ComputerNumber` (default `3`), optional `-TimeoutSeconds` (default `30`), and
 PowerShell `-WhatIf` support.
 
-The script uses the same exact computer base directory as `deploy.ps1`. It permits
-no arbitrary target path. There is one outstanding request. The producer writes
+The script uses the selected ComputerCraft computer directory. It permits no
+arbitrary target path. There is one outstanding request. The producer writes
 complete JSON to `data/host-command-request.json.tmp` and atomically renames it to
 `data/host-command-request.json`, then waits for a result with the same `id` at
 `data/host-command-result.json`. A result whose `error_code` is `"busy"` causes
@@ -893,7 +851,7 @@ hover and preserves the raw inner JSON byte-for-byte.
 - `formatPlayerMessage`
 - `formatAgentMessage`
 
-`data/chat_messages.lua` is the optional editable formatter loaded by
+`lib/chat_messages.lua` is the optional editable formatter loaded by
 `ChatComponents` for player echoes and locally authored assistant progress/error
 text. It does not format model-authored final components.
 
@@ -959,7 +917,7 @@ algorithms are cohesive and reusable outside the chat application.
 
 - `run`
 
-The root `img2mon.lua` remains a thin CC entrypoint that supplies arguments and
+`lib/img2mon.lua` remains a thin CC entrypoint that supplies arguments and
 adapters.
 
 ## Injected ports
@@ -993,8 +951,6 @@ Permitted dependencies point inward:
 `codex.lua supervisor -> CcBootstrap + concrete CC startup APIs`
 
 `set_api_key.lua -> CC settings API only`
-
-`deploy.ps1 -> staged live tree + selected CC computer directory`
 
 `cc-command.ps1 -> selected CC computer mailbox files`
 

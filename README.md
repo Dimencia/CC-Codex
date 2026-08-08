@@ -4,10 +4,10 @@ CC Codex is a Lua agent interface for CC:Tweaked. It accepts player input from
 the ComputerCraft terminal and Minecraft chat, lets the model use explicitly
 registered tools, and can render generated images on a monitor.
 
-The replacement exists only under [`refactored/`](refactored/). The live CC
-computer remains untouched; it must not be edited, migrated, or replaced until
-the isolated implementation passes its remaining gates and deployment is
-explicitly approved.
+The shared ComputerCraft source lives under [`computer/`](computer/). Computer
+3 links its two root entrypoints to that directory and junctions its `lib/`
+directory to the repository. Runtime data, artifacts, and settings remain
+local to each computer.
 
 ## Active refactor
 
@@ -32,18 +32,17 @@ Responses keeps model-visible conversation history server-side. Staging retains
 only the latest response cursor and, during restart, the next provider input
 checkpoint; it never reconstructs or resends a reasoning-item chain. A separate
 plaintext diagnostic transcript is written locally as described below. Staging
-contains no usable secret; after deployment root `codex.lua` reads the API key
-from CC-local settings.
+contains no usable secret; root `codex.lua` reads the API key from CC-local
+settings.
 
 The editable system prompt and mutable preferences are separate files. The full
 pair is sent on first use and after compaction; a later preferences change sends
 only the replacement preferences. The obsolete `codex_monitor.lua` launcher is
 not part of the replacement.
 
-The deployed `data/lua_structure.md` is a compact implementation map for the
-model. It can read that guide, then inspect source modules with
-`execute_cc_lua` when a request depends on the Lua layout. `deploy.ps1` requires
-and verifies the guide alongside the rest of `refactored/live`.
+The shared `computer/lib/docs/lua_structure.md` is a compact implementation map
+for the model. It can read that guide, then inspect source modules with
+`execute_cc_lua` when a request depends on the Lua layout.
 
 The model authors one rich Minecraft text component for each assistant final. The
 Chat Box adds the outer `<Codex>` label and sends components within the installed
@@ -100,112 +99,25 @@ Conversation logs are sensitive plaintext with no redaction. Treat them like CC
 settings and mailbox data: do not share the computer directory or save backup as
 harmless diagnostics.
 
-## Deployment helper and API key
+## Shared source and local runtime
 
-`deploy.ps1` copies `refactored/live` into a CC computer directory. Its exact
-base directory is:
+Computer 3 is wired directly to the repository at:
 
-`C:\Users\Dimen\curseforge\minecraft\Instances\All the Mons - ATMons (1)\saves\CC Test\computercraft\computer`
+`C:\Users\Dimen\curseforge\minecraft\Instances\All the Mons - ATMons (1)\saves\CC Test\computercraft\computer\3`
 
-Computer `3` is the default target:
+Its `startup.lua` and `codex.lua` are file symlinks to `computer/`, while its
+`lib/` directory is a junction to `computer/lib`. Editing either side edits the
+same source. Restart Codex after changing Lua that was already loaded.
 
-```powershell
-.\deploy.ps1 -DryRun
-.\deploy.ps1
-```
-
-Use `-ComputerNumber` to select another computer, and combine it with `-DryRun`
-to inspect that target without writing:
-
-```powershell
-.\deploy.ps1 -ComputerNumber 0 -DryRun
-.\deploy.ps1 -ComputerNumber 0
-```
-
-The copy is non-destructive: it updates staged paths but does not mirror or
-delete target-only files. In particular, the target's `/.settings`,
-`data/preferences.md`, and `data/codex-state.json` remain in place. A real copy
-verifies every written file against its staged SHA-256 hash and saves an
-immutable pre-deployment source snapshot under `.codex/deployments/` for a
-later return merge.
-
-## Returning computer edits
-
-`merge-from-computer.ps1` is the controlled reverse path. With no `-Apply` it
-only reads the repository, computer, and deployment baseline and prints a
-classification; `-ReportPath` can save the same report as JSON. When a baseline
-exists, unchanged-side edits are taken automatically and overlapping text edits
-are reported as conflicts. Runtime data, logs, artifacts, settings, and mailbox
-files are excluded.
-
-```powershell
-.\merge-from-computer.ps1
-.\merge-from-computer.ps1 -ReportPath .codex\computer-3-merge.json
-.\merge-from-computer.ps1 -Apply
-```
-
-`-Apply` is the separate final write action. It refuses to write when the
-deployment baseline is missing or any conflict remains, and backs up replaced
-repository files under `.codex/merge-backups/`. Computer 3's current session
-predates baseline recording, so its preview is intentionally advisory and must
-not be applied until an immutable pre-edit base is supplied with `-BaseRoot` or
-a future deployment records one automatically.
-
-## Git-backed computer workflow
-
-Once computer 3 is idle, initialize it once and record its current source tree
-on a work branch. The initializer ignores CC credentials and runtime data:
-
-```powershell
-.\git-computer.ps1 -Action Status
-.\git-computer.ps1 -Action Initialize
-```
-
-After the repository's desired code is committed to a local branch, Git-backed
-deployment is a fast-forward only operation:
-
-```powershell
-.\deploy.ps1 -GitBranch master -DryRun
-.\deploy.ps1 -GitBranch master
-```
-
-To bring the computer branch into this repository later, fetch it without
-changing the working tree, create a new task branch, and merge the computer
-branch into that new branch:
-
-```powershell
-.\git-computer.ps1 -Action FetchToRepository
-git switch -c codex/<task-slug>
-git merge computer-3/codex/computer-3-work
-```
-
-The fetch helper does not merge or overwrite files. Do not merge computer 3
-directly into `master`; resolve any conflicts on the new task branch first.
-
-When a task is complete, commit that task branch, preview and perform the Git
-handoff, then restart Codex through the host bridge:
-
-```powershell
-.\deploy.ps1 -GitBranch codex/<task-slug> -DryRun
-.\deploy.ps1 -GitBranch codex/<task-slug>
-.\cc-command.ps1 -Restart -ComputerNumber 3 -TimeoutSeconds 60 -WhatIf
-.\cc-command.ps1 -Restart -ComputerNumber 3 -TimeoutSeconds 60
-```
-
-Both non-dry-run commands require explicit approval because they mutate the
-live computer. Computer 3 must be idle and clean before the handoff.
-
-After an approved copy, run `set_api_key` on the CC computer and enter the key
-there. It stores `cc_codex.api_key` in CC's local settings; root `codex.lua` owns
-loading that value at startup. `set_api_key.lua` is only the thin interactive CC
-entrypoint. No Windows environment variable participates in credential loading.
-CC settings are plaintext, so the computer directory and world/save backup are
-inside the credential trust boundary and must not be shared as harmless data.
+Only source is shared. Each computer keeps its own `data/`, `artifacts/`, and
+`.settings`; these contain conversation logs, runtime state, generated images,
+the administrative mailbox, and the plaintext `cc_codex.api_key` setting.
+Run `lib/set_api_key.lua` from inside CC to configure that local setting.
 
 ## Administrative command mailbox
 
 `cc-command.ps1` is the host-side client for one outstanding administrative
-request. It uses the same computer base directory as `deploy.ps1`, defaults to
+request. It targets a selected ComputerCraft computer directory, defaults to
 computer `3`, and accepts exactly one of `-Code` or `-Restart`:
 
 ```powershell
@@ -237,13 +149,9 @@ computer/save directory can execute arbitrary Lua with normal CC authority or
 restart Codex. Requests, results, and Lua source are plaintext. Never send API
 keys or other secrets through the mailbox.
 
-Running `deploy.ps1` without `-DryRun`, changing a live CC tree, and making a live
-model request remain separate explicit actions. Publishing a command without
-`-WhatIf` is also a live-tree mutation and requires its own explicit approval.
-This documentation does not authorize any of them.
-
-Live model calls, edits to the live CC tree, data migration, and deployment
-remain out of scope without later explicit approval.
+Publishing a command without `-WhatIf` is a live-tree mutation and requires
+explicit approval. Live model calls and Minecraft interaction remain separate
+from source editing.
 
 ## Authoritative documents
 

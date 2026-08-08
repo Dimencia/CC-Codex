@@ -1,4 +1,4 @@
-package.path = "live/?.lua;live/?/init.lua;?.lua;?/init.lua;" .. package.path
+package.path = "../computer/?.lua;../computer/?/init.lua;?.lua;?/init.lua;" .. package.path
 
 local Runner = require("tests.image.runner")
 require("tests.image.image_spec").register(Runner)

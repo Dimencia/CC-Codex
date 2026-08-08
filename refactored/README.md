@@ -1,9 +1,9 @@
 # CC Codex isolated replacement
 
-This directory contains the isolated replacement. Nothing here is installed in
-the live ComputerCraft computer, which remains untouched.
+This directory contains the offline validation harness for the shared source
+under the repository-root `computer/` directory.
 
-- `live/` mirrors the eventual CC distribution.
+- `../computer/` is the live-linked CC source tree.
 - `tests/` contains offline Lua and fixture tests.
 - `fixtures/` contains synthetic provider payloads and never contacts a model.
 - `scripts/` contains development-only verification commands.
@@ -17,10 +17,10 @@ Responses owns retained model-visible conversation history. This tree persists
 only the latest response cursor and a short restart checkpoint for provider
 continuation; it never reconstructs a reasoning-item chain. A separate local
 diagnostic JSONL transcript is retained below. The tree stages no usable secret;
-root `codex.lua` loads the API key from CC-local settings after deployment.
+root `codex.lua` loads the API key from CC-local settings.
 
-`live/data/system_prompt.md` is the immutable system prompt.
-`live/data/preferences.md` is intentionally not required in the package because
+`../computer/lib/docs/system_prompt.md` is the shared system prompt.
+`data/preferences.md` is intentionally not required in the package because
 the application creates it atomically on first read. The files are sent together
 on first use and after compaction; subsequent preferences-file changes resend
 only preferences. The old `codex_monitor.lua` launcher is obsolete and is not
@@ -56,7 +56,7 @@ ordinary conversation input. `!conversation new [name]`, `rename <name>`,
 without entering provider input.
 
 Bootstrap writes one plaintext diagnostic stream per conversation under
-`live/data/conversations` at runtime. It resumes the saved conversation-log ID
+`data/conversations` at runtime. It resumes the saved conversation-log ID
 after restart, keeps the same file across compaction, and `!clear` marks it
 cleared before starting a new ID. Retention keeps three matching
 `conversation-*.jsonl` streams
@@ -65,7 +65,7 @@ turn metrics, errors, and full tool input/output. Aggregate metrics also remain 
 `data/usage.jsonl`; no separate `tools.jsonl` exists.
 
 Conversation names and the latest provider cursor are kept in
-`live/data/conversations.json`. The model can read available names with
+`data/conversations.json`. The model can read available names with
 `list_conversations` and may title the active conversation with
 `name_conversation`. Topic changes are only recommendations: the model uses a
 `suggest_command` link for `!conversation new ...` or `!conversation switch ...`,
@@ -78,19 +78,16 @@ verbose delivery may contain secrets or sensitive world data; neither is
 redacted.
 
 Empty runtime directories are not packaged. Bootstrap creates
-`live/artifacts/images` and `live/data/conversations` for a run, and the owning
+`artifacts/images` and `data/conversations` for a run, and the owning
 stores recreate them when necessary.
 
-The repository-root `deploy.ps1` copies this directory's `live/` tree to CC
-computer `3` by default, below
-`C:\Users\Dimen\curseforge\minecraft\Instances\All the Mons - ATMons (1)\saves\CC Test\computercraft\computer`.
-Use `-ComputerNumber <number>` to override the target and `-DryRun` to inspect the
-copy without writing. The copy is non-destructive and preserves target-only
-`/.settings`, `data/preferences.md`, and `data/codex-state.json`.
+Computer 3 links `startup.lua` and `codex.lua` to `../computer/` and junctions
+its `lib/` directory to `../computer/lib/`. Its data, artifacts, and settings
+remain local to the computer.
 
-On the CC computer, run `set_api_key` to store `cc_codex.api_key` in local CC
-settings. Root `codex.lua` loads it; `set_api_key.lua` is only the thin CC
-entrypoint. No Windows environment variable is used. CC settings are plaintext,
+On the CC computer, run `lib/set_api_key.lua` to store `cc_codex.api_key` in
+local CC settings. Root `codex.lua` loads it. No Windows environment variable
+is used. CC settings are plaintext,
 so access to the computer directory or save backup implies access to the key.
 
 The repository-root `cc-command.ps1` publishes one administrative request to the
@@ -109,9 +106,8 @@ retries a `busy` result until its timeout. The mailbox has no authentication
 beyond Windows/save filesystem access and grants arbitrary-Lua administrative
 authority. Its plaintext request/result files must never carry secrets.
 
-Do not run a live Responses request, copy this tree into the live CC computer,
-migrate live data, deploy, or invoke `cc-command.ps1` without `-WhatIf` unless
-that action is separately and explicitly approved.
+Do not run a live Responses request or invoke `cc-command.ps1` without `-WhatIf`
+unless that action is separately and explicitly approved.
 
 The active plan is [`../REFACTOR_PLAN.md`](../REFACTOR_PLAN.md). Public ownership
 and method names are fixed by

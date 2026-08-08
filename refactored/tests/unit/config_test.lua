@@ -12,7 +12,7 @@ return {
             Harness.equal(3, config.maxComponentRetries)
             Harness.equal(64, config.maxReadyPerPump)
             Harness.equal("data/codex-state.json", config.statePath)
-            Harness.equal("data/system_prompt.md", config.systemPromptPath)
+            Harness.equal("lib/docs/system_prompt.md", config.systemPromptPath)
             Harness.equal("data/usage.jsonl", config.usagePath)
             Harness.equal("data/conversations", config.conversationLogDirectory)
             Harness.equal(3, config.conversationLogsToKeep)

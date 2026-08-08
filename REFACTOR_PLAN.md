@@ -1,9 +1,8 @@
 # CC Codex refactor plan
 
-This is the active implementation plan for the isolated replacement under
-`refactored/`. The live CC computer remains untouched. Do not contact a live
-model, copy staged files into the live computer, migrate live data, or deploy
-without a later explicit approval.
+This is the implementation plan for the shared source under `computer/`, with
+offline validation under `refactored/`. Computer 3 reads source through file
+symlinks and a `lib/` junction; its runtime data remains local.
 
 [`ARCHITECTURE_CONTRACTS.md`](ARCHITECTURE_CONTRACTS.md) is binding. Delegated
 implementers use its ownership and public method map instead of inventing new
@@ -67,7 +66,7 @@ CC computer, Chat Box peripheral, or Responses request.
 
 ### Separate system prompt and preferences
 
-`data/system_prompt.md` is the easy-to-edit, host-owned system prompt.
+`lib/docs/system_prompt.md` is the easy-to-edit, host-owned system prompt.
 `data/preferences.md` is mutable and is the only file changed by the preference
 tool. If preferences are absent, the store creates a small editable default
 atomically so startup does not fail. The required system prompt is staged with
@@ -261,32 +260,18 @@ On startup, `CodexApp` detects the checkpoint and immediately calls the ordinary
 `ChatEngine:runTurn` path with a continuation-bearing `TurnRequest`. It does not
 wait for new player input.
 
-### Non-destructive deployment and CC-local credential
+### Shared source and CC-local credential
 
-The repository-root `deploy.ps1` copies `refactored/live` below this exact CC
-computer base path:
+Computer 3 links `startup.lua` and `codex.lua` to the repository's `computer/`
+directory and junctions `lib/` to `computer/lib`. Source edits are immediately
+visible to ComputerCraft and edits made in ComputerCraft update the repository.
+Each computer keeps its own `data/`, `artifacts/`, and `.settings`.
 
-`C:\Users\Dimen\curseforge\minecraft\Instances\All the Mons - ATMons (1)\saves\CC Test\computercraft\computer`
-
-`-ComputerNumber` selects the final child directory and defaults to `3`.
-`-DryRun` reports the planned copy without writing. Normal examples are
-`.\deploy.ps1 -DryRun`, `.\deploy.ps1`, and
-`.\deploy.ps1 -ComputerNumber 0 -DryRun`.
-
-The copy updates source-owned staged paths without mirroring or deleting anything
-that exists only at the target. Target `/.settings`, `data/preferences.md`, and
-`data/codex-state.json` therefore survive deployment. Each copied file is read
-back through a SHA-256 hash comparison. An actual non-dry-run copy is still a
-separate explicit action; having the script or running a dry run does not approve
-deployment.
-
-The API key is configured inside CC by running `set_api_key`, which stores the
-setting named `cc_codex.api_key`. Root `codex.lua` owns loading that setting into
-runtime configuration; `set_api_key.lua` is a thin interactive CC entrypoint and
-does not own application startup. No Windows environment variable is read or
-written for this workflow. CC persists settings as plaintext, so access to the
-computer directory or save/world backup belongs inside the credential trust
-boundary.
+The API key is configured inside CC by running `lib/set_api_key.lua`, which
+stores the setting named `cc_codex.api_key`. Root `codex.lua` owns loading that
+setting into runtime configuration. No Windows environment variable is read or
+written. CC persists settings as plaintext, so access to the computer directory
+or save/world backup belongs inside the credential trust boundary.
 
 ### Administrative command mailbox
 
@@ -336,10 +321,8 @@ The staged replacement now has the fixed architecture above:
   path; mixed responses announce paths separately before the untouched rich final;
 - immediate restart persists a continuation before writing its marker and resumes
   without waiting for another player message;
-- the deployment helper defaults to computer `3`, supports target override and
-  dry-run review, and preserves target-only settings/preferences/state;
 - root `codex.lua` loads `cc_codex.api_key` from CC-local plaintext settings,
-  while `set_api_key.lua` remains a thin entrypoint;
+  while `lib/set_api_key.lua` remains a thin entrypoint;
 - `CommandMailbox` is a portable noncritical input adapter with fixed
   quarter-second polling, at-most-once administrative Lua execution, atomic
   results, and idle-only durable restart;
@@ -348,9 +331,7 @@ The staged replacement now has the fixed architecture above:
 - fixed commands use direct dispatch rather than a private command registry.
 
 The obsolete `codex_monitor.lua` launcher is not staged. The root `codex.lua`
-supervisor owns restart iteration. Any later removal of an old launcher from the
-live computer remains part of an explicitly approved deployment, not this
-isolated edit.
+supervisor owns restart iteration.
 
 Mutable `artifacts/images` directories are also not staged as empty placeholders.
 Bootstrap creates the directory for a run, and the artifact store recreates it
@@ -370,23 +351,21 @@ when a player runs `set_api_key` on the target computer.
    call is needed.
 2. Before changing model, reasoning, service tier, output, compaction, or
    tool-round defaults, collect representative telemetry from an approved run.
-3. Obtain explicit approval before a live Responses/model request or running
-   `deploy.ps1` without `-DryRun`. Review the dry-run target first, preserve a
-   rollback point, and confirm target-only `/.settings`, preferences, and state
-   remain present before retiring a legacy file.
+3. Keep the source links and junction intact while running CC-only checks, and
+   confirm that `data/`, `artifacts/`, and `.settings` remain computer-local.
 4. Obtain separate explicit approval before any `cc-command.ps1` invocation
    without `-WhatIf`; the verified dry description does not authorize a live
    request.
 
 ## Completion gates
 
-The isolated refactor is ready for deployment review only when:
+The shared source is ready for normal use only when:
 
 - terminal, Chat Box, and monitor behavior pass CC-only smoke checks;
-- state writes and non-destructive deployment preserve target-only mutable files
-  and fail visibly;
+- source links expose the same implementation to the repository and CC while
+  state writes remain computer-local;
 - the implemented mailbox contract and safe `-WhatIf` checks stay green, with
   real CC mailbox behavior covered by the separate smoke gate;
 - representative telemetry exists before any model, reasoning, service-tier,
   output, compaction, or tool-round default changes;
-- live model contact and live-tree deployment each receive explicit approval.
+- live model contact receives explicit approval.

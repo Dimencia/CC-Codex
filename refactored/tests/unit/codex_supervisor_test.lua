@@ -11,13 +11,13 @@ local function runSupervisor(outcomes)
     local errors = {}
     _G.fs = {
         combine = function(left, right) return left .. "/" .. right end,
-        getDir = function() return "live" end,
+        getDir = function() return "computer" end,
         exists = function() return marker end,
         delete = function() marker = false end
     }
     _G.shell = {
         resolve = function(path) return path end,
-        getRunningProgram = function() return "live/codex.lua" end,
+        getRunningProgram = function() return "computer/codex.lua" end,
         run = function()
             runs = runs + 1
             local outcome = outcomes[runs] or {}
@@ -26,7 +26,7 @@ local function runSupervisor(outcomes)
         end
     }
     _G.printError = function(message) errors[#errors + 1] = message end
-    local chunk = assert(loadfile("live/codex.lua"))
+    local chunk = assert(loadfile("../computer/codex.lua"))
     local result = table.pack(pcall(chunk))
     _G.fs = previous.fs
     _G.shell = previous.shell
@@ -49,11 +49,11 @@ local function runManagedChild(apiKey)
     local observed = { definitions = 0, reads = 0, builds = 0, runs = 0, checks = 0 }
     _G.fs = {
         combine = function(left, right) return left .. "/" .. right end,
-        getDir = function() return "live" end
+        getDir = function() return "computer" end
     }
     _G.shell = {
         resolve = function(path) return path end,
-        getRunningProgram = function() return "live/codex.lua" end
+        getRunningProgram = function() return "computer/codex.lua" end
     }
     _G.settings = {
         define = function(name, options)
@@ -85,7 +85,7 @@ local function runManagedChild(apiKey)
     }
 
     local result = table.pack(pcall(function()
-        local chunk = assert(loadfile("live/codex.lua"))
+        local chunk = assert(loadfile("../computer/codex.lua"))
         return chunk("--codex-managed-child")
     end))
     _G.fs = previous.fs
@@ -140,7 +140,7 @@ local function runApiKeySetter(apiKey)
     _G.term = { write = function(...) appendOutput(observed.output, ...) end }
 
     local result = table.pack(pcall(function()
-        local chunk, loadError = loadfile("live/set_api_key.lua")
+        local chunk, loadError = loadfile("../computer/lib/set_api_key.lua")
         if not chunk then error(loadError, 0) end
         return chunk()
     end))

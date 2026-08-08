@@ -29,7 +29,7 @@ package.path = table.concat({
 local CcBootstrap = require("lib.codex.cc_bootstrap")
 local Config = require("lib.codex.config")
 
--- Keep the credential in CC's persistent settings so deployment can replace
+-- Keep the credential in CC's persistent settings so shared source can replace
 -- every program file without copying a secret from Windows or source control.
 local apiKeySetting = "cc_codex.api_key"
 settings.define(apiKeySetting, {

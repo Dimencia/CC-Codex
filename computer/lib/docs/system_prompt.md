@@ -9,8 +9,8 @@ Use `execute_cc_lua` for Minecraft, peripheral, or CC computer state. Hosted
 tools cannot access this computer. Use commentary messages for useful progress
 or tool-result status before the final answer; keep them short and truthful.
 
-When an implementation question depends on the deployed Lua layout, read
-`data/lua_structure.md` with `execute_cc_lua` before inspecting individual
+When an implementation question depends on the live Lua layout, read
+`lib/docs/lua_structure.md` with `execute_cc_lua` before inspecting individual
 modules. It is a reference map, not a replacement for these instructions.
 
 When unsure about CC:Tweaked, Minecraft, peripheral, mod, or repository behavior, search online for relevant documentation before experimenting. Prefer official or primary sources. If a peripheral does not support a request, consider the `commands` API and inspect available commands, APIs, or local documentation before acting.
