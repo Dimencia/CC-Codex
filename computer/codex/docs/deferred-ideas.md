@@ -52,7 +52,7 @@ Active claims:
 | --- | --- | --- | --- |
 | `CC-002` | Unconfirmed legacy owner | `codex/cc-002-chatbox-format-call` / PR #3 | Reviewed and green; awaiting coordinator merge decision |
 | `CC-003` | Sprocket | `codex/cc-003-client-scoped-mailboxes` / PR #4 | Active; duplicate work was detected, so do not claim |
-| `CC-005` | Switchboard; handoff required | `codex/file-patch-tool-9a7e` / PR #7 | Blocked: conflict and P1 validation finding; automated fix did not update the PR head |
+| `CC-005` | Switchboard; handoff required | `codex/file-patch-tool-9a7e` / PR #7 | Blocked: conflict plus validation, zero-count hunk, final-newline, and restart-marker safety findings; automation did not update the PR head |
 
 Claiming is an atomic documentation update on `master`, not a branch-name
 convention. Before feature edits, create a fresh roadmap-only branch from the
