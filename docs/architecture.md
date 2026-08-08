@@ -86,3 +86,11 @@ Keep policy portable and keep CC effects at the supervisor/bootstrap and adapter
 boundaries. Prefer a smaller method or deleted branch to a new service. Add a
 module only for a distinct lifecycle, reusable policy, or effect boundary that
 is visible in the current implementation.
+
+Treat simplicity and documentation as gates on every change. Inspect the patch
+for newly obsolete code and duplicate ownership, keep cleanup inside the changed
+boundary, and re-read each document that describes affected behavior, paths,
+commands, settings, tests, safety, installation, or deployment. Update the
+CC-facing guide when the running agent needs the result. See
+[`parallel-workflow.md`](parallel-workflow.md) before starting autonomous work
+on a roadmap item.
