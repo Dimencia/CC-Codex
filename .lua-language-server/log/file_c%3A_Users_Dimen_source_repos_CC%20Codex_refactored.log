@@ -1,0 +1,372 @@
+[21:14:59.524][info] [#0:C:/Users/Dimen/.vscode/extensions/sumneko.lua-3.18.2-win32-x64/server\main.lua:71]: Lua Lsp startup, root: 	C:/Users/Dimen/.vscode/extensions/sumneko.lua-3.18.2-win32-x64/server
+[21:14:59.525][info] [#0:C:/Users/Dimen/.vscode/extensions/sumneko.lua-3.18.2-win32-x64/server\main.lua:72]: ROOT:	C:/Users/Dimen/.vscode/extensions/sumneko.lua-3.18.2-win32-x64/server
+[21:14:59.525][info] [#0:C:/Users/Dimen/.vscode/extensions/sumneko.lua-3.18.2-win32-x64/server\main.lua:73]: LOGPATH:	C:\Users\Dimen\source\repos\CC Codex\refactored\.lua-language-server\log
+[21:14:59.525][info] [#0:C:/Users/Dimen/.vscode/extensions/sumneko.lua-3.18.2-win32-x64/server\main.lua:74]: METAPATH:	C:\Users\Dimen\source\repos\CC Codex\refactored\.lua-language-server\meta
+[21:14:59.525][info] [#0:C:/Users/Dimen/.vscode/extensions/sumneko.lua-3.18.2-win32-x64/server\main.lua:75]: VERSION:	3.18.2-dev
+[21:14:59.555][info] [#0:script\language.lua:137]: VSC language: nil
+[21:14:59.555][info] [#0:script\language.lua:138]: LS  language: en-us
+[21:14:59.555][info] [#0:script\client.lua:657]: Client init	{
+  capabilities = {
+    textDocument = {
+      completion = {
+        completionItem = {
+          tagSupport = {
+            valueSet = { 1, 2 }
+          }
+        }
+      }
+    },
+    workspace = {
+      configuration = true
+    }
+  },
+  initializationOptions = {
+    changeConfiguration = true,
+    trustByClient = true,
+    useSemanticByRange = true,
+    viewDocument = true
+  },
+  rootUri = "file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored"
+}
+[21:14:59.555][info] [#0:script\language.lua:137]: VSC language: nil
+[21:14:59.555][info] [#0:script\language.lua:138]: LS  language: en-us
+[21:14:59.555][info] [#0:script\workspace\workspace.lua:38]: Workspace init root: 	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored
+[21:14:59.555][info] [#0:script\workspace\workspace.lua:42]: Log path: 	C:/Users/Dimen/source/repos/CC Codex/refactored/.lua-language-server/log/file_c%3A_Users_Dimen_source_repos_CC%20Codex_refactored.log
+[21:14:59.572][info] [#0:script\workspace\workspace.lua:48]: Workspace create: 	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored
+[21:14:59.573][warn] [#0:script\config\loader.lua:116]: No config?	nil
+[21:14:59.573][info] [#0:script\provider\provider.lua:56]: Load config from .luarc.json/.luarc.jsonc	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored
+[21:14:59.573][info] [#0:script\provider\provider.lua:57]: {
+  ["$schema"] = "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
+  ["diagnostics.disable"] = { "lowercase-global" },
+  ["diagnostics.globals"] = { "printError", "sleep", "write", "utf8" },
+  ["runtime.builtin"] = {
+    io = "disable",
+    os = "disable"
+  },
+  ["runtime.path"] = { "?.lua", "?/init.lua", "../computer/?.lua", "../computer/?/init.lua" },
+  ["runtime.version"] = "Lua 5.2",
+  ["workspace.checkThirdParty"] = false,
+  ["workspace.ignoreDir"] = { ".lua-language-server", "node_modules" },
+  ["workspace.library"] = { "C:/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua" }
+}
+[21:14:59.573][warn] [#0:script\config\loader.lua:116]: No config?	nil
+[21:14:59.573][info] [#0:script\provider\provider.lua:65]: Load config from client	fallback
+[21:14:59.573][info] [#0:script\provider\provider.lua:66]: nil
+[21:14:59.573][info] [#0:script\provider\provider.lua:36]: Load config from specified	.luarc.json
+[21:14:59.573][info] [#0:script\provider\provider.lua:37]: {
+  ["$schema"] = "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
+  ["diagnostics.disable"] = { "lowercase-global" },
+  ["diagnostics.globals"] = { "printError", "sleep", "write", "utf8" },
+  ["runtime.builtin"] = {
+    io = "disable",
+    os = "disable"
+  },
+  ["runtime.path"] = { "?.lua", "?/init.lua", "../computer/?.lua", "../computer/?/init.lua" },
+  ["runtime.version"] = "Lua 5.2",
+  ["workspace.checkThirdParty"] = false,
+  ["workspace.ignoreDir"] = { ".lua-language-server", "node_modules" },
+  ["workspace.library"] = { "C:/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua" }
+}
+[21:14:59.574][info] [#0:script\library.lua:216]: Init builtin library at:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored
+[21:14:59.592][info] [#0:script\library.lua:216]: Init builtin library at:	nil
+[21:14:59.603][warn] [#0:script\config\loader.lua:116]: No config?	nil
+[21:14:59.603][info] [#0:script\provider\provider.lua:56]: Load config from .luarc.json/.luarc.jsonc	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored
+[21:14:59.603][info] [#0:script\provider\provider.lua:57]: {
+  ["$schema"] = "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
+  ["diagnostics.disable"] = { "lowercase-global" },
+  ["diagnostics.globals"] = { "printError", "sleep", "write", "utf8" },
+  ["runtime.builtin"] = {
+    io = "disable",
+    os = "disable"
+  },
+  ["runtime.path"] = { "?.lua", "?/init.lua", "../computer/?.lua", "../computer/?/init.lua" },
+  ["runtime.version"] = "Lua 5.2",
+  ["workspace.checkThirdParty"] = false,
+  ["workspace.ignoreDir"] = { ".lua-language-server", "node_modules" },
+  ["workspace.library"] = { "C:/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua" }
+}
+[21:14:59.603][warn] [#0:script\config\loader.lua:116]: No config?	nil
+[21:14:59.603][info] [#0:script\provider\provider.lua:65]: Load config from client	fallback
+[21:14:59.603][info] [#0:script\provider\provider.lua:66]: nil
+[21:14:59.603][info] [#0:script\workspace\workspace.lua:330]: Preload start:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored
+[21:14:59.605][info] [#0:script\workspace\workspace.lua:336]: Scan files at:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored
+[21:14:59.606][info] [#0:script\workspace\workspace.lua:359]: Scan library at:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/bit32.lua
+[21:14:59.606][info] [#0:script\workspace\workspace.lua:359]: Scan library at:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/math.lua
+[21:14:59.607][info] [#0:script\workspace\workspace.lua:359]: Scan library at:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/coroutine.lua
+[21:14:59.607][info] [#0:script\workspace\workspace.lua:359]: Scan library at:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.609][info] [#0:script\workspace\workspace.lua:359]: Scan library at:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/basic.lua
+[21:14:59.609][info] [#0:script\workspace\workspace.lua:359]: Scan library at:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/package.lua
+[21:14:59.609][info] [#0:script\workspace\workspace.lua:359]: Scan library at:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/builtin.lua
+[21:14:59.609][info] [#0:script\workspace\workspace.lua:359]: Scan library at:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/table.lua
+[21:14:59.609][info] [#0:script\workspace\workspace.lua:359]: Scan library at:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/debug.lua
+[21:14:59.609][info] [#0:script\workspace\workspace.lua:359]: Scan library at:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/string.lua
+[21:14:59.610][info] [#0:script\workspace\workspace.lua:330]: Preload start:	<fallback>
+[21:14:59.612][info] [#0:script\workspace\workspace.lua:359]: Scan library at:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/bit32.lua
+[21:14:59.612][info] [#0:script\workspace\workspace.lua:359]: Scan library at:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/math.lua
+[21:14:59.612][info] [#0:script\workspace\workspace.lua:359]: Scan library at:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/coroutine.lua
+[21:14:59.612][info] [#0:script\workspace\workspace.lua:359]: Scan library at:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.614][info] [#0:script\workspace\workspace.lua:359]: Scan library at:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/basic.lua
+[21:14:59.614][info] [#0:script\workspace\workspace.lua:359]: Scan library at:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/package.lua
+[21:14:59.614][info] [#0:script\workspace\workspace.lua:359]: Scan library at:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/builtin.lua
+[21:14:59.614][info] [#0:script\workspace\workspace.lua:359]: Scan library at:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/table.lua
+[21:14:59.615][info] [#0:script\workspace\workspace.lua:359]: Scan library at:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/debug.lua
+[21:14:59.615][info] [#0:script\workspace\workspace.lua:359]: Scan library at:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/string.lua
+[21:14:59.615][info] [#0:script\workspace\workspace.lua:385]: Found 88 files at:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored
+[21:14:59.615][info] [#0:script\workspace\loading.lua:160]: Load files from disk:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored
+[21:14:59.615][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/string.lua , size = 6.560 KB
+[21:14:59.617][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/string.lua
+[21:14:59.617][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/debug.lua , size = 7.485 KB
+[21:14:59.620][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/debug.lua
+[21:14:59.620][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/table.lua , size = 5.134 KB
+[21:14:59.622][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/table.lua
+[21:14:59.622][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/builtin.lua , size = 0.302 KB
+[21:14:59.622][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/builtin.lua
+[21:14:59.622][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/package.lua , size = 2.805 KB
+[21:14:59.623][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/package.lua
+[21:14:59.623][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/basic.lua , size = 17.560 KB
+[21:14:59.629][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/basic.lua
+[21:14:59.629][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/cc/audio/dfpwm.lua , size = 2.999 KB
+[21:14:59.630][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.630][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/cc/completion.lua , size = 2.790 KB
+[21:14:59.631][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.631][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/cc/expect.lua , size = 1.770 KB
+[21:14:59.631][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.631][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/cc/image/nft.lua , size = 1.239 KB
+[21:14:59.632][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.632][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/cc/pretty.lua , size = 6.418 KB
+[21:14:59.633][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.634][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/cc/require.lua , size = 1.146 KB
+[21:14:59.634][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.634][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/cc/shell/completion.lua , size = 7.135 KB
+[21:14:59.636][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.636][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/cc/strings.lua , size = 1.493 KB
+[21:14:59.636][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.637][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/generic-peripherals/energy_storage.lua , size = 0.688 KB
+[21:14:59.637][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.637][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/generic-peripherals/fluid_storage.lua , size = 1.958 KB
+[21:14:59.638][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.638][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/generic-peripherals/inventory.lua , size = 3.708 KB
+[21:14:59.638][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.639][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/colors.lua , size = 4.907 KB
+[21:14:59.640][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.640][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/colours.lua , size = 4.980 KB
+[21:14:59.642][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.642][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/commands.lua , size = 7.997 KB
+[21:14:59.644][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.644][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/disk.lua , size = 3.484 KB
+[21:14:59.645][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.645][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/fs.lua , size = 11.146 KB
+[21:14:59.649][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.649][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/gps.lua , size = 1.059 KB
+[21:14:59.649][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.649][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/help.lua , size = 1.323 KB
+[21:14:59.650][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.650][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/http.lua , size = 7.619 KB
+[21:14:59.652][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.652][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/io.lua , size = 7.473 KB
+[21:14:59.654][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.654][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/keys.lua , size = 2.167 KB
+[21:14:59.654][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.654][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/multishell.lua , size = 3.115 KB
+[21:14:59.655][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.655][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/os.lua , size = 9.971 KB
+[21:14:59.657][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.657][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/paintutils.lua , size = 4.121 KB
+[21:14:59.658][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.659][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/parallel.lua , size = 1.271 KB
+[21:14:59.659][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.659][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/peripheral.lua , size = 3.492 KB
+[21:14:59.660][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.660][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/pocket.lua , size = 0.916 KB
+[21:14:59.660][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.661][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/rednet.lua , size = 5.406 KB
+[21:14:59.661][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.662][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/redstone.lua , size = 5.005 KB
+[21:14:59.663][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.663][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/settings.lua , size = 3.900 KB
+[21:14:59.664][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.664][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/shell.lua , size = 7.010 KB
+[21:14:59.665][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.666][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/term.lua , size = 9.174 KB
+[21:14:59.667][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.667][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/textutils.lua , size = 7.954 KB
+[21:14:59.669][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.669][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/turtle.lua , size = 14.136 KB
+[21:14:59.674][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.674][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/vector.lua , size = 4.206 KB
+[21:14:59.675][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.675][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/window.lua , size = 2.777 KB
+[21:14:59.676][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.677][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/_G.lua , size = 1.935 KB
+[21:14:59.677][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.677][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/peripherals/command.lua , size = 0.749 KB
+[21:14:59.678][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.678][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/peripherals/computer.lua , size = 0.794 KB
+[21:14:59.679][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.679][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/peripherals/drive.lua , size = 2.400 KB
+[21:14:59.680][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.680][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/peripherals/modem.lua , size = 4.745 KB
+[21:14:59.684][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.684][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/peripherals/monitor.lua , size = 0.623 KB
+[21:14:59.684][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.684][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/peripherals/printer.lua , size = 1.507 KB
+[21:14:59.685][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.685][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/peripherals/speaker.lua , size = 3.709 KB
+[21:14:59.685][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:14:59.685][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/coroutine.lua , size = 2.620 KB
+[21:14:59.686][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/coroutine.lua
+[21:14:59.686][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/math.lua , size = 8.334 KB
+[21:14:59.689][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/math.lua
+[21:14:59.689][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/bit32.lua , size = 4.041 KB
+[21:14:59.690][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/bit32.lua
+[21:14:59.690][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/harness.lua , size = 2.494 KB
+[21:14:59.692][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/image/cli_spec.lua , size = 2.923 KB
+[21:14:59.693][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/image/image_spec.lua , size = 9.892 KB
+[21:14:59.697][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/image/run.lua , size = 0.292 KB
+[21:14:59.698][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/image/runner.lua , size = 1.407 KB
+[21:14:59.698][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/image/suite.lua , size = 1.050 KB
+[21:14:59.699][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/run.lua , size = 1.707 KB
+[21:14:59.700][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/app_test.lua , size = 6.872 KB
+[21:14:59.702][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/chat_box_test.lua , size = 28.510 KB
+[21:14:59.709][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/chat_engine_test.lua , size = 38.022 KB
+[21:14:59.721][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/codex_supervisor_test.lua , size = 9.064 KB
+[21:14:59.725][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/commands_test.lua , size = 5.252 KB
+[21:14:59.728][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/command_mailbox_test.lua , size = 14.771 KB
+[21:14:59.733][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/component_text_test.lua , size = 1.936 KB
+[21:14:59.734][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/composition_test.lua , size = 18.562 KB
+[21:14:59.740][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/config_test.lua , size = 2.537 KB
+[21:14:59.741][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/conversation_catalog_test.lua , size = 3.135 KB
+[21:14:59.743][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/conversation_log_test.lua , size = 4.822 KB
+[21:14:59.745][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/events_test.lua , size = 1.696 KB
+[21:14:59.746][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/execute_lua_test.lua , size = 3.941 KB
+[21:14:59.747][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/image_render_test.lua , size = 1.755 KB
+[21:14:59.748][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/instruction_store_test.lua , size = 6.085 KB
+[21:14:59.750][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/jsonl_test.lua , size = 2.053 KB
+[21:14:59.752][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/registry_test.lua , size = 8.069 KB
+[21:14:59.758][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/remote_exec_test.lua , size = 4.439 KB
+[21:14:59.759][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/request_builder_test.lua , size = 1.377 KB
+[21:14:59.760][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/responses_client_test.lua , size = 8.691 KB
+[21:14:59.762][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/response_reader_test.lua , size = 2.442 KB
+[21:14:59.763][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/restart_controller_test.lua , size = 5.648 KB
+[21:14:59.764][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/runtime_test.lua , size = 7.717 KB
+[21:14:59.766][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/session_test.lua , size = 3.580 KB
+[21:14:59.768][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/state_test.lua , size = 8.321 KB
+[21:14:59.770][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/terminal_test.lua , size = 8.798 KB
+[21:14:59.772][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/turn_metrics_test.lua , size = 6.402 KB
+[21:14:59.773][info] [#0:script\workspace\loading.lua:100]: Preload file at: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/tests/unit/turn_queue_test.lua , size = 2.101 KB
+[21:14:59.774][info] [#0:script\workspace\loading.lua:172]: Loaded files takes [0.159] sec: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored
+[21:14:59.774][info] [#0:script\workspace\loading.lua:181]: Compile files takes [0.000] sec: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored
+[21:14:59.774][info] [#0:script\workspace\loading.lua:182]: Loaded finish:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored
+[21:14:59.774][info] [#0:script\workspace\workspace.lua:387]: Preload finish at:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored
+[21:15:00.579][info] [#0:script\workspace\workspace.lua:385]: Found 53 files at:	<fallback>
+[21:15:00.579][info] [#0:script\workspace\loading.lua:160]: Load files from disk:	<fallback>
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/string.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/string.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/debug.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/debug.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/table.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/table.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/builtin.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/builtin.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/package.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/package.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/basic.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/basic.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/cc/audio/dfpwm.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/cc/completion.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/cc/expect.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/cc/image/nft.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/cc/pretty.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/cc/require.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/cc/shell/completion.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/cc/strings.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/generic-peripherals/energy_storage.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/generic-peripherals/fluid_storage.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/generic-peripherals/inventory.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/colors.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/colours.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/commands.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/disk.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/fs.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/gps.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/help.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/http.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/io.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/keys.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/multishell.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/os.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/paintutils.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/parallel.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/peripheral.lua
+[21:15:00.579][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/pocket.lua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/rednet.lua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/redstone.lua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/settings.lua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/shell.lua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/term.lua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/textutils.lua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/turtle.lua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/vector.lua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/window.lua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/globals/_G.lua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/peripherals/command.lua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/peripherals/computer.lua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/peripherals/drive.lua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/peripherals/modem.lua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/peripherals/monitor.lua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/peripherals/printer.lua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua/peripherals/speaker.lua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/coroutine.lua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/coroutine.lua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/math.lua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/math.lua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:88]: Skip loaded file: file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/bit32.lua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:112]: ++++As library of:	file:///c%3A/Users/Dimen/source/repos/CC%20Codex/refactored/.lua-language-server/meta/Lua%205.2%20en-us%20utf8/bit32.lua
+[21:15:00.580][info] [#0:script\workspace\loading.lua:172]: Loaded files takes [0.001] sec: <fallback>
+[21:15:00.580][info] [#0:script\workspace\loading.lua:181]: Compile files takes [0.000] sec: <fallback>
+[21:15:00.580][info] [#0:script\workspace\loading.lua:182]: Loaded finish:	<fallback>
+[21:15:00.580][info] [#0:script\workspace\workspace.lua:387]: Preload finish at:	<fallback>

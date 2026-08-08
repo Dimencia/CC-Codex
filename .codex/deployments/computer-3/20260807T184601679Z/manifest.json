@@ -1,0 +1,213 @@
+{
+    "schemaVersion":  1,
+    "computerNumber":  3,
+    "createdUtc":  "2026-08-07T18:46:01.8372518Z",
+    "sourceRelativePath":  "refactored/live",
+    "baseRelativePath":  "base",
+    "files":  [
+                  {
+                      "path":  ".gitignore",
+                      "sha256":  "7075367C9A0372BDEED364C3D1EC2C362786588933DB8895453A70189BC2D80E"
+                  },
+                  {
+                      "path":  "codex.lua",
+                      "sha256":  "F10212E92A3E2A50541863461EB432C1BE33C2214128BF78D06AFEC602B84937"
+                  },
+                  {
+                      "path":  "img2mon.lua",
+                      "sha256":  "E6A588125954F9AC5E26424A9EE32769B8A9D1F6399773A3ECA92BF298B18D2D"
+                  },
+                  {
+                      "path":  "set_api_key.lua",
+                      "sha256":  "4FB11462AC32222250057BCF938F4321BC88F44C4CC908C5CEDAD200E247F196"
+                  },
+                  {
+                      "path":  "data/chat_messages.lua",
+                      "sha256":  "A8202F2DFE5430AA72ED1FD368D739223FA4964773D4C6E40CFD655701FF3E27"
+                  },
+                  {
+                      "path":  "data/conversations.json",
+                      "sha256":  "2D79AE06D163861D45CABA69D214E72B134A31C9619C5E7FC0E6F4F35C09833A"
+                  },
+                  {
+                      "path":  "data/lua_structure.md",
+                      "sha256":  "BB26FF62952826B97CAE70441BC166689B99BD9CF4CF1D6BD5238948A36C95C9"
+                  },
+                  {
+                      "path":  "data/system_prompt.md",
+                      "sha256":  "6769DA8B9A6EA4A3F37503F1A98D1025FD0EA569D8EBCC2D6D14C5E2FB0BF614"
+                  },
+                  {
+                      "path":  "lib/codex/app.lua",
+                      "sha256":  "D634249436AFCA95EB32C124CDF9C6E30EA84F428693780A439FF048F6607063"
+                  },
+                  {
+                      "path":  "lib/codex/cc_bootstrap.lua",
+                      "sha256":  "9013CA64A8BE61A8CA77E39AC3D99C37CB7CD934498BAF515063A74912C9D5A7"
+                  },
+                  {
+                      "path":  "lib/codex/chat_engine.lua",
+                      "sha256":  "85D96648BF2D64ECC83E0867E60259CA45280B8AB3C31F45B865FEC145D1798E"
+                  },
+                  {
+                      "path":  "lib/codex/commands.lua",
+                      "sha256":  "4272A5D5FEE5BE0A2AB4D05F05F2F4B3789B0D333C4F31445189D23684A25CAF"
+                  },
+                  {
+                      "path":  "lib/codex/component_text.lua",
+                      "sha256":  "05F79DCB2AC606700C5F34044C41EE4F1C08DB13DF3942EC77CCFB4CA708B001"
+                  },
+                  {
+                      "path":  "lib/codex/config.lua",
+                      "sha256":  "ECD143BD2EF37D5B91F7BD65684EEE038851E0B60924EA76FB36E2F07FB71410"
+                  },
+                  {
+                      "path":  "lib/codex/events.lua",
+                      "sha256":  "5D7FCC67BBDCCC988A1041DF46FDC0570F57306B2937F157735F5DD2609E067E"
+                  },
+                  {
+                      "path":  "lib/codex/restart_controller.lua",
+                      "sha256":  "6B3E397F684C591E12B238FD910869CB8296054BEF93651195D6A63D908C1C31"
+                  },
+                  {
+                      "path":  "lib/codex/runtime.lua",
+                      "sha256":  "56AB33C60391CE6B3B36569C77F7C37B98E9A42A725C1CBCF47E7783A4FE5159"
+                  },
+                  {
+                      "path":  "lib/codex/session.lua",
+                      "sha256":  "C46010A647C4504D965C90AA2BF9215BD294BBB37301DACE3F6657707DCD68D7"
+                  },
+                  {
+                      "path":  "lib/codex/text.lua",
+                      "sha256":  "E69E7E2E698B8593FA24E1EC553FE505282585DEBC1523EFD536AE004E8FCCF6"
+                  },
+                  {
+                      "path":  "lib/codex/turn_metrics.lua",
+                      "sha256":  "CE1F45AFDD6F26418C76C6DD095AD1B1C97AAF707035DD2BE7325FCB5BFCFF16"
+                  },
+                  {
+                      "path":  "lib/codex/turn_queue.lua",
+                      "sha256":  "B4D48A49951DF397FBC9540F0219F94245FD6C42A0FDCFC9C4CF59970621FD6B"
+                  },
+                  {
+                      "path":  "lib/codex/adapters/image_render.lua",
+                      "sha256":  "02DEE3E18B6BD5040216AF54F04495BFE05134F1579649732E2B98A8EADF9AE5"
+                  },
+                  {
+                      "path":  "lib/codex/plugins/chat_box.lua",
+                      "sha256":  "BD597839B87EDA939B4054ECDF4919165D7931601EF87E31263804F2C7487AFC"
+                  },
+                  {
+                      "path":  "lib/codex/plugins/chat_components.lua",
+                      "sha256":  "C5FA1038AC4B2D9FEBE352C1AD4A4CDEC9F9B340808FC924D7C7108BBAEB67E3"
+                  },
+                  {
+                      "path":  "lib/codex/plugins/command_mailbox.lua",
+                      "sha256":  "3E60FF9267722FF92DE6D4C4E6354720FA480AC698BAA30F1DC441D215B480A9"
+                  },
+                  {
+                      "path":  "lib/codex/plugins/terminal.lua",
+                      "sha256":  "C1E5B82F5090F0702758AF7E38D10EAE394D53191D1A204D71A65FC364376362"
+                  },
+                  {
+                      "path":  "lib/codex/responses/client.lua",
+                      "sha256":  "A1D1F0A3CC25B29123F18DC4257E16147E423876F4B1803629313D000078C096"
+                  },
+                  {
+                      "path":  "lib/codex/responses/request_builder.lua",
+                      "sha256":  "3AB242A68D15310448FC7194444C65DEF65E1F0835B9BCD32E7935F495813543"
+                  },
+                  {
+                      "path":  "lib/codex/responses/response_reader.lua",
+                      "sha256":  "4212CC07CFAEFF0BE06169B53DF7DA354880DFF2175091A6377B2AF3040C868C"
+                  },
+                  {
+                      "path":  "lib/codex/storage/artifacts.lua",
+                      "sha256":  "3861AA421C401BD8B55F7B78951751F4A4DDB7257FA774698B8B69C6118EF2EA"
+                  },
+                  {
+                      "path":  "lib/codex/storage/conversation_catalog.lua",
+                      "sha256":  "2E2357B22A83CB0C42C0B869B85F7609676612C143110FE675B28D8C5626FC75"
+                  },
+                  {
+                      "path":  "lib/codex/storage/conversation_log.lua",
+                      "sha256":  "BABB250E2D5C6690DEF4643C6B64DC94F62BBD91532707AD947EFD824E62F143"
+                  },
+                  {
+                      "path":  "lib/codex/storage/instructions.lua",
+                      "sha256":  "47B1CC4B7D3B9AFB5F3E7F5C0C815EC4A18446DED7007893656DB83C1B4D9DDD"
+                  },
+                  {
+                      "path":  "lib/codex/storage/jsonl.lua",
+                      "sha256":  "EDEAD1949C52B7A39A613591ECAE8EF849D2CB734F2929C6E5CED1E227D1F7F7"
+                  },
+                  {
+                      "path":  "lib/codex/storage/state.lua",
+                      "sha256":  "EF52F511D91ACA7FC089D4259906F9F66ADD3F0233D20FBCD91AB1E3AA5A66F6"
+                  },
+                  {
+                      "path":  "lib/codex/tools/conversations.lua",
+                      "sha256":  "0C13EAD0555402F2B03BE104E31D20403DE030C9F214ED153A7945BAEC4FADFE"
+                  },
+                  {
+                      "path":  "lib/codex/tools/execute_lua.lua",
+                      "sha256":  "E684B2D973E90C058C42C003B391FF7B76BB9626F934CBCF47360076D81B79FB"
+                  },
+                  {
+                      "path":  "lib/codex/tools/instructions.lua",
+                      "sha256":  "142DF5D50B97EB3F75A650F0B1EE0BC1DE34034E81B87A3F16C5787B47B5492A"
+                  },
+                  {
+                      "path":  "lib/codex/tools/maintenance.lua",
+                      "sha256":  "AD55A0B70EE0F5185E71169E8A2D574D6BF2F0E8A60DB62670E79E4B33B03BA9"
+                  },
+                  {
+                      "path":  "lib/codex/tools/registry.lua",
+                      "sha256":  "8F749FBF06B8193D8DFD9CC1D5CC405FED499CA5923ABAA96C1F0740E3B8E481"
+                  },
+                  {
+                      "path":  "lib/codex/tools/render_image.lua",
+                      "sha256":  "43AD45F69A8AFC1078B6B66CC2B591FFD5540C45CA21B593EE62060893446FC3"
+                  },
+                  {
+                      "path":  "lib/image/bmp.lua",
+                      "sha256":  "8973CE33098FD7D2B26EB83AEF3DDB0B7E80A4C962639A2AA45E72DB90FC5127"
+                  },
+                  {
+                      "path":  "lib/image/command.lua",
+                      "sha256":  "412B67A73AA62ED546534C1CD7C9BEC6218909A897153E4C1410C4AB4CD95D5F"
+                  },
+                  {
+                      "path":  "lib/image/deflate.lua",
+                      "sha256":  "FD2996F9426C42EC321B5B014A87BBF741E05DA562F5C4B57C5F426D65DC3D10"
+                  },
+                  {
+                      "path":  "lib/image/image.lua",
+                      "sha256":  "B85443B21DF5DC58EE02174B8967FC7E5671BA6C0A8BF95D81C740A0F3940683"
+                  },
+                  {
+                      "path":  "lib/image/loader.lua",
+                      "sha256":  "6D78BE203F0A6CA7C8CEE49F1D42DFF47782C83274A69B184778A6081BB5FCA9"
+                  },
+                  {
+                      "path":  "lib/image/monitor_renderer.lua",
+                      "sha256":  "519ECA990030131C63D78C18BBC04896D792A2742B0BA261DB063B0B1681BC89"
+                  },
+                  {
+                      "path":  "lib/image/palette.lua",
+                      "sha256":  "AC8A187A2B1E9B2F7712D0FC4861FB82C8020CB6B2B06375C3306F3D82D85B36"
+                  },
+                  {
+                      "path":  "lib/image/png.lua",
+                      "sha256":  "0F65FEBB0E988246868E177D4C961AF76A12EADFFE543FBB9A59339B7033A0AE"
+                  },
+                  {
+                      "path":  "lib/image/ppm.lua",
+                      "sha256":  "6FB6E05BE3BA439A572C9A71815783A159B1A86300A246E3BF23D18277AFD119"
+                  },
+                  {
+                      "path":  "lib/image/render_modes.lua",
+                      "sha256":  "A337F83C31B0752D00C7ECAACCED812A03A059025F09BA8310DF4A8AF73290C9"
+                  }
+              ]
+}
