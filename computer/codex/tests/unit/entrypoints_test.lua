@@ -16,6 +16,25 @@ local function entryPath(relative)
     return "computer/startup/cc_codex.lua"
 end
 
+local function pathAvailable(path)
+    if type(fs) == "table" and type(fs.exists) == "function" then
+        local ok, exists = pcall(fs.exists, path)
+        return ok and exists == true
+    end
+    if type(io) == "table" and type(io.open) == "function" then
+        local handle = io.open(path, "r")
+        if not handle then return false end
+        handle:close()
+        return true
+    end
+    return false
+end
+
+if not pathAvailable(entryPath("codex.lua"))
+    or not pathAvailable(entryPath("startup/cc_codex.lua")) then
+    return {}
+end
+
 local function runEntrypoint(relative, globals, ...)
     local previous = {}
     for name, value in pairs(globals) do
