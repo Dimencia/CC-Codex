@@ -141,6 +141,24 @@ return {
         end
     },
     {
+        name = "rejects a no-newline marker that is not attached to the final new line",
+        fn = function()
+            local parsed = assert(FilePatch.parse(table.concat({
+                "--- a/core/app.lua",
+                "+++ b/core/app.lua",
+                "@@ -1 +1 @@",
+                "-first",
+                "+FIRST",
+                "\\ No newline at end of file",
+                ""
+            }, "\n")))
+            local applied, applyError = FilePatch.apply(parsed, "first\nold\n")
+            Harness.falsy(applied)
+            assert(applyError)
+            Harness.truthy(applyError:find("new file's final line", 1, true))
+        end
+    },
+    {
         name = "rejects stale context without producing a result",
         fn = function()
             local parsed = assert(FilePatch.parse(patchText(table.concat({

@@ -229,12 +229,24 @@ local function parsePatch(value)
                     hunk.added = hunk.added + 1
                     previousKind = "add"
                 elseif hunkLine == "\\ No newline at end of file" then
-                    if previousKind == "remove" then hunk.noNewlineOld = true end
-                    if previousKind == "add" then hunk.noNewlineNew = true end
+                    if not previousKind then
+                        return nil, "No-newline marker must follow a patch line."
+                    end
+                    if previousKind == "remove" then
+                        hunk.noNewlineOld = true
+                        hunk.noNewlineOldAt = actualOld
+                    end
+                    if previousKind == "add" then
+                        hunk.noNewlineNew = true
+                        hunk.noNewlineNewAt = actualNew
+                    end
                     if previousKind == "context" then
                         hunk.noNewlineOld = true
                         hunk.noNewlineNew = true
+                        hunk.noNewlineOldAt = actualOld
+                        hunk.noNewlineNewAt = actualNew
                     end
+                    previousKind = nil
                 elseif hunkLine ~= "" then
                     return nil, "Unexpected line in unified diff hunk: " .. hunkLine
                 else
@@ -278,6 +290,7 @@ local function applyPatch(parsed, currentContent)
     local removed = 0
     local noNewlineOld = false
     local noNewlineNew = false
+    local markedNewlinePositions = {}
 
     for _, hunk in ipairs(parsed.hunks) do
         local start
@@ -291,6 +304,7 @@ local function applyPatch(parsed, currentContent)
         end
         for line = cursor, start - 1 do output[#output + 1] = oldLines[line] end
 
+        local newOutputStart = #output
         local position = start
         for _, operation in ipairs(hunk.lines) do
             if operation.kind == "context" or operation.kind == "remove" then
@@ -306,6 +320,12 @@ local function applyPatch(parsed, currentContent)
                 output[#output + 1] = operation.text
             end
         end
+        if hunk.noNewlineOldAt and start + hunk.noNewlineOldAt - 1 ~= #oldLines then
+            return nil, "No-newline marker does not identify the old file's final line."
+        end
+        if hunk.noNewlineNewAt then
+            markedNewlinePositions[#markedNewlinePositions + 1] = newOutputStart + hunk.noNewlineNewAt
+        end
         if hunk.oldCount > 0 and position - 1 == #oldLines then
             local expectedOldFinalNewline = not hunk.noNewlineOld
             if expectedOldFinalNewline ~= oldHasFinalNewline then
@@ -319,6 +339,11 @@ local function applyPatch(parsed, currentContent)
         noNewlineNew = noNewlineNew or hunk.noNewlineNew
     end
     for line = cursor, #oldLines do output[#output + 1] = oldLines[line] end
+    for _, position in ipairs(markedNewlinePositions) do
+        if position ~= #output then
+            return nil, "No-newline marker does not identify the new file's final line."
+        end
+    end
 
     if noNewlineOld and oldHasFinalNewline then
         return nil, "Patch expects the old file to have no final newline, but it does."
