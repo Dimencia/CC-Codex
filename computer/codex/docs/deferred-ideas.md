@@ -48,19 +48,19 @@ Ready, in order:
 
 Active claims:
 
-| ID | Owning branch or PR | State |
-| --- | --- | --- |
-| `CC-002` | `codex/cc-002-chatbox-format-call` / PR #3 | Active simplification slice |
-| `CC-003` | `codex/cc-003-client-scoped-mailboxes` | Active; duplicate work was detected, so do not claim |
-| `CC-005` | `codex/file-patch-tool-9a7e` | Worktree allocated; awaiting first implementation commit |
+| ID | Agent | Owning branch or PR | State |
+| --- | --- | --- | --- |
+| `CC-002` | Unconfirmed legacy owner | `codex/cc-002-chatbox-format-call` / PR #3 | Reviewed and green; awaiting coordinator merge decision |
+| `CC-003` | Sprocket | `codex/cc-003-client-scoped-mailboxes` / PR #4 | Active; duplicate work was detected, so do not claim |
+| `CC-005` | Switchboard; handoff required | `codex/file-patch-tool-9a7e` / PR #7 | Blocked: conflict and P1 validation finding; automated fix did not update the PR head |
 
 Claiming is an atomic documentation update on `master`, not a branch-name
 convention. Before feature edits, create a fresh roadmap-only branch from the
 latest fetched `origin/master`, remove the ID from Ready, add it to Active with
-the intended feature branch, commit, and push that commit directly to
-`master` without force. The first fast-forward push wins. If the push is
-rejected, fetch again and choose another Ready item; never reapply the same
-claim on top of the winner.
+the owning agent and intended feature branch, commit, and push that commit
+directly to `master` without force. The first fast-forward push wins. If the
+push is rejected, fetch again and choose another Ready item; never reapply the
+same claim on top of the winner.
 
 After the claim reaches `master`, create the feature branch from that new
 `origin/master`. Completion, abandonment, and stale-claim recovery are separate
@@ -332,3 +332,6 @@ When periodically updating this roadmap:
 5. Re-rank by risk reduction and product proof, not novelty.
 6. Archive completed detail into Git history instead of growing this document
    without bound.
+7. Mark an open PR with unresolved owner-action escalation as blocked in Active.
+   Wake its original worker or explicitly reassign the same branch; never start
+   a duplicate implementation merely because automated fixes did not land.

@@ -9,31 +9,36 @@ description: Implement repository changes in an isolated Codex worktree, create 
 
 Complete one coherent user task in the current isolated checkout, leave it as a
 reviewable GitHub pull request, and review unreviewed peer pull-request heads.
-Do not merge it, poll it, or create a scheduled follow-up.
+Own that branch and pull request until merge or explicit handoff. Do not merge
+it, busy-poll it, or create a scheduled follow-up.
 
 ## Preflight
 
 1. Confirm the current directory is inside the intended Git repository.
 2. Read the root `AGENTS.md` and any more-specific applicable instructions.
-3. Run `git status --short --branch` and `git worktree list`.
-4. Determine the default branch from `origin/HEAD`, falling back to the
+3. Choose or confirm one stable callsign, prefix the task title and messages
+   with it, and use `Agent: <callsign> (<role>)` in authored GitHub artifacts.
+4. Run `git status --short --branch` and `git worktree list`.
+5. Determine the default branch from `origin/HEAD`, falling back to the
    documented repository convention.
-5. Confirm the connected GitHub app can access the repository. If the app is
+6. Confirm the connected GitHub app can access the repository. If the app is
    unavailable and publication is required, use `gh --version` and
    `gh auth status` as the fallback.
-6. Run `git fetch --prune origin` when network access is available, then use
+7. Run `git fetch --prune origin` when network access is available, then use
    the refreshed `origin/master` as the normal task base instead of trusting a
    possibly stale local `master`.
-7. For roadmap work, select only an ID in the canonical Ready queue. Before
+8. For roadmap work, select only an ID in the canonical Ready queue. Before
    feature edits, create a fresh roadmap-only branch from `origin/master`, move
    that ID to Active with the intended feature branch, commit only the roadmap
    file, and run `git push origin HEAD:master` without force. Move only the
    queue entry; keep the detailed task specification in place for QA and review.
-   Do not push the
-   roadmap branch as a pull request. A rejected push lost the claim race: fetch
-   and choose another Ready ID instead of retrying the same claim. If repository
-   protection rejects all direct roadmap pushes, stop without feature edits and
-   report that the claim could not be acquired.
+   Do not push the roadmap branch as a pull request. A rejected push lost the
+   claim race: fetch and choose another Ready ID instead of retrying the same
+   claim. If repository protection rejects all direct roadmap pushes, stop
+   without feature edits and report that the claim could not be acquired.
+9. Look for an existing open pull request owned by this task. If it has
+   actionable review feedback, a branch-caused CI failure, or a conflict,
+   resolve that before claiming or starting another roadmap item.
 
 On Windows, compare `whoami` with the interactive user's identity before
 diagnosing failed CLI authentication. A Codex sandbox account cannot decrypt
@@ -91,6 +96,8 @@ open a new non-draft pull request targeting the intended base. Fall back to
 `gh pr` only when the app is unavailable. Use this body structure:
 
 ```markdown
+Agent: <callsign> (<role>)
+
 ## Summary
 
 - What changed
@@ -118,11 +125,14 @@ overlapping or blocking changes and then the oldest unreviewed head. Inspect its
 contract, diff, tests, documentation, simplification, and untested live
 boundaries. Submit actionable file/line findings or an approval directly; do
 not post `@codex review`, edit the other branch, or treat review as a claim.
+Prefix the review body with `[<callsign>]` and include the Agent identity line.
 
 When addressing review feedback, load the current PR, review summary, inline
 comments, discussion, and checks. Evaluate findings, fix legitimate issues with
 minimal scope, rerun validation, commit, push, and let the coordinator request
-re-review. Do not poll after publication.
+re-review. A worker resumed on an owned PR performs this follow-up before any
+new feature work. Do not busy-poll after publication; wait for a coordinator,
+user, or review notification to resume the task.
 
 ## Final report
 
