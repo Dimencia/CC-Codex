@@ -61,10 +61,13 @@ catalog and diagnostic logs, usage records, artifacts, and client mailbox data.
 Client requests and replies use one file per request ID under
 `data/client-requests/` and `data/client-results/`, so concurrent clients do
 not overwrite one shared result. A terminal acknowledges a result by deleting
-it after reading, while the service bounds unacknowledged scoped results to 32
-files and prunes the oldest request filenames when publishing beyond that
-bound. The service temporarily reads the older singular mailbox paths for
-rollout compatibility.
+it after reading. The service retains at most 32 unread scoped results and
+never evicts an unread file: a new request ID is rejected when all slots are
+occupied until an existing client acknowledges its result. Replacing the same
+request ID remains allowed for progress and final delivery. This bounds
+abandoned files while applying backpressure when clients do not acknowledge.
+The service temporarily reads the older singular mailbox paths for rollout
+compatibility.
 ComputerCraft settings contain the API key. The key is not source and must not
 be committed or placed in runtime request files.
 

@@ -107,11 +107,14 @@ These are per-computer state, not shared source:
 - `codex/data/usage.jsonl` - aggregate turn metrics.
 - `codex/data/client-requests/<request-id>.json` and
   `codex/data/client-results/<request-id>.json` - request-scoped client mailbox
-  files. A terminal acknowledges each result by deleting it after reading; the
-  service bounds unacknowledged scoped results to 32 files and removes the
-  oldest request filenames when publishing beyond that bound. The service
-  reads the older singular `client-request.json` and writes `client-result.json`
-  during rollout so an older terminal client can finish.
+  files. A terminal acknowledges each result by deleting it after reading. The
+  service retains at most 32 unread scoped result files and never evicts an
+  unread file: when capacity is full, a new request ID's result is rejected
+  until an existing client acknowledges its result. Replacing the same
+  request ID remains allowed for progress and final delivery. This bounds
+  abandoned files while applying backpressure when clients do not acknowledge.
+  The service reads the older singular `client-request.json` and writes
+  `client-result.json` during rollout so an older terminal client can finish.
 - `codex/artifacts/images/` - generated image files.
 - `codex/.codex-restart` - transient supervisor marker used for a validated
   managed restart.

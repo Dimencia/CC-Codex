@@ -90,32 +90,40 @@ return {
         end
     },
     {
-        name = "bounds abandoned scoped results while preserving the newest result",
+        name = "backpressures after 32 unread results without evicting them",
         fn = function()
             local fs = fileSystem()
             local encoded, submitted = {}, {}
-            local adapter = mailbox(fs, {}, encoded, submitted, 2)
+            local adapter = mailbox(fs, {}, encoded, submitted)
+
+            for index = 1, 32 do
+                Harness.truthy(adapter:deliver(
+                    { adapterId = "client_mailbox", requestId = "client-" .. tostring(index) },
+                    "answer-" .. tostring(index),
+                    "final"
+                ))
+            end
+
+            local delivered, deliveryError = adapter:deliver(
+                { adapterId = "client_mailbox", requestId = "client-33" },
+                "answer-33",
+                "final"
+            )
+            Harness.falsy(delivered)
+            assert(deliveryError)
+            Harness.truthy(deliveryError:find("capacity", 1, true))
+            Harness.equal(32, #fs.list("results"))
+            Harness.equal("client-1:final\n", fs.files["results/client-1.json"])
+            Harness.equal("client-32:final\n", fs.files["results/client-32.json"])
+            Harness.equal(nil, fs.files["results/client-33.json"])
+            Harness.equal(32, #encoded)
 
             Harness.truthy(adapter:deliver(
-                { adapterId = "client_mailbox", requestId = "client-a" },
-                "first",
+                { adapterId = "client_mailbox", requestId = "client-1" },
+                "updated",
                 "final"
             ))
-            Harness.truthy(adapter:deliver(
-                { adapterId = "client_mailbox", requestId = "client-b" },
-                "second",
-                "final"
-            ))
-            Harness.truthy(adapter:deliver(
-                { adapterId = "client_mailbox", requestId = "client-c" },
-                "third",
-                "final"
-            ))
-
-            Harness.equal(nil, fs.files["results/client-a.json"])
-            Harness.equal("client-b:final\n", fs.files["results/client-b.json"])
-            Harness.equal("client-c:final\n", fs.files["results/client-c.json"])
-            Harness.equal(2, #fs.list("results"))
+            Harness.equal("client-1:final\n", fs.files["results/client-1.json"])
         end
     },
     {

@@ -109,33 +109,29 @@ function ClientMailbox.new(options)
 end
 
 ---@param self ClientMailbox
----@param protectedPath string
+---@param resultPath string
 ---@return boolean|nil
 ---@return string|nil
-local function cleanupResults(self, protectedPath)
+local function ensureResultCapacity(self, resultPath)
     local names, listError = listFiles(self.options.fs, self.options.resultDirectory)
     if not names then return nil, "Could not inspect client results: " .. tostring(listError) end
 
-    local resultNames = {}
+    local resultCount = 0
+    local resultPresent = false
     for _, name in ipairs(names) do
         if type(name) == "string" and name:match(REQUEST_FILE_PATTERN) then
-            resultNames[#resultNames + 1] = name
+            resultCount = resultCount + 1
+            if self.options.fs.combine(self.options.resultDirectory, name) == resultPath then
+                resultPresent = true
+            end
         end
     end
-    table.sort(resultNames)
 
-    local excess = #resultNames - self.maxRetainedResults
-    if excess <= 0 then return true end
-    for _, name in ipairs(resultNames) do
-        if excess <= 0 then break end
-        local resultPath = self.options.fs.combine(self.options.resultDirectory, name)
-        if resultPath ~= protectedPath then
-            local removed, removeError = filesystemCall(self.options.fs.delete, resultPath)
-            if not removed then
-                return nil, "Could not clean up client result: " .. tostring(removeError)
-            end
-            excess = excess - 1
-        end
+    if not resultPresent and resultCount >= self.maxRetainedResults then
+        return nil, string.format(
+            "Client result capacity is full (%d unread results); acknowledge an existing result before retrying.",
+            self.maxRetainedResults
+        )
     end
     return true
 end
@@ -143,9 +139,15 @@ end
 ---@param self ClientMailbox
 ---@param result table
 ---@param resultPath string
+---@param scoped boolean
 ---@return boolean|nil
 ---@return string|nil
-local function publishResult(self, result, resultPath)
+local function publishResult(self, result, resultPath, scoped)
+    if scoped then
+        local capacity, capacityError = ensureResultCapacity(self, resultPath)
+        if not capacity then return nil, capacityError end
+    end
+
     local encodedOk, encoded, encodeError = pcall(self.options.json.encode, result)
     if not encodedOk then
         encodeError = encoded
@@ -188,10 +190,6 @@ local function publishResult(self, result, resultPath)
     )
     if not moved then return nil, "Could not publish client result: " .. tostring(moveError) end
 
-    local cleaned, cleanupError = cleanupResults(self, resultPath)
-    if not cleaned and self.options.onError then
-        self.options.onError(cleanupError or "Could not clean up client results")
-    end
     return true
 end
 
@@ -225,8 +223,9 @@ end
 ---@param self ClientMailbox
 ---@param result table
 ---@param resultPath string
-local function publishFailure(self, result, resultPath)
-    local published, publishError = publishResult(self, result, resultPath)
+---@param scoped boolean
+local function publishFailure(self, result, resultPath, scoped)
+    local published, publishError = publishResult(self, result, resultPath, scoped)
     if not published and self.options.onError then self.options.onError(publishError or "unknown error") end
 end
 
@@ -270,7 +269,7 @@ local function processRequest(self, requestPath, scopedId, resultPath)
             error = "Client request requires an id, action=chat, and non-empty text.",
             error_code = "invalid_request",
             decode_error = tostring(decodeError or "")
-        }, resultPath)
+        }, resultPath, scopedId ~= nil)
         return true
     end
 
@@ -288,7 +287,7 @@ local function processRequest(self, requestPath, scopedId, resultPath)
             kind = "error",
             error = tostring(submitError or "Client request was not accepted."),
             error_code = "submit_failed"
-        }, resultPath)
+        }, resultPath, scopedId ~= nil)
     end
     return true
 end
@@ -380,7 +379,7 @@ function ClientMailbox:deliver(route, message, kind, metadata)
         kind = kind,
         message = message,
         metadata = metadata
-    }, resultPath)
+    }, resultPath, route.legacyMailbox ~= true)
 end
 
 ---@param self ClientMailbox
