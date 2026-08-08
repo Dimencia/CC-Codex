@@ -10,14 +10,16 @@ The CC-readable counterpart is
 Keep implementation and integration guidance there when the agent running on
 the computer needs it; the root `docs/` files are not automatically deployed.
 
-The top-level `install.lua` is a self-updating ComputerCraft bootstrap. It
-copies ordinary files from the repository's `computer/` tree, so the installed
-`codex/` directory is not a symlink or junction. In the repository,
-`computer/startup/disk_sync.lua` owns the separate disk-copy lifecycle and
-`computer/startup/cc_codex.lua` opens that watcher and the headless service in
-separate multishell tabs when available. Without multishell it performs one
-disk sync before starting the service. After installation these paths are
-`startup/...` on the CC computer.
+The top-level `install.lua` is a self-contained ComputerCraft bootstrap. It
+normally downloads the latest release's uncompressed USTAR package, validates
+and extracts its `computer/` tree, and keeps the GitHub source-tree downloader
+as a compatibility fallback. `--archive-url` can select an exact package for a
+release or CI smoke test. The installed `codex/` directory is not a symlink or
+junction. In the repository, `computer/startup/disk_sync.lua` owns the
+separate disk-copy lifecycle and `computer/startup/cc_codex.lua` opens that
+watcher and the headless service in separate multishell tabs when available.
+Without multishell it performs one disk sync before starting the service. After
+installation these paths are `startup/...` on the CC computer.
 
 ## Boundaries
 

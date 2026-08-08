@@ -1,0 +1,86 @@
+name: Runtime Smoke
+
+on:
+  pull_request:
+    paths:
+      - computer/**
+      - tests/runtime/**
+      - docs/testing.md
+      - .github/workflows/runtime-smoke.yml
+  push:
+    branches:
+      - master
+    paths:
+      - computer/**
+      - tests/runtime/**
+      - docs/testing.md
+      - .github/workflows/runtime-smoke.yml
+  workflow_dispatch:
+    inputs:
+      atmons_jar_url:
+        description: Optional URL for a pinned ATMons jar to mount into the fixture
+        required: false
+        type: string
+      require_atmons:
+        description: Fail unless the supplied ATMons jar is loaded
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: runtime-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Download optional ATMons jar
+        if: ${{ inputs.atmons_jar_url != '' }}
+        env:
+          ATMONS_JAR_URL: ${{ inputs.atmons_jar_url }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-all-errors \
+            --output "$GITHUB_WORKSPACE/atmons.jar" \
+            "$ATMONS_JAR_URL"
+
+      - name: Build and run real CC fixture
+        env:
+          REQUIRE_ATMONS: ${{ inputs.require_atmons && '1' || '0' }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/tests/runtime/output"
+          docker build \
+            --tag cc-codex-runtime-smoke:ci \
+            "$GITHUB_WORKSPACE/tests/runtime"
+
+          docker_args=(
+            run --rm
+            --name cc-codex-runtime-smoke
+            --mount "type=bind,source=$GITHUB_WORKSPACE/tests/runtime/output,destination=/output"
+            --env "REQUIRE_ATMONS=$REQUIRE_ATMONS"
+          )
+          if [[ -f "$GITHUB_WORKSPACE/atmons.jar" ]]; then
+            docker_args+=(
+              --mount
+              "type=bind,source=$GITHUB_WORKSPACE/atmons.jar,destination=/input/anomaly.jar,readonly"
+            )
+          fi
+          docker "${docker_args[@]}" cc-codex-runtime-smoke:ci
+
+      - name: Upload runtime evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: cc-codex-runtime-smoke-${{ github.run_id }}
+          path: tests/runtime/output/
+          if-no-files-found: warn

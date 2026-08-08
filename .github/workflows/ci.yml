@@ -25,6 +25,9 @@ jobs:
       - name: Run Lua tests
         run: lua5.2 computer/codex/tests/run.lua
 
+      - name: Test installer TAR parser
+        run: lua5.2 tests/installer/run.lua
+
       - name: Check installer and startup syntax
         run: |
           lua5.2 -e '

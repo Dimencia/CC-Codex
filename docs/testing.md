@@ -71,10 +71,43 @@ The test suite and LuaLS check are complementary. Neither replaces a separate
 approved smoke check for the installer's GitHub requests, real event loop,
 HTTP request, disk event, Chat Box, monitor, Rednet target, or live model.
 
+The installer now prefers the latest release's uncompressed USTAR package and
+falls back to the GitHub source tree when no compatible package is available.
+`tests/installer/run.lua` exercises the archive parser's checksum, path, type,
+and package-layout checks. An exact release or CI package can be exercised with
+`install --archive-url URL`; this keeps a PR smoke test pointed at the tested
+artifact instead of silently installing `master`.
+
+## Real Minecraft runtime smoke
+
+`tests/runtime/` contains a separate Docker fixture for a real headless
+Minecraft 1.21.1 / NeoForge 21.1.234 server with CC:Tweaked. It deliberately
+does not run `install.lua`, use a ComputerCraft API key, contact a model, or
+modify an installed computer.
+
+The fixture creates a command computer and several peripherals through a
+datapack, runs a test program inside CraftOS, and writes `ci/results.jsonl`,
+`ci/summary.json`, and a filesystem probe to the guest computer filesystem.
+The wrapper copies those files and server logs to `tests/runtime/output/`, sends
+a stop through the server console after the summary is written, and fails when
+the guest summary is missing or reports a failure.
+
+Run the CC-only fixture locally with Docker Desktop running:
+
+```powershell
+& .\tests\runtime\run.ps1
+```
+
+An ATMons jar can be supplied explicitly with `-AtmonsJar`; use
+`-RequireAtmons` when the server must load it. ATMons artifacts remain outside
+this repository until their build/release contract is defined.
+
 ## GitHub Actions
 
-The `CI` workflow repeats the Lua suite and installer/startup syntax checks for
-pull requests and pushes to `master`. The `Release` workflow listens for the
-completed `CI` run and continues only after a successful `master` push. It then
-packages the installer payload and increments the patch number from the latest
+The `CI` workflow repeats the Lua suite, installer TAR-parser tests, and
+installer/startup syntax checks for pull requests and pushes to `master`. The
+separate runtime-smoke workflow runs the real CC fixture on pull requests,
+`master` changes, or manually. The `Release` workflow listens for the completed `CI` run and
+continues only after a successful `master` push. It then packages the installer
+payload as an uncompressed TAR and increments the patch number from the latest
 semantic `vMAJOR.MINOR.PATCH` tag or release.

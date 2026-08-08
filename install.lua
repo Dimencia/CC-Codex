@@ -1,4 +1,4 @@
--- CC Codex self-updating installer.
+-- CC Codex release-package installer.
 --
 -- This file is intentionally self-contained: it is the only file a new
 -- ComputerCraft computer needs before the rest of the repository is copied.
@@ -7,10 +7,17 @@ local repository = "Dimencia/CC-Codex"
 local branch = "master"
 local rawBase = "https://raw.githubusercontent.com/" .. repository .. "/" .. branch
 local apiTreeUrl = "https://api.github.com/repos/" .. repository .. "/git/trees/" .. branch .. "?recursive=1"
+local releasesApiUrl = "https://api.github.com/repos/" .. repository .. "/releases/latest"
 local apiKeySetting = "cc_codex.api_key"
 local diskStartupSetting = "shell.allow_disk_startup"
 local sourcePrefix = "computer/"
 local downloadWorkerCount = 8
+local maxArchiveBytes = 8 * 1024 * 1024
+
+local runningProgram
+local runningDirectory
+local computerRoot
+local selfPath
 
 local function combine(base, relative)
     if base == "" then return relative end
@@ -26,23 +33,10 @@ local function ensureParent(path)
     if parent ~= "" and parent ~= "." then fs.makeDir(parent) end
 end
 
-local runningProgram = shell.getRunningProgram()
-if type(runningProgram) ~= "string" or runningProgram == "" then
-    runningProgram = "install.lua"
-end
-if not fs.exists(runningProgram) and fs.exists(runningProgram .. ".lua") then
-    runningProgram = runningProgram .. ".lua"
-end
-
--- The installer lives at the computer root on first launch and in codex/ on
--- later launches. In both cases the parent of codex/ is the computer root.
-local runningDirectory = fs.getDir(runningProgram)
-local computerRoot = runningDirectory
-if fs.getName(runningDirectory) == "codex" then
-    computerRoot = fs.getDir(runningDirectory)
-end
-
 local function rootPath(relative)
+    if type(computerRoot) ~= "string" then
+        error("Installer runtime has not been initialized.", 0)
+    end
     return combine(computerRoot, relative)
 end
 
@@ -61,15 +55,15 @@ local function renameSelf()
     return runningProgram
 end
 
-local selfPath = renameSelf()
-local updatePath = combine(fs.getDir(selfPath), ".cc-codex-install-update.lua")
-
 local bit = bit32
-if type(bit) ~= "table" then
-    error("CC Codex needs the ComputerCraft bit32 API to hash the installer.", 0)
-end
-
 local UINT32 = 4294967296
+
+local function requireBit32()
+    if type(bit) ~= "table" then
+        error("CC Codex needs the ComputerCraft bit32 API to hash the installer.", 0)
+    end
+    return bit
+end
 
 local function add32(a, b, c, d, e)
     return (a + (b or 0) + (c or 0) + (d or 0) + (e or 0)) % UINT32
@@ -94,6 +88,7 @@ local function wordAt(data, index)
 end
 
 local function hashData(data)
+    requireBit32()
     local length = #data
     local bitLength = length * 8
     local highLength = math.floor(bitLength / UINT32)
@@ -203,6 +198,143 @@ local function writeFile(path, content)
     file.close()
 end
 
+local TAR_BLOCK_SIZE = 512
+local TAR_ZERO_BLOCK = string.rep("\0", TAR_BLOCK_SIZE)
+
+local function fieldString(data, start, length)
+    local value = data:sub(start, start + length - 1)
+    local terminator = value:find("\0", 1, true)
+    if terminator then value = value:sub(1, terminator - 1) end
+    return value
+end
+
+local function parseOctal(value, label)
+    value = value:gsub("\0", ""):gsub("^%s+", ""):gsub("%s+$", "")
+    if value == "" then return 0 end
+    if not value:match("^[0-7]+$") then
+        error("Invalid TAR " .. label .. ".", 0)
+    end
+    return assert(tonumber(value, 8), "Invalid TAR " .. label .. ".")
+end
+
+local function archivePath(path)
+    if path == "" then return nil end
+    if path:sub(1, 1) == "/" or path:sub(1, 1) == "\\"
+        or path:find("\\", 1, true) or path:find("//", 1, true)
+        or path:match("^[%a]:") then
+        error("TAR contains an unsafe path: " .. path, 0)
+    end
+
+    path = path:gsub("/+$", "")
+    if path == "" then return nil end
+    for segment in path:gmatch("[^/]+") do
+        if segment == "." or segment == ".." then
+            error("TAR contains an unsafe path: " .. path, 0)
+        end
+    end
+    return path
+end
+
+local function tarChecksum(header)
+    local total = 0
+    for index = 1, TAR_BLOCK_SIZE do
+        local value = string.byte(header, index)
+        if index >= 149 and index <= 156 then value = 32 end
+        total = total + value
+    end
+    return total
+end
+
+-- Parse only the small, uncompressed USTAR subset emitted by the release
+-- workflow. Keeping parsing separate from extraction lets the host test the
+-- archive safety rules without needing a ComputerCraft filesystem.
+local function parseTar(data)
+    if type(data) ~= "string" then error("TAR payload must be a string.", 0) end
+    if #data > maxArchiveBytes then
+        error("TAR payload is too large.", 0)
+    end
+
+    local entries = {}
+    local seen = {}
+    local offset = 1
+    while offset + TAR_BLOCK_SIZE - 1 <= #data do
+        local header = data:sub(offset, offset + TAR_BLOCK_SIZE - 1)
+        if header == TAR_ZERO_BLOCK then
+            if data:sub(offset + TAR_BLOCK_SIZE, offset + (2 * TAR_BLOCK_SIZE) - 1)
+                ~= TAR_ZERO_BLOCK then
+                error("TAR has an incomplete end marker.", 0)
+            end
+            return entries
+        end
+
+        local magic = header:sub(258, 263)
+        if magic ~= "ustar\0" and magic ~= "ustar " then
+            error("TAR entry is not a USTAR header.", 0)
+        end
+        local expectedChecksum = parseOctal(header:sub(149, 156), "checksum")
+        if tarChecksum(header) ~= expectedChecksum then
+            error("TAR entry checksum mismatch.", 0)
+        end
+
+        local name = fieldString(header, 1, 100)
+        local prefix = fieldString(header, 346, 155)
+        if prefix ~= "" then name = prefix .. "/" .. name end
+        local path = archivePath(name)
+        local typeFlag = header:sub(157, 157)
+        local size = parseOctal(header:sub(125, 136), "size")
+        local contentStart = offset + TAR_BLOCK_SIZE
+        local contentEnd = contentStart + size - 1
+        local paddedEnd = contentStart + math.ceil(size / TAR_BLOCK_SIZE) * TAR_BLOCK_SIZE - 1
+
+        if paddedEnd > #data then error("TAR entry is truncated.", 0) end
+        if path and seen[path] then error("TAR contains a duplicate path: " .. path, 0) end
+        if path then seen[path] = true end
+
+        if path then
+            if typeFlag == "5" then
+                if size ~= 0 then error("TAR directory has content: " .. path, 0) end
+                entries[#entries + 1] = { path = path, kind = "directory" }
+            elseif typeFlag == "0" or typeFlag == "\0" then
+                entries[#entries + 1] = {
+                    path = path,
+                    kind = "file",
+                    content = size == 0 and "" or data:sub(contentStart, contentEnd)
+                }
+            else
+                error("TAR entry type is not supported: " .. path, 0)
+            end
+        elseif typeFlag ~= "5" then
+            error("TAR contains an unnamed non-directory entry.", 0)
+        end
+
+        offset = paddedEnd + 1
+    end
+
+    error("TAR is missing its end marker.", 0)
+end
+
+local function extractTarEntries(entries, destination)
+    for _, entry in ipairs(entries) do
+        local target = combine(destination, entry.path)
+        if entry.kind == "directory" then
+            if fs.exists(target) and not fs.isDir(target) then
+                error("TAR directory conflicts with a file: " .. entry.path, 0)
+            end
+            if not fs.exists(target) then fs.makeDir(target) end
+        else
+            ensureParent(target)
+            if fs.exists(target) and fs.isDir(target) then
+                error("TAR file conflicts with a directory: " .. entry.path, 0)
+            end
+            writeFile(target, entry.content)
+        end
+    end
+end
+
+local function extractTar(data, destination)
+    extractTarEntries(parseTar(data), destination)
+end
+
 local function request(url, binary)
     local response, requestError, failedResponse = http.get(
         url,
@@ -229,6 +361,122 @@ local function urlEncodePath(path)
     return (path:gsub("([^%w%-%._~/])", function(character)
         return string.format("%%%02X", string.byte(character))
     end))
+end
+
+local function latestReleaseArchive()
+    local payload = request(releasesApiUrl, false)
+    local parsedOk, release = pcall(textutils.unserializeJSON, payload)
+    if not parsedOk or type(release) ~= "table" then
+        error("GitHub returned invalid latest-release JSON.", 0)
+    end
+
+    local tag = release.tag_name
+    if type(tag) ~= "string" or not tag:match("^v%d+%.%d+%.%d+$") then
+        error("GitHub returned an invalid latest-release tag.", 0)
+    end
+
+    local expectedName = "CC-Codex-" .. tag .. ".tar"
+    if type(release.assets) ~= "table" then
+        error("GitHub latest release has no assets.", 0)
+    end
+    for _, asset in ipairs(release.assets) do
+        if type(asset) == "table" and asset.name == expectedName
+            and type(asset.browser_download_url) == "string" then
+            return asset.browser_download_url, tag
+        end
+    end
+    error("GitHub latest release has no " .. expectedName .. " asset.", 0)
+end
+
+local function copyTree(source, destination)
+    if not fs.exists(source) then error("Missing staged path: " .. source, 0) end
+    if fs.isDir(source) then
+        if fs.exists(destination) and not fs.isDir(destination) then
+            error("Cannot replace a file with directory: " .. destination, 0)
+        end
+        if not fs.exists(destination) then fs.makeDir(destination) end
+        for _, name in ipairs(fs.list(source)) do
+            copyTree(fs.combine(source, name), fs.combine(destination, name))
+        end
+        return
+    end
+
+    ensureParent(destination)
+    if fs.exists(destination) then
+        if fs.isDir(destination) then
+            error("Cannot replace a directory with file: " .. destination, 0)
+        end
+        fs.delete(destination)
+    end
+    fs.copy(source, destination)
+end
+
+local function installComputerTree(sourceRoot)
+    if not fs.exists(sourceRoot) or not fs.isDir(sourceRoot) then
+        error("Package has no computer/ source tree.", 0)
+    end
+    for _, name in ipairs(fs.list(sourceRoot)) do
+        copyTree(fs.combine(sourceRoot, name), rootPath(name))
+    end
+end
+
+local function installManagedInstaller(source)
+    if not fs.exists(source) or fs.isDir(source) then
+        error("Package has no install.lua.", 0)
+    end
+
+    local destination = rootPath("codex/install.lua")
+    if selfPath == destination then
+        printError("Could not replace the active installer; it will update on the next run.")
+        return
+    end
+    local pending = destination .. ".new"
+    ensureParent(pending)
+    deleteIfPresent(pending)
+    fs.copy(source, pending)
+    if fs.exists(destination) then fs.delete(destination) end
+    local moved, moveError = pcall(fs.move, pending, destination)
+    if not moved then
+        deleteIfPresent(pending)
+        error("Could not install codex/install.lua: " .. tostring(moveError), 0)
+    end
+end
+
+local function validatePackage(entries)
+    local hasInstaller = false
+    local hasComputer = false
+    for _, entry in ipairs(entries) do
+        local path = entry.path
+        local allowed = path == "install.lua" or path == "computer"
+            or path:sub(1, #sourcePrefix) == sourcePrefix
+        if not allowed then error("Package contains an unexpected path: " .. path, 0) end
+        if path == "install.lua" then
+            if entry.kind ~= "file" then error("Package install.lua is not a file.", 0) end
+            hasInstaller = true
+        elseif path == "computer" or path:sub(1, #sourcePrefix) == sourcePrefix then
+            hasComputer = true
+        end
+    end
+    if not hasInstaller then error("Package is missing install.lua.", 0) end
+    if not hasComputer then error("Package is missing computer/.", 0) end
+end
+
+local function installArchive(url)
+    local stageRoot = rootPath(".cc-codex-package")
+    deleteIfPresent(stageRoot)
+    fs.makeDir(stageRoot)
+
+    local ok, failure = pcall(function()
+        print("Downloading release package...")
+        local archive = request(url, true)
+        local entries = parseTar(archive)
+        validatePackage(entries)
+        extractTarEntries(entries, stageRoot)
+        installComputerTree(combine(stageRoot, "computer"))
+        installManagedInstaller(combine(stageRoot, "install.lua"))
+    end)
+    deleteIfPresent(stageRoot)
+    if not ok then error(tostring(failure), 0) end
 end
 
 local function sourceEntries()
@@ -317,35 +565,6 @@ local function installSourceFiles()
     if not ok then error(tostring(failure), 0) end
 end
 
-local function updateInstaller()
-    print("Downloading upstream installer...")
-    writeFile(updatePath, request(rawBase .. "/install.lua", true))
-    local localHash = hashFile(selfPath)
-    local upstreamHash = hashFile(updatePath)
-    print("Local installer SHA-256:    " .. localHash)
-    print("Upstream installer SHA-256: " .. upstreamHash)
-
-    if localHash ~= upstreamHash then
-        print("A different upstream installer was found; handing off to it.")
-        local updated = shell.run(updatePath)
-        if not updated then error("The updated installer failed.", 0) end
-        deleteIfPresent(selfPath)
-        deleteIfPresent(updatePath)
-        return false
-    end
-    deleteIfPresent(updatePath)
-    return true
-end
-
-local function moveInstallerIntoCodex()
-    local destination = rootPath("codex/install.lua")
-    if selfPath == destination then return destination end
-    deleteIfPresent(destination)
-    local ok, moveError = pcall(fs.move, selfPath, destination)
-    if not ok then error("Could not move the installer into codex/: " .. tostring(moveError), 0) end
-    return destination
-end
-
 local function saveSettings()
     local saved, saveError = settings.save()
     if not saved then error("Could not save ComputerCraft settings: " .. tostring(saveError), 0) end
@@ -382,12 +601,88 @@ local function syncDisksOnce()
     if not shell.run(syncPath, "--once") then error("Initial disk synchronization failed.", 0) end
 end
 
-if updateInstaller() then
-    print("Upstream installer matches; downloading the CC Codex source tree.")
+local function parseArguments(arguments)
+    local options = {}
+    local index = 1
+    while index <= #arguments do
+        local argument = arguments[index]
+        if argument == "--archive-url" then
+            index = index + 1
+            if type(arguments[index]) ~= "string" or arguments[index] == "" then
+                error("--archive-url needs a URL.", 0)
+            end
+            options.archiveUrl = arguments[index]
+        else
+            error("Unknown installer argument: " .. tostring(argument), 0)
+        end
+        index = index + 1
+    end
+    return options
+end
+
+local function initializeRuntime()
+    runningProgram = shell.getRunningProgram()
+    if type(runningProgram) ~= "string" or runningProgram == "" then
+        runningProgram = "install.lua"
+    end
+    if not fs.exists(runningProgram) and fs.exists(runningProgram .. ".lua") then
+        runningProgram = runningProgram .. ".lua"
+    end
+
+    -- The installer lives at the computer root on first launch and in codex/
+    -- on later launches. In both cases the parent of codex/ is the computer root.
+    runningDirectory = fs.getDir(runningProgram)
+    computerRoot = runningDirectory
+    if fs.getName(runningDirectory) == "codex" then
+        computerRoot = fs.getDir(runningDirectory)
+    end
+
+    selfPath = renameSelf()
+end
+
+local function installFromSourceTree()
+    print("Downloading the CC Codex source tree as a compatibility fallback.")
     installSourceFiles()
-    moveInstallerIntoCodex()
+    installManagedInstaller(selfPath)
+end
+
+local function installPayload(options)
+    if options.archiveUrl then
+        installArchive(options.archiveUrl)
+        return
+    end
+
+    local resolved, archiveUrl, tag = pcall(latestReleaseArchive)
+    if resolved then
+        installArchive(archiveUrl)
+        print("Installed CC Codex release " .. tag .. ".")
+        return
+    else
+        printError("Latest release package unavailable; using source fallback: " .. tostring(archiveUrl))
+    end
+    installFromSourceTree()
+end
+
+local function main(arguments)
+    local options = parseArguments(arguments)
+    initializeRuntime()
+    installPayload(options)
     configureSettings()
     syncDisksOnce()
+    local installedPath = rootPath("codex/install.lua")
+    if selfPath ~= installedPath then deleteIfPresent(selfPath) end
     print("CC Codex installed. Rebooting...")
     os.reboot()
 end
+
+if rawget(_G, "__CC_CODEX_INSTALLER_TEST") then
+    return {
+        archivePath = archivePath,
+        latestReleaseArchive = latestReleaseArchive,
+        parseTar = parseTar,
+        parseArguments = parseArguments,
+        validatePackage = validatePackage
+    }
+end
+
+main({ ... })

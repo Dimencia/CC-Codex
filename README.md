@@ -34,14 +34,15 @@ wget https://raw.githubusercontent.com/Dimencia/CC-Codex/master/install.lua inst
 install
 ```
 
-The installer verifies its local and upstream SHA-256 hashes, hands off to a
-different upstream installer when needed, downloads every file under `computer/`
-using eight bounded download workers, and places the installer at
-`codex/install.lua`. It disables disk startup in `.settings`, prompts for
-`cc_codex.api_key` only when it is missing, performs an initial disk copy, and
-reboots. After reboot, computers with multishell get a disk-watcher tab for
-future insertions alongside the headless service; without multishell, startup
-performs one disk sync and starts the service.
+The installer resolves the latest published release, downloads one
+uncompressed `CC-Codex-vX.Y.Z.tar` package, validates its USTAR entries, and
+extracts the `computer/` tree before placing the package installer at
+`codex/install.lua`. If a compatible release archive is unavailable, it falls
+back to the GitHub source tree downloader. It disables disk startup in
+`.settings`, prompts for `cc_codex.api_key` only when it is missing, performs an
+initial disk copy, and reboots. After reboot, computers with multishell get a
+disk-watcher tab for future insertions alongside the headless service; without
+multishell, startup performs one disk sync and starts the service.
 
 To update an existing installation, run:
 
@@ -49,17 +50,24 @@ To update an existing installation, run:
 codex/install
 ```
 
+To install an exact release or CI-built package, pass its archive URL:
+
+```text
+codex/install --archive-url https://example.invalid/CC-Codex-v0.0.0.tar
+```
+
 The installer preserves computer-local runtime data and settings. It needs
-access to both `raw.githubusercontent.com` and `api.github.com`.
+access to `api.github.com` and the GitHub release asset host; the fallback
+source-tree path also uses `raw.githubusercontent.com`.
 
 ## Automated releases
 
-The `CI` workflow runs the Lua test suite and installer/startup syntax checks on
-pull requests and pushes to `master`. After a successful `master` push, the
-separate `Release` workflow increments the patch number after the latest
-semantic `vMAJOR.MINOR.PATCH` tag or release, packages `install.lua` and
-`computer/` into a zip, and publishes a GitHub release with the zip and
-standalone installer attached.
+The `CI` workflow runs the Lua test suite, installer TAR-parser tests, and
+installer/startup syntax checks on pull requests and pushes to `master`. After
+a successful `master` push, the separate `Release` workflow increments the
+patch number after the latest semantic `vMAJOR.MINOR.PATCH` tag or release,
+packages `install.lua` and `computer/` into an uncompressed TAR, and publishes
+a GitHub release with the TAR and standalone installer attached.
 
 ## Test and lint checks
 

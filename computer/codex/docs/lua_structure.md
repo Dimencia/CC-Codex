@@ -46,10 +46,13 @@ The installer copies it to the installed computer, where:
 - `codex/setup/set_api_key.lua` stores `cc_codex.api_key` in local CC settings.
 - `disk-source/` contains the small bootstrap files copied to attached disks.
 
-The installer creates ordinary files in the computer root. The installed
-`codex/` directory and `codex.lua` are not symlinks or junctions. Updating the
-repository therefore requires copying the changed source tree again; Git
-history, branches, and commits remain host-side responsibilities.
+The installer normally downloads the latest release's uncompressed USTAR
+package, validates it, and creates ordinary files in the computer root. Use
+`install --archive-url URL` for an exact release or CI package. If no compatible
+release package is available, it falls back to the GitHub source tree. The
+installed `codex/` directory and `codex.lua` are not symlinks or junctions.
+Updating the repository therefore requires copying the changed source tree
+again; Git history, branches, and commits remain host-side responsibilities.
 
 Do not delete the deployed source directories during ordinary source edits.
 Edit the repository files under `computer/`, then use the installer or an
