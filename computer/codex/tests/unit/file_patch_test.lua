@@ -124,6 +124,23 @@ return {
         end
     },
     {
+        name = "rejects an unterminated old file when the EOF marker is missing",
+        fn = function()
+            local parsed = assert(FilePatch.parse(table.concat({
+                "--- a/core/app.lua",
+                "+++ b/core/app.lua",
+                "@@ -1 +1 @@",
+                "-old",
+                "+new",
+                ""
+            }, "\n")))
+            local applied, applyError = FilePatch.apply(parsed, "old")
+            Harness.falsy(applied)
+            assert(applyError)
+            Harness.truthy(applyError:find("final newline", 1, true))
+        end
+    },
+    {
         name = "rejects stale context without producing a result",
         fn = function()
             local parsed = assert(FilePatch.parse(patchText(table.concat({
@@ -152,6 +169,24 @@ return {
             local applied, applyError = FilePatch.apply(parsed, "")
             assert(applied, applyError)
             Harness.equal("return 1\nreturn 2\n", applied.content)
+        end
+    },
+    {
+        name = "accepts Git new-file mode headers",
+        fn = function()
+            local parsed = assert(FilePatch.parse(table.concat({
+                "diff --git a/core/new.lua b/core/new.lua",
+                "new file mode 100644",
+                "index 0000000..1111111",
+                "--- /dev/null",
+                "+++ b/core/new.lua",
+                "@@ -0,0 +1 @@",
+                "+return 1",
+                ""
+            }, "\n")))
+            local applied, applyError = FilePatch.apply(parsed, "")
+            assert(applied, applyError)
+            Harness.equal("return 1\n", applied.content)
         end
     },
     {

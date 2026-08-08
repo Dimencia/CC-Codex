@@ -251,7 +251,8 @@ local function parsePatch(value)
             end
             hunks[#hunks + 1] = hunk
         elseif line == "" or line:sub(1, 5) == "diff " or line:sub(1, 6) == "index "
-            or line:sub(1, 9) == "old mode " or line:sub(1, 9) == "new mode " then
+            or line:sub(1, 9) == "old mode " or line:sub(1, 9) == "new mode "
+            or line:sub(1, 14) == "new file mode " then
             index = index + 1
         else
             return nil, "Unexpected line before or between unified diff hunks: " .. line
@@ -303,6 +304,12 @@ local function applyPatch(parsed, currentContent)
                 position = position + 1
             else
                 output[#output + 1] = operation.text
+            end
+        end
+        if hunk.oldCount > 0 and position - 1 == #oldLines then
+            local expectedOldFinalNewline = not hunk.noNewlineOld
+            if expectedOldFinalNewline ~= oldHasFinalNewline then
+                return nil, "Patch old-side final newline state does not match the current file."
             end
         end
         cursor = position
