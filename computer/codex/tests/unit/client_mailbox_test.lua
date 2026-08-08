@@ -90,11 +90,11 @@ return {
         end
     },
     {
-        name = "backpressures after 32 unread results without evicting them",
+        name = "backpressures a 33rd request until acknowledgement without evicting unread results",
         fn = function()
             local fs = fileSystem()
-            local encoded, submitted = {}, {}
-            local adapter = mailbox(fs, {}, encoded, submitted)
+            local decoded, encoded, submitted = {}, {}, {}
+            local adapter = mailbox(fs, decoded, encoded, submitted)
 
             for index = 1, 32 do
                 Harness.truthy(adapter:deliver(
@@ -124,6 +124,21 @@ return {
                 "final"
             ))
             Harness.equal("client-1:final\n", fs.files["results/client-1.json"])
+
+            fs.files["requests/client-33.json"] = "request-33"
+            decoded["request-33"] = { id = "client-33", action = "chat", text = "third" }
+            Harness.falsy(adapter:poll())
+            Harness.equal("request-33", fs.files["requests/client-33.json"])
+            Harness.equal(0, #submitted)
+
+            fs.delete("results/client-1.json")
+            Harness.truthy(adapter:poll())
+            Harness.equal(nil, fs.files["requests/client-33.json"])
+            Harness.equal(1, #submitted)
+            Harness.equal("client-33", submitted[1].route.requestId)
+            Harness.truthy(adapter:deliver(submitted[1].route, "answer-33", "final"))
+            Harness.equal("client-33:final\n", fs.files["results/client-33.json"])
+            Harness.equal(32, #fs.list("results"))
         end
     },
     {

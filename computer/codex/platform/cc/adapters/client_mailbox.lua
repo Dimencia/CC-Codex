@@ -112,6 +112,7 @@ end
 ---@param resultPath string
 ---@return boolean|nil
 ---@return string|nil
+---@return boolean|nil full
 local function ensureResultCapacity(self, resultPath)
     local names, listError = listFiles(self.options.fs, self.options.resultDirectory)
     if not names then return nil, "Could not inspect client results: " .. tostring(listError) end
@@ -131,7 +132,7 @@ local function ensureResultCapacity(self, resultPath)
         return nil, string.format(
             "Client result capacity is full (%d unread results); acknowledge an existing result before retrying.",
             self.maxRetainedResults
-        )
+        ), true
     end
     return true
 end
@@ -321,13 +322,19 @@ function ClientMailbox:poll()
 
     local function processScoped()
         if not scopedId or not scopedPath then return false end
+        local resultPath = scopedResultPath(self, scopedId)
+        local capacity, capacityError, capacityFull = ensureResultCapacity(self, resultPath)
+        if not capacity then
+            if capacityFull then return false end
+            return nil, capacityError
+        end
         local consumed, processError = processRequest(
             self,
             scopedPath,
             scopedId,
-            scopedResultPath(self, scopedId)
+            resultPath
         )
-        if consumed ~= nil then self.preferLegacy = true end
+        if consumed == true then self.preferLegacy = true end
         return consumed, processError
     end
 
@@ -339,7 +346,7 @@ function ClientMailbox:poll()
             nil,
             self.options.legacyResultPath
         )
-        if consumed ~= nil then self.preferLegacy = false end
+        if consumed == true then self.preferLegacy = false end
         return consumed, processError
     end
 
@@ -347,7 +354,13 @@ function ClientMailbox:poll()
         if legacyAvailable then return processLegacy() end
         if scopedId then return processScoped() end
     else
-        if scopedId then return processScoped() end
+        if scopedId then
+            local consumed, processError = processScoped()
+            if consumed == false and processError == nil and legacyAvailable then
+                return processLegacy()
+            end
+            return consumed, processError
+        end
         if legacyAvailable then return processLegacy() end
     end
     return false

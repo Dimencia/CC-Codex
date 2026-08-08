@@ -109,9 +109,9 @@ These are per-computer state, not shared source:
   `codex/data/client-results/<request-id>.json` - request-scoped client mailbox
   files. A terminal acknowledges each result by deleting it after reading. The
   service retains at most 32 unread scoped result files and never evicts an
-  unread file: when capacity is full, a new request ID's result is rejected
-  until an existing client acknowledges its result. Replacing the same
-  request ID remains allowed for progress and final delivery. This bounds
+  unread file: when capacity is full, a new scoped request remains durable and
+  unconsumed until an existing client acknowledges its result. Replacing the
+  same request ID remains allowed for progress and final delivery. This bounds
   abandoned files while applying backpressure when clients do not acknowledge.
   The service reads the older singular `client-request.json` and writes
   `client-result.json` during rollout so an older terminal client can finish.
