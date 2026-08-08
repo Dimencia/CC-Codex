@@ -1,0 +1,33 @@
+{
+  "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
+  "runtime.version": "Lua 5.2",
+  "runtime.path": [
+    "?.lua",
+    "?/init.lua",
+    "computer/codex/?.lua",
+    "computer/codex/?/init.lua",
+    "computer/codex/tests/?.lua",
+    "computer/codex/tests/?/init.lua"
+  ],
+  "workspace.checkThirdParty": false,
+  "workspace.library": [
+    "C:/Users/Dimen/Documents/GitHub/CC-Tweaked-EmmyLua"
+  ],
+  "workspace.ignoreDir": [
+    ".lua-language-server",
+    "node_modules"
+  ],
+  "runtime.builtin": {
+    "io": "disable",
+    "os": "disable"
+  },
+  "diagnostics.disable": [
+    "lowercase-global"
+  ],
+  "diagnostics.globals": [
+    "printError",
+    "sleep",
+    "write",
+    "utf8"
+  ]
+}

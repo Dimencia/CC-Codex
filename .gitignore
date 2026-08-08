@@ -1,1 +1,11 @@
+# Codex deployment snapshots and local agent state.
 .codex/
+
+# ComputerCraft runtime state is local to each computer.
+**/data/
+**/artifacts/
+**/.settings/
+
+# Local test and editor tooling.
+node_modules/
+.lua-language-server/
