@@ -7,9 +7,9 @@ description: Implement repository changes in an isolated Codex worktree, create 
 
 ## Objective
 
-Complete one coherent user task in the current isolated checkout and leave it
-as a reviewable GitHub pull request. Do not merge it, poll it, or create a
-scheduled follow-up.
+Complete one coherent user task in the current isolated checkout, leave it as a
+reviewable GitHub pull request, and review unreviewed peer pull-request heads.
+Do not merge it, poll it, or create a scheduled follow-up.
 
 ## Preflight
 
@@ -21,7 +21,9 @@ scheduled follow-up.
 5. Confirm the connected GitHub app can access the repository. If the app is
    unavailable and publication is required, use `gh --version` and
    `gh auth status` as the fallback.
-6. Run `git fetch --prune origin` when network access is available.
+6. Run `git fetch --prune origin` when network access is available, then use
+   the refreshed `origin/master` as the normal task base instead of trusting a
+   possibly stale local `master`.
 
 On Windows, compare `whoami` with the interactive user's identity before
 diagnosing failed CLI authentication. A Codex sandbox account cannot decrypt
@@ -37,9 +39,13 @@ If the checkout is the default branch, do not edit it. Report that the task
 must be started or handed off into Codex **Worktree** mode. A detached HEAD in
 a Codex-created worktree is valid.
 
-If the current branch starts with `codex/`, keep it. Otherwise create a unique
-branch from the current HEAD before the first edit. Use
-`codex/<short-task-slug>-<unique-suffix>` and verify the resulting branch.
+For a roadmap item, inspect remote `codex/cc-*` branches and reserve the exact
+`codex/cc-NNN-short-slug` branch before the first source edit. Make a unique
+empty `Claim CC-NNN` commit and push without force; begin only if that push
+creates the remote branch. If it already exists or the push is rejected,
+another worker owns the item. For other work, keep an existing task-specific
+`codex/` branch or create `codex/<short-task-slug>-<unique-suffix>` from the
+intended base and verify it before editing.
 
 ## Establish scope and implement
 
@@ -99,6 +105,13 @@ Why this approach was selected and any important design constraint.
 Do not immediately post `@codex review`; the initial ready pull request should
 receive automatic review, and the coordinator owns deduplicated review requests.
 
+After opening or updating the pull request, list every other open pull request.
+Review each current head that lacks an adequate independent review, prioritizing
+overlapping or blocking changes and then the oldest unreviewed head. Inspect its
+contract, diff, tests, documentation, simplification, and untested live
+boundaries. Submit actionable file/line findings or an approval directly; do
+not post `@codex review`, edit the other branch, or treat review as a claim.
+
 When addressing review feedback, load the current PR, review summary, inline
 comments, discussion, and checks. Evaluate findings, fix legitimate issues with
 minimal scope, rerun validation, commit, push, and let the coordinator request
@@ -107,5 +120,6 @@ re-review. Do not poll after publication.
 ## Final report
 
 Report the branch, latest commit SHA, pull-request number and URL, concise
-summary, validation outcomes, and any skipped check, risk, conflict, CI failure,
-or unresolved review item. Never claim a merge unless GitHub confirms it.
+summary, validation outcomes, peer-review pass, and any skipped check, risk,
+conflict, CI failure, or unresolved review item. Never claim a merge unless
+GitHub confirms it.
