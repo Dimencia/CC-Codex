@@ -2,6 +2,7 @@
 ---@field adapterId string
 ---@field address? unknown
 ---@field requestId? string
+---@field clientId? string
 
 ---@class ContinuationCheckpoint
 ---@field turnId integer

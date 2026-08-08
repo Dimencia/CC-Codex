@@ -38,8 +38,15 @@ local function withCcGlobals(fn, capture)
     environment.fs = {
         getDir = function() return "" end,
         combine = function(left, right) return left == "" and right or left .. "/" .. right end,
-        makeDir = function() end,
-        exists = function(path) return capture.files[path] ~= nil end,
+        makeDir = function(path)
+            capture.directories = capture.directories or {}
+            capture.directories[path] = true
+        end,
+        exists = function(path)
+            return capture.files[path] ~= nil
+                or capture.directories and capture.directories[path] == true
+                or false
+        end,
         isDir = function(path)
             return capture.directories and capture.directories[path] == true or false
         end,
@@ -217,6 +224,63 @@ return {
                 address = { username = "Player" }
             }, "answer", "final", metadata))
             Harness.equal(metadata, received)
+        end
+    },
+    {
+        name = "client mailbox isolates requests and results for two clients",
+        fn = function()
+            local capture = {
+                directories = {
+                    ["data/clients"] = true,
+                    ["data/clients/alpha"] = true,
+                    ["data/clients/bravo"] = true
+                },
+                lists = { ["data/clients"] = { "bravo", "alpha" } },
+                files = {
+                    ["data/clients/alpha/request.json"] = "alpha-request",
+                    ["data/clients/bravo/request.json"] = "bravo-request"
+                },
+                decoded = {
+                    ["alpha-request"] = { id = "request-a", action = "chat", text = "alpha text" },
+                    ["bravo-request"] = { id = "request-b", action = "chat", text = "bravo text" }
+                }
+            }
+            local first, second = withCcGlobals(function()
+                local app = CcBootstrap.build(Config.new({
+                    apiKey = "test",
+                    chatBoxEnabled = false
+                }))
+                local mailbox
+                for _, input in ipairs(app.inputs) do
+                    if input.id == "client_mailbox" then mailbox = input end
+                end
+                assert(mailbox)
+                Harness.truthy(mailbox:poll())
+                Harness.truthy(mailbox:poll())
+                local firstRequest = assert(app.queue:take())
+                local secondRequest = assert(app.queue:take())
+                Harness.truthy(mailbox:deliver(firstRequest.replyRoutes[1], "alpha result", "final"))
+                Harness.truthy(mailbox:deliver(secondRequest.replyRoutes[1], "bravo result", "final"))
+                local escaped, routeError = mailbox:deliver({
+                    adapterId = "client_mailbox",
+                    requestId = "escape",
+                    clientId = "../escape"
+                }, "must not write", "final")
+                Harness.equal(nil, escaped)
+                Harness.truthy(routeError:find("client id", 1, true))
+                return firstRequest, secondRequest
+            end, capture)
+            Harness.equal("alpha text", first.text)
+            Harness.equal("alpha", first.replyRoutes[1].clientId)
+            Harness.equal("request-a", first.replyRoutes[1].requestId)
+            Harness.equal("bravo text", second.text)
+            Harness.equal("bravo", second.replyRoutes[1].clientId)
+
+            Harness.truthy(capture.files["data/clients/alpha/result.json"])
+            Harness.truthy(capture.files["data/clients/bravo/result.json"])
+            Harness.equal(nil, capture.files["data/escape/result.json"])
+            Harness.equal(nil, capture.files["data/clients/alpha/request.json"])
+            Harness.equal(nil, capture.files["data/clients/bravo/request.json"])
         end
     },
     {

@@ -26,7 +26,9 @@ on the CC computer.
   setting, validates the URL, starts the application, and repeats a managed child
   after a restart marker.
 - `computer/codex.lua` is the manual terminal-client launcher. Its client uses
-  the service-owned mailbox rather than creating a second conversation engine.
+  a client-scoped directory under the service-owned mailbox rather than
+  creating a second conversation engine or sharing result files with another
+  client.
 - `computer/codex/platform/cc/bootstrap.lua` is the composition edge. It wires CC
   globals, peripherals, files, HTTP, storage, tools, and adapters.
 - `core/` owns scheduling, conversation policy, configuration, text/component
@@ -57,7 +59,8 @@ request envelope.
 The provider owns model-visible conversation history. CC-local durable state
 contains the cursor, restart checkpoint, instruction refresh metadata, latest
 image path, and conversation-log identifier; separate files hold preferences,
-catalog and diagnostic logs, usage records, artifacts, and client mailbox data.
+catalog and diagnostic logs, usage records, artifacts, and client-scoped
+mailbox data.
 ComputerCraft settings contain the API key. The key is not source and must not
 be committed or placed in runtime request files.
 

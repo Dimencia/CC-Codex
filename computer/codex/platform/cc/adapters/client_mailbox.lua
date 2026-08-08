@@ -3,12 +3,14 @@
 ---@field open fun(path: string, mode: string): table|nil, string|nil
 ---@field delete fun(path: string)
 ---@field move fun(from: string, to: string)
+---@field isDir fun(path: string): boolean
+---@field list fun(path: string): string[]
+---@field combine fun(left: string, right: string): string
 
 ---@class ClientMailboxOptions
 ---@field fs ClientMailboxFileSystem
 ---@field json StateJsonCodec
----@field requestPath string
----@field resultPath string
+---@field rootPath string
 ---@field submit fun(text: string, route: ReplyRoute): boolean|nil, string|nil
 ---@field onError fun(message: string)|nil
 
@@ -59,10 +61,8 @@ function ClientMailbox.new(options)
     assert(type(options) == "table", "client mailbox options are required")
     assert(type(options.fs) == "table", "client mailbox filesystem is required")
     assert(type(options.json) == "table", "client mailbox JSON codec is required")
-    assert(type(options.requestPath) == "string" and options.requestPath ~= "",
-        "client mailbox request path is required")
-    assert(type(options.resultPath) == "string" and options.resultPath ~= "",
-        "client mailbox result path is required")
+    assert(type(options.rootPath) == "string" and options.rootPath ~= "",
+        "client mailbox root path is required")
     assert(type(options.submit) == "function", "client mailbox submit callback is required")
     return setmetatable({
         id = "client_mailbox",
@@ -72,11 +72,32 @@ function ClientMailbox.new(options)
     }, ClientMailbox)
 end
 
+---@param value unknown
+---@return boolean
+local function validClientId(value)
+    return type(value) == "string"
+        and value ~= "."
+        and value ~= ".."
+        and value:match("^[%w_.-]+$") ~= nil
+end
+
 ---@param self ClientMailbox
+---@param clientId string
+---@param name string
+---@return string
+local function clientFile(self, clientId, name)
+    return self.options.fs.combine(
+        self.options.fs.combine(self.options.rootPath, clientId),
+        name
+    )
+end
+
+---@param self ClientMailbox
+---@param clientId string
 ---@param result table
 ---@return boolean|nil
 ---@return string|nil
-local function publishResult(self, result)
+local function publishResult(self, clientId, result)
     local encodedOk, encoded, encodeError = pcall(self.options.json.encode, result)
     if not encodedOk then
         encodeError = encoded
@@ -86,7 +107,8 @@ local function publishResult(self, result)
         return nil, "Could not encode client result: " .. tostring(encodeError)
     end
 
-    local temporaryPath = self.options.resultPath .. ".tmp"
+    local resultPath = clientFile(self, clientId, "result.json")
+    local temporaryPath = resultPath .. ".tmp"
     local handle, openError = openFile(self.options.fs, temporaryPath, "w")
     if not handle then
         return nil, "Could not open client result temporary file: " .. tostring(openError)
@@ -102,12 +124,12 @@ local function publishResult(self, result)
         return nil, "Could not write client result: " .. tostring(writeError)
     end
 
-    local resultExists, existsError = pathExists(self.options.fs, self.options.resultPath)
+    local resultExists, existsError = pathExists(self.options.fs, resultPath)
     if resultExists == nil then
         return nil, "Could not inspect prior client result: " .. tostring(existsError)
     end
     if resultExists then
-        local removed, removeError = filesystemCall(self.options.fs.delete, self.options.resultPath)
+        local removed, removeError = filesystemCall(self.options.fs.delete, resultPath)
         if not removed then
             return nil, "Could not replace prior client result: " .. tostring(removeError)
         end
@@ -115,7 +137,7 @@ local function publishResult(self, result)
     local moved, moveError = filesystemCall(
         self.options.fs.move,
         temporaryPath,
-        self.options.resultPath
+        resultPath
     )
     if not moved then return nil, "Could not publish client result: " .. tostring(moveError) end
     return true
@@ -131,28 +153,31 @@ local function requestId(request)
 end
 
 ---@param self ClientMailbox
+---@param clientId string
 ---@param result table
-local function publishFailure(self, result)
-    local published, publishError = publishResult(self, result)
+local function publishFailure(self, clientId, result)
+    local published, publishError = publishResult(self, clientId, result)
     if not published and self.options.onError then self.options.onError(publishError or "unknown error") end
 end
 
 ---@param self ClientMailbox
+---@param clientId string
 ---@return boolean|nil
 ---@return string|nil
-function ClientMailbox:poll()
-    local requestExists, existsError = pathExists(self.options.fs, self.options.requestPath)
+local function pollClient(self, clientId)
+    local requestPath = clientFile(self, clientId, "request.json")
+    local requestExists, existsError = pathExists(self.options.fs, requestPath)
     if requestExists == nil then return nil, "Could not inspect client request: " .. tostring(existsError) end
     if not requestExists then return false end
 
-    local handle, openError = openFile(self.options.fs, self.options.requestPath, "r")
+    local handle, openError = openFile(self.options.fs, requestPath, "r")
     if not handle then return nil, "Could not open client request: " .. tostring(openError) end
     local read, body = pcall(handle.readAll)
     local closed, closeError = pcall(handle.close)
     if not read then return nil, "Could not read client request: " .. tostring(body) end
     if not closed then return nil, "Could not close client request: " .. tostring(closeError) end
 
-    local removed, removeError = filesystemCall(self.options.fs.delete, self.options.requestPath)
+    local removed, removeError = filesystemCall(self.options.fs.delete, requestPath)
     if not removed then return nil, "Could not consume client request: " .. tostring(removeError) end
 
     local decodeOk, decoded, decodeError = pcall(self.options.json.decode, body)
@@ -163,7 +188,7 @@ function ClientMailbox:poll()
     local id = requestId(decoded)
     if type(decoded) ~= "table" or id == "" or decoded.action ~= "chat"
         or type(decoded.text) ~= "string" or not decoded.text:find("%S") then
-        publishFailure(self, {
+        publishFailure(self, clientId, {
             id = id,
             action = "chat",
             ok = false,
@@ -177,10 +202,11 @@ function ClientMailbox:poll()
 
     local submitted, submitError = self.options.submit(decoded.text, {
         adapterId = self.id,
-        requestId = id
+        requestId = id,
+        clientId = clientId
     })
     if not submitted then
-        publishFailure(self, {
+        publishFailure(self, clientId, {
             id = id,
             action = "chat",
             ok = false,
@@ -190,6 +216,36 @@ function ClientMailbox:poll()
         })
     end
     return true
+end
+
+---@param self ClientMailbox
+---@return boolean|nil
+---@return string|nil
+function ClientMailbox:poll()
+    local rootExists, existsError = pathExists(self.options.fs, self.options.rootPath)
+    if rootExists == nil then return nil, "Could not inspect client mailbox root: " .. tostring(existsError) end
+    if not rootExists then return false end
+
+    local listed, clients = pcall(self.options.fs.list, self.options.rootPath)
+    if not listed or type(clients) ~= "table" then
+        return nil, "Could not list client mailboxes: " .. tostring(clients)
+    end
+    table.sort(clients)
+    for _, clientId in ipairs(clients) do
+        if validClientId(clientId) then
+            local directory = self.options.fs.combine(self.options.rootPath, clientId)
+            local checked, isDirectory = pcall(self.options.fs.isDir, directory)
+            if not checked then
+                return nil, "Could not inspect client mailbox: " .. tostring(isDirectory)
+            end
+            if isDirectory then
+                local consumed, pollError = pollClient(self, clientId)
+                if consumed == nil then return nil, pollError end
+                if consumed then return true end
+            end
+        end
+    end
+    return false
 end
 
 ---@param self ClientMailbox
@@ -204,7 +260,10 @@ function ClientMailbox:deliver(route, message, kind, metadata)
     if type(requestIdValue) ~= "string" or requestIdValue == "" then
         return nil, "Client reply route has no request id."
     end
-    return publishResult(self, {
+    local clientId = type(route) == "table" and route.clientId or nil
+    if not validClientId(clientId) then return nil, "Client reply route has no client id." end
+    ---@cast clientId string
+    return publishResult(self, clientId, {
         id = requestIdValue,
         action = "chat",
         ok = kind ~= "error",

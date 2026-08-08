@@ -9,9 +9,14 @@ package.path = table.concat({
 local ComponentText = require("core.component_text")
 local Text = require("core.text")
 
-local requestPath = "codex/data/client-request.json"
-local resultPath = "codex/data/client-result.json"
+local tabId = multishell and multishell.getCurrent and multishell.getCurrent() or 0
+local clientId = "computer-" .. tostring(os.computerID()) .. "-tab-" .. tostring(tabId)
+local clientPath = fs.combine("codex/data/clients", clientId)
+local requestPath = fs.combine(clientPath, "request.json")
+local resultPath = fs.combine(clientPath, "result.json")
 local requestCounter = 0
+
+fs.makeDir(clientPath)
 
 local json = {
     encode = function(value)
