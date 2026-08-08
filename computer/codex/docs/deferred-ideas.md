@@ -14,8 +14,8 @@ and a recoverable write path.
 
 Evaluate native background operations or small local jobs with IDs and a wait
 operation. Keep ordinary tools directly callable from Lua; do not add a generic
-dispatcher without a concrete limitation to solve.  But we want the agent to 
-be able to start long running operations, then start more stuff, then 
+dispatcher without a concrete limitation to solve. But we want the agent to
+be able to start long running operations, then start more stuff, then
 decide that it's been a while and it should check in, etc
 
 ## Hosted sandbox or local memory
