@@ -1,5 +1,6 @@
 -- CC Codex headless service. Library modules are inert until this file calls
--- App:run(). Terminal and other clients submit through the client mailbox.
+-- App:run(). Terminal and other clients submit through request-scoped mailbox
+-- files; the adapter also reads the previous singular paths during rollout.
 
 local arguments = { ... }
 local managedChild = "--codex-managed-child"

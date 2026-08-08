@@ -58,6 +58,10 @@ The provider owns model-visible conversation history. CC-local durable state
 contains the cursor, restart checkpoint, instruction refresh metadata, latest
 image path, and conversation-log identifier; separate files hold preferences,
 catalog and diagnostic logs, usage records, artifacts, and client mailbox data.
+Client requests and replies use one file per request ID under
+`data/client-requests/` and `data/client-results/`, so concurrent clients do
+not overwrite one shared result. The service temporarily reads the older
+singular mailbox paths for rollout compatibility.
 ComputerCraft settings contain the API key. The key is not source and must not
 be committed or placed in runtime request files.
 

@@ -29,10 +29,10 @@ To verify the interpreter itself:
 
 This reads the checkout directly, uses fake CC boundaries and synthetic
 fixtures, and does not require a Minecraft world, model request, or CC API key.
-The suite includes disk-worker capability storage, disk startup placement, and
-the authenticated `rednet_worker` request envelope. The standalone worker
-bootstrap is also syntax-checked independently because it runs outside the
-installed Codex module tree.
+The suite includes disk-worker capability storage, disk startup placement, the
+request-scoped client mailbox, and the authenticated `rednet_worker` request
+envelope. The standalone worker bootstrap is also syntax-checked independently
+because it runs outside the installed Codex module tree.
 The focused image suite is also available offline as:
 
 ```powershell

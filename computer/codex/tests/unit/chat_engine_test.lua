@@ -887,6 +887,21 @@ return {
         end
     },
     {
+        name = "preserves distinct client mailbox ownership through route copies",
+        fn = function()
+            local state = fixture({ responses = { finalResponse("done", "answer") } })
+            local result = state.engine:runTurn(turn(1, "hello", {
+                { adapterId = "client_mailbox", requestId = "client-a", legacyMailbox = true },
+                { adapterId = "client_mailbox", requestId = "client-b" }
+            }))
+            assert(result)
+            Harness.equal(2, #state.deliveries)
+            Harness.equal("client-a", state.deliveries[1].route.requestId)
+            Harness.truthy(state.deliveries[1].route.legacyMailbox)
+            Harness.equal("client-b", state.deliveries[2].route.requestId)
+        end
+    },
+    {
         name = "ends the turn and records provider failures",
         fn = function()
             local state = fixture({

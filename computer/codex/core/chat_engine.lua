@@ -165,6 +165,10 @@ end
 ---@return boolean
 local function sameRoute(left, right)
     if left.adapterId ~= right.adapterId then return false end
+    if left.requestId ~= right.requestId
+        or left.legacyMailbox ~= right.legacyMailbox then
+        return false
+    end
     if left.adapterId == "chat_box" then
         local leftAddress = left.address
         local rightAddress = right.address
@@ -190,6 +194,8 @@ local function copyRoute(route)
         return nil
     end
     local copy = { adapterId = route.adapterId }
+    if type(route.requestId) == "string" then copy.requestId = route.requestId end
+    if route.legacyMailbox == true then copy.legacyMailbox = true end
     if type(route.address) == "table" then
         copy.address = {}
         for key, value in pairs(route.address) do

@@ -97,8 +97,10 @@ These are per-computer state, not shared source:
 - `codex/data/conversations.json` and `codex/data/conversations/` - conversation catalog
   and plaintext diagnostic JSONL logs.
 - `codex/data/usage.jsonl` - aggregate turn metrics.
-- `codex/data/client-request.json` and `codex/data/client-result.json` - transient
-  client mailbox files.
+- `codex/data/client-requests/<request-id>.json` and
+  `codex/data/client-results/<request-id>.json` - request-scoped client mailbox
+  files. The service reads the older singular `client-request.json` and writes
+  `client-result.json` during rollout so an older terminal client can finish.
 - `codex/artifacts/images/` - generated image files.
 - `codex/.codex-restart` - transient supervisor marker used for a validated
   managed restart.
