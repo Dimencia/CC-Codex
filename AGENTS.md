@@ -89,8 +89,20 @@ pull requests.
 
 The roadmap steward owns roadmap priorities, work-item definitions, and stale
 claim decisions. The PR coordinator is a separate role that owns deduplicated
-`@codex review` and `@codex fix` requests and final merges. Feature workers own
-only their claimed item and branch.
+`@codex review` and `@codex fix` requests, escalation, and final merges. The
+feature worker owns its claimed item, branch, and pull request until merge or
+an explicit handoff; publishing a PR does not end that ownership.
+
+Every agent identity has one stable callsign across its tasks and branches. A
+genuinely new worker chooses or accepts an unused callsign; existing workers
+retain theirs. Prefix the task title and internal or GitHub messages with that
+name, and include
+`Agent: <callsign> (<role>)` in roadmap claims, PR bodies, reviews, fix comments,
+merge notes, reports, and handoffs. Names make concurrent agents distinguishable
+but never replace work-item IDs, branches, PR numbers, or head SHAs. Never use a
+callsign as a temporary task or PR label, rename another worker during a
+handoff, or assign the same callsign to multiple agents. Keep the required
+`codex/*` branch format unchanged.
 
 - For every task that changes tracked files, use the repository-local
   `parallel-pr-worker` skill unless the user explicitly asks for read-only
@@ -100,9 +112,9 @@ only their claimed item and branch.
 - Start write-capable tasks in **Worktree** mode from the intended base branch,
   normally the latest `origin/master` after `git fetch --prune origin`.
 - Never make feature changes directly on `master`. A detached HEAD in a new
-  Codex worktree is expected. For a roadmap item, reserve the exact
-  `codex/cc-NNN-short-slug` remote branch before editing; for other work, create
-  a unique `codex/<task-slug>-<unique-suffix>` branch before committing.
+  Codex worktree is expected. For a roadmap item, acquire the Ready-to-Active
+  claim on `master` before creating `codex/cc-NNN-short-slug`; for other work,
+  create a unique `codex/<task-slug>-<unique-suffix>` branch before committing.
 - Work only in the current checkout. Never edit, reset, clean, remove, or
   repurpose another worktree, and never discard changes you did not create.
 - Do not use destructive Git operations or force-push unless the user
@@ -124,12 +136,23 @@ Worker branches use the `codex/` prefix and are pushed to `origin`. Completed
 worker changes are submitted as GitHub pull requests unless the user explicitly
 says not to publish them. Pull requests target `master` unless the user chooses
 another base, and their descriptions include a summary, rationale, validation,
-and notable risks or limitations. After publishing, the worker lists every
+and notable risks or limitations. On every later turn for that task, the worker
+checks its open pull request before starting new work and addresses actionable
+review findings, branch-caused CI failures, and conflicts. It must not claim a
+new roadmap item while its existing PR still needs owner action. After
+publishing, the worker lists every
 other open pull request and directly reviews each current head that lacks an
 adequate independent review. This peer review does not transfer the other
 item's claim. Workers do not merge their own pull requests or issue automated
 `@codex review`/`@codex fix` requests; the PR coordinator owns those requests
 and merging.
+
+The coordinator may try one GitHub Codex fix delegation for a head commit, but
+that delegation does not transfer ownership or prove that a fix happened. If it
+finishes or fails without a new commit, the coordinator marks the PR as needing
+owner action and reports it to the roadmap steward or user. The roadmap steward
+records the blocked state in Active and either wakes the original worker or
+explicitly reassigns the same branch; it does not create duplicate feature work.
 
 On Windows, Codex shell commands may run as a sandbox account such as
 `codexsandboxonline` while `USERPROFILE` still points at the interactive user's
@@ -147,3 +170,30 @@ asynchronous paths, unowned background work, lost exceptions, unsafe shared
 state, missing server-side authorization, untrusted path or command handling,
 injection risks, secret exposure, and consequential behavior changes without a
 practical regression test.
+
+### Atomic roadmap claims
+
+For roadmap work, a remote feature branch is not the lock: different slugs can
+create multiple branches for one ID. A worker may select only an ID listed in
+the Ready queue in `computer/codex/docs/deferred-ideas.md`.
+
+Before any feature edit, create a fresh roadmap-only branch from the latest
+fetched `origin/master`, move the ID from Ready to Active with the intended
+feature branch name, commit only that roadmap file, and push the commit directly
+to `master` without force. Move only the queue entry; never remove or relocate
+the detailed task specification, which QA and reviewers still need. The first
+fast-forward push owns the item. If the
+push is rejected, fetch the winning `master`, do not retry the same claim, and
+choose another Ready ID. Create the feature branch from the updated
+`origin/master` only after the claim is visible there.
+
+Do not claim Ready work while the roadmap declares Stabilization mode. During
+that mode, resume owned PRs first, resolve actionable feedback, branch-caused CI
+failures, and conflicts, and wait for the roadmap steward to reopen claims.
+
+The roadmap steward uses the same documentation-only direct-to-`master` path
+for reprioritization, completion, abandonment, stale-claim cleanup, and the
+repository agent instructions needed to operate that queue safely. Feature pull
+requests do not edit the queue. This exception never permits direct product
+source, tests, CI workflows, installer behavior, or runtime changes on
+`master`.

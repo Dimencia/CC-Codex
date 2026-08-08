@@ -10,36 +10,54 @@ IDs are in
 - The roadmap steward owns priorities and work-item definitions, splits work,
   and periodically reviews status and stale claims.
 - The PR coordinator requests automated reviews and fixes and merges completed
-  branches. This is a separate role from the roadmap steward.
-- A feature worker claims one ready work-item ID and owns one branch and one
-  worktree until handoff.
+  branches, escalating failed automation to the owner. This is a separate role
+  from the roadmap steward.
+- A feature worker claims one ready work-item ID and owns its branch, worktree,
+  and PR until merge or explicit handoff.
+- A QA worker independently validates current PR heads and adds focused
+  regression coverage without taking over the feature branch.
+- A benchmark worker establishes reproducible performance and cost baselines,
+  then proposes measured optimizations. Read-only measurement does not claim a
+  roadmap item; benchmark harness or product changes still require an explicit
+  assignment and the normal claim workflow.
 - Feature workers update behavior documentation affected by their patch, but
   they do not reorder the roadmap or claim a second item opportunistically.
 
-## Branch claim is the lock
+## Agent identity
 
-Use the exact branch pattern `codex/cc-NNN-short-slug`. The remote branch is the
-shared claim. A worker must reserve it before editing source.
+Every agent identity keeps one stable, human-readable callsign across tasks and
+branches. Puck may suggest an unused name for a genuinely new worker; existing
+workers retain their established identities. Prefix the task title with the
+name, prefix internal and GitHub messages with `[<callsign>]`, and add
+`Agent: <callsign> (<role>)` to roadmap claims, PR bodies, reviews, fix or
+escalation comments, merge notes, and handoffs. Keep the branch, PR number,
+work-item ID, and head SHA where relevant: the name helps humans distinguish
+workers but is not an authorization or lock. Never use a callsign as a temporary
+task or PR label, reuse it for another agent, or rename a worker during handoff.
+Do not alter required branch names to include the callsign.
 
-1. Run `git fetch --prune origin`, read the roadmap, and inspect local and
-   remote `codex/cc-*` branches.
-2. Create a dedicated worktree and the exact item branch from the current
-   integration base, normally the refreshed `origin/master` rather than a
-   possibly stale local `master`.
-3. Before source edits, make a unique empty commit named `Claim CC-NNN` and push
-   the branch without force.
-4. Start work only if that push creates the remote branch. If it is rejected or
-   the remote branch already exists, another worker owns the item. Do not pull
-   their branch and continue; choose an unclaimed item.
+## Ready-to-Active update is the lock
 
-The unique claim commit matters. Two workers pushing an unchanged base could
-both appear successful because they would push the same commit. Unique commits
-make concurrent claims diverge, so Git accepts one branch creation and rejects
-the other as a non-fast-forward update. Never force-push a claim branch.
+The short Ready and Active entries in the canonical roadmap are the shared work
+queue. Detailed task specifications never move or disappear when claimed; QA
+and reviewers need those contracts while implementation is active.
 
-Workers on the same host also benefit from Git's rule that one branch cannot be
-checked out in two worktrees, but the remote reservation is still required for
-workers in other clones or machines.
+1. Run `git fetch --prune origin` and read the latest roadmap from
+   `origin/master`.
+2. Choose only an ID in Ready. Create a fresh roadmap-only branch from
+   `origin/master` and move only that short entry into Active with the intended
+   feature branch and owning agent name.
+3. Commit only the queue update and push it directly to `master` without force.
+   The first fast-forward push wins.
+4. If rejected, fetch the winning `master`, do not retry the same item, and
+   choose a different Ready ID.
+5. Only after the claim is visible on `master`, create the feature branch
+   `codex/cc-NNN-short-slug` from the new `origin/master` in its own worktree.
+
+Branch names and worktree branch locks are supporting evidence, not claims:
+different workers can choose different slugs for the same ID. Never force-push
+a claim or include product code, tests, CI, installer, or runtime changes in the
+direct roadmap commit.
 
 ## GitHub authentication boundary
 
@@ -81,8 +99,30 @@ Each handoff states:
 - remaining risks and follow-up IDs.
 
 Keep commits reviewable. A draft pull request can expose progress when the user
-has authorized one, but branch creation is the claim and a pull request is not
-required to begin local work.
+has authorized one, but the accepted Ready-to-Active update is the claim and a
+pull request is not required to begin local work.
+
+## Pull-request follow-up ownership
+
+Publishing does not complete the worker's assignment. On every resumed turn,
+the feature worker checks its own open PR before starting anything new. It owns
+legitimate review fixes, branch-caused CI failures, and conflicts, and it does
+not claim another roadmap item while owner action is pending.
+
+The coordinator may issue one deduplicated GitHub Codex fix request per head
+SHA. If that attempt finishes or fails without a new commit, the coordinator
+posts one `owner-action` escalation and reports it; it does not keep asking the
+same automation. The roadmap steward records the PR as blocked in Active and
+either wakes the original worker or explicitly assigns a replacement to the
+same branch. No other worker edits that branch without this handoff, and no one
+starts a duplicate implementation.
+
+When the PR queue backs up, the roadmap steward sets the canonical queue to
+Stabilization mode. Ready priorities stay visible but are temporarily
+unclaimable. Feature workers finish owned PRs, QA refreshes current-head review
+evidence, and the coordinator triages and merges. The steward clears the mode
+only after owner-action blockers are resolved or explicitly reassigned and the
+remaining queue is green, reviewed, and mergeable.
 
 ## Peer review rotation
 
@@ -105,11 +145,12 @@ submitting comments or approval.
 
 ## PR coordination and release
 
-The PR coordinator reviews the diff and evidence, updates the branch from the
-current integration base, resolves conflicts deliberately, and reruns the
-required gates. Merge one architectural boundary at a time. Deployment,
-ComputerCraft restart, live model requests, and Minecraft interaction remain
-separate explicitly authorized actions.
+The PR coordinator triages current evidence, requests review or fixes once per
+head, escalates stalled fixes to the owner, and merges only a fully ready PR.
+The feature worker updates its branch, resolves conflicts deliberately, and
+reruns the required gates. Merge one architectural boundary at a time.
+Deployment, ComputerCraft restart, live model requests, and Minecraft
+interaction remain separate explicitly authorized actions.
 
 After merge, the PR coordinator may delete the remote branch and remove its
 worktree. Workers never delete a branch merely because it looks stale. A stale
@@ -120,15 +161,15 @@ necessary.
 ## Protected roadmap publication
 
 Roadmap-only queue and agent-instruction updates bypass feature review, but
-they do not bypass the protected `test` check. Publish the documentation branch,
-dispatch CI for that branch, and record its exact commit:
+they do not bypass the protected `test` check. Use a
+`codex/roadmap-<unique-suffix>` branch, record its exact commit, and push it.
+That push triggers the required CI check:
 
 ```powershell
 $roadmapBranch = (git branch --show-current).Trim()
 $validatedSha = (git rev-parse HEAD).Trim()
 git push -u origin $roadmapBranch
-gh workflow run ci.yml --repo Dimencia/CC-Codex --ref $roadmapBranch
-gh run list --repo Dimencia/CC-Codex --workflow CI --branch $roadmapBranch --event workflow_dispatch --json databaseId,headSha,status,conclusion --limit 10
+gh run list --repo Dimencia/CC-Codex --workflow CI --branch $roadmapBranch --event push --json databaseId,headSha,status,conclusion --limit 10
 ```
 
 Select the run whose `headSha` exactly equals `$validatedSha`, then require it
@@ -140,8 +181,8 @@ gh run watch <RUN_ID> --repo Dimencia/CC-Codex --exit-status
 
 Before publishing, verify that neither the branch nor `master` invalidated the
 result. If `HEAD` changed, or if `origin/master` is no longer an ancestor of the
-validated commit, update the documentation branch and repeat the dispatch for
-its new SHA.
+validated commit, update and push the documentation branch, then validate the
+new push-event run for its new SHA.
 
 ```powershell
 if ((git rev-parse HEAD).Trim() -ne $validatedSha) { throw "Roadmap HEAD changed after validation" }
@@ -153,7 +194,9 @@ git push origin "${validatedSha}:refs/heads/master"
 
 Never substitute a newer unvalidated commit, force-push `master`, open a
 roadmap PR, or use this path for product code, tests, CI, installer, or runtime
-changes.
+changes. `workflow_dispatch` remains available for diagnostics, but its manual
+run did not satisfy this repository's protected direct-push rule and is not a
+roadmap publication gate.
 
 ## Periodic roadmap pass
 
@@ -161,9 +204,11 @@ On each check-in:
 
 1. Fetch/prune and list `codex/cc-*` claims.
 2. Compare branch activity and review state with the roadmap.
-3. Verify completed work from commits, diffs, tests, and live evidence rather
+3. Mark PRs with unresolved owner-action escalations as blocked and wake the
+   original worker or explicitly reassign the same branch.
+4. Verify completed work from commits, diffs, tests, and live evidence rather
    than worker summaries alone.
-4. Split or block items whose prerequisites changed.
-5. Re-rank the ready queue and keep the number of active architecture changes
+5. Split or block items whose prerequisites changed.
+6. Re-rank the ready queue and keep the number of active architecture changes
    small.
-6. Update the canonical roadmap through the roadmap steward's branch only.
+7. Update the canonical roadmap through the roadmap steward's branch only.
