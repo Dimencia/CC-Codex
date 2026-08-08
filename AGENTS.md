@@ -51,22 +51,6 @@ runtime-composition change:
 - report which documentation was checked and which live boundaries were not
   validated.
 
-For parallel autonomous work, follow `docs/parallel-workflow.md`. Claim exactly
-one stable roadmap ID by reserving its `codex/cc-NNN-short-slug` branch before
-editing. Feature workers do not reprioritize the canonical roadmap in their
-implementation branch. After opening a pull request, list the other open pull
-requests and review each head that lacks an adequate current review; reviewing
-does not grant ownership of or permission to edit those branches.
-
-On managed Windows runs, sandboxed `gh auth status` or Git operations may be
-unable to read the user's normal credential store and may falsely report an
-invalid or missing token. Do not ask the user to log in again based only on the
-sandbox result. Request approved elevated execution for the specific `gh` or
-Git command and recheck there. Never run `gh auth token`, print credentials, or
-copy a token into the workspace, command line, source, logs, or chat. Treat
-authentication as genuinely unavailable only when the approved elevated check
-also fails.
-
 Always run the native offline Lua suite from the repository root after changing
 Lua source, tests, or runtime composition. This is a required validation gate
 before handing work back:
@@ -103,16 +87,22 @@ This repository may be modified by several Codex tasks at the same time.
 Write-capable tasks are isolated in Git worktrees and shipped through GitHub
 pull requests.
 
+The roadmap steward owns roadmap priorities, work-item definitions, and stale
+claim decisions. The PR coordinator is a separate role that owns deduplicated
+`@codex review` and `@codex fix` requests and final merges. Feature workers own
+only their claimed item and branch.
+
 - For every task that changes tracked files, use the repository-local
   `parallel-pr-worker` skill unless the user explicitly asks for read-only
   analysis, an uncommitted experiment, or coordinator work.
 - A task explicitly designated as the PR coordinator must use the
   `pr-coordinator` skill and must not implement feature work.
 - Start write-capable tasks in **Worktree** mode from the intended base branch,
-  normally `master`.
+  normally the latest `origin/master` after `git fetch --prune origin`.
 - Never make feature changes directly on `master`. A detached HEAD in a new
-  Codex worktree is expected; create a unique
-  `codex/<task-slug>-<unique-suffix>` branch before committing.
+  Codex worktree is expected. For a roadmap item, reserve the exact
+  `codex/cc-NNN-short-slug` remote branch before editing; for other work, create
+  a unique `codex/<task-slug>-<unique-suffix>` branch before committing.
 - Work only in the current checkout. Never edit, reset, clean, remove, or
   repurpose another worktree, and never discard changes you did not create.
 - Do not use destructive Git operations or force-push unless the user
@@ -134,9 +124,12 @@ Worker branches use the `codex/` prefix and are pushed to `origin`. Completed
 worker changes are submitted as GitHub pull requests unless the user explicitly
 says not to publish them. Pull requests target `master` unless the user chooses
 another base, and their descriptions include a summary, rationale, validation,
-and notable risks or limitations. Workers do not merge their own pull requests,
-poll for review status, or create recurring tasks. The dedicated coordinator
-owns explicit `@codex review` requests, `@codex fix` delegation, and merging.
+and notable risks or limitations. After publishing, the worker lists every
+other open pull request and directly reviews each current head that lacks an
+adequate independent review. This peer review does not transfer the other
+item's claim. Workers do not merge their own pull requests or issue automated
+`@codex review`/`@codex fix` requests; the PR coordinator owns those requests
+and merging.
 
 On Windows, Codex shell commands may run as a sandbox account such as
 `codexsandboxonline` while `USERPROFILE` still points at the interactive user's

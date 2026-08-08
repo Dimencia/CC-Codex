@@ -8,4 +8,4 @@ the deployed documentation so the CC agent sees the same requested-work context.
 Parallel workers must claim one stable backlog ID using
 [`parallel-workflow.md`](parallel-workflow.md) before editing. The roadmap is
 owned by the roadmap steward; feature workers should not independently reorder
-it. The separate integrator role owns reviewing and merging pull requests.
+it. The separate PR coordinator owns automated review requests and merges.

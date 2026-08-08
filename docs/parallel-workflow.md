@@ -9,8 +9,8 @@ IDs are in
 
 - The roadmap steward owns priorities and work-item definitions, splits work,
   and periodically reviews status and stale claims.
-- The integrator reviews and merges completed branches. This is a separate role
-  from the roadmap steward.
+- The PR coordinator requests automated reviews and fixes and merges completed
+  branches. This is a separate role from the roadmap steward.
 - A feature worker claims one ready work-item ID and owns one branch and one
   worktree until handoff.
 - Feature workers update behavior documentation affected by their patch, but
@@ -21,10 +21,11 @@ IDs are in
 Use the exact branch pattern `codex/cc-NNN-short-slug`. The remote branch is the
 shared claim. A worker must reserve it before editing source.
 
-1. Fetch and prune, read the roadmap, and inspect local and remote
-   `codex/cc-*` branches.
+1. Run `git fetch --prune origin`, read the roadmap, and inspect local and
+   remote `codex/cc-*` branches.
 2. Create a dedicated worktree and the exact item branch from the current
-   integration base.
+   integration base, normally the refreshed `origin/master` rather than a
+   possibly stale local `master`.
 3. Before source edits, make a unique empty commit named `Claim CC-NNN` and push
    the branch without force.
 4. Start work only if that push creates the remote branch. If it is rejected or
@@ -102,18 +103,19 @@ restarting ComputerCraft, making a live model request, or changing the other
 worker's branch. Follow the repository's normal GitHub approval rules for
 submitting comments or approval.
 
-## Integration and release
+## PR coordination and release
 
-The integrator reviews the diff and evidence, updates the branch from the
+The PR coordinator reviews the diff and evidence, updates the branch from the
 current integration base, resolves conflicts deliberately, and reruns the
 required gates. Merge one architectural boundary at a time. Deployment,
 ComputerCraft restart, live model requests, and Minecraft interaction remain
 separate explicitly authorized actions.
 
-After merge, the integrator may delete the remote branch and remove its
+After merge, the PR coordinator may delete the remote branch and remove its
 worktree. Workers never delete a branch merely because it looks stale. A stale
 claim is a roadmap decision: the roadmap steward inspects activity and handoff
-state, then asks the user or integrator to release the branch when necessary.
+state, then asks the user or PR coordinator to release the branch when
+necessary.
 
 ## Periodic roadmap pass
 

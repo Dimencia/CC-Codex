@@ -5,9 +5,10 @@ running inside ComputerCraft. It is a prioritized planning document, not an
 instruction to implement every item. Read `lua_structure.md` and the current
 source before claiming work.
 
-The roadmap steward periodically reprioritizes this file. Feature workers should
-claim one stable work-item ID through the documented parallel workflow and
-should not reorder the roadmap in their feature branch.
+The roadmap steward periodically reprioritizes this file. The PR coordinator is
+a separate role that merges reviewed work. Feature workers should claim one
+stable work-item ID through the documented parallel workflow and should not
+reorder the roadmap in their feature branch.
 
 ## Product values and change gate
 
