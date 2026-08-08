@@ -120,15 +120,15 @@ necessary.
 ## Protected roadmap publication
 
 Roadmap-only queue and agent-instruction updates bypass feature review, but
-they do not bypass the protected `test` check. Publish the documentation branch,
-dispatch CI for that branch, and record its exact commit:
+they do not bypass the protected `test` check. Use a
+`codex/roadmap-<unique-suffix>` branch, record its exact commit, and push it.
+That push triggers the required CI check:
 
 ```powershell
 $roadmapBranch = (git branch --show-current).Trim()
 $validatedSha = (git rev-parse HEAD).Trim()
 git push -u origin $roadmapBranch
-gh workflow run ci.yml --repo Dimencia/CC-Codex --ref $roadmapBranch
-gh run list --repo Dimencia/CC-Codex --workflow CI --branch $roadmapBranch --event workflow_dispatch --json databaseId,headSha,status,conclusion --limit 10
+gh run list --repo Dimencia/CC-Codex --workflow CI --branch $roadmapBranch --event push --json databaseId,headSha,status,conclusion --limit 10
 ```
 
 Select the run whose `headSha` exactly equals `$validatedSha`, then require it
@@ -140,8 +140,8 @@ gh run watch <RUN_ID> --repo Dimencia/CC-Codex --exit-status
 
 Before publishing, verify that neither the branch nor `master` invalidated the
 result. If `HEAD` changed, or if `origin/master` is no longer an ancestor of the
-validated commit, update the documentation branch and repeat the dispatch for
-its new SHA.
+validated commit, update and push the documentation branch, then validate the
+new push-event run for its new SHA.
 
 ```powershell
 if ((git rev-parse HEAD).Trim() -ne $validatedSha) { throw "Roadmap HEAD changed after validation" }
@@ -153,7 +153,9 @@ git push origin "${validatedSha}:refs/heads/master"
 
 Never substitute a newer unvalidated commit, force-push `master`, open a
 roadmap PR, or use this path for product code, tests, CI, installer, or runtime
-changes.
+changes. `workflow_dispatch` remains available for diagnostics, but its manual
+run did not satisfy this repository's protected direct-push rule and is not a
+roadmap publication gate.
 
 ## Periodic roadmap pass
 
