@@ -1,51 +1,60 @@
 # CC Codex agent workflow
 
-## Start every work session from computer 3
+The repository is the source of truth. The live ComputerCraft computer uses
+the repository's `computer/` source tree:
 
-Computer 3 is the live LLM workbench. Before starting a new change:
+- `startup.lua` is a compatibility link to `computer/startup.lua` for the
+  current development computer.
+- `codex.lua` is the manual terminal-client link to `computer/codex.lua`.
+- `codex/` is linked to `computer/codex` and contains the service, clients,
+  core, platform adapters, providers, storage, tools, image code, docs, and
+  tests.
+- `data/`, `artifacts/`, `.settings`, and mailbox files stay local to the
+  computer and are not repository source.
 
-1. Make sure computer 3 is finished editing and its source tree is stable.
-2. Ensure the repository has no uncommitted work that would be mixed into the
-   synchronization step.
-3. Fetch the latest computer branch without changing the repository working
-   tree:
+The CC-facing documentation under `computer/codex/docs/` is also implementation
+context for the agent running inside the computer. On the live computer this
+same directory is `codex/docs/`. Read `codex/docs/lua_structure.md` before
+inspecting or changing individual modules. It includes the source map,
+self-edit/restart workflow, and host/CC/remote integration boundaries.
+The service is started by `startup/cc_codex.lua` on new installations. The
+root `startup.lua` remains only for the current linked development computer.
 
-   ```powershell
-   .\git-computer.ps1 -Action FetchToRepository
-   ```
+The root `docs/` directory is host-side documentation and navigation. The
+deployed `computer/codex/docs/deferred-ideas.md` is also valid implementation
+context: the CC agent may implement one of those ideas when the user asks it
+to. If a host-side design or workflow changes behavior visible to the CC agent,
+put the concise relevant part in `computer/codex/docs/` as well.
+`computer/codex/docs/system_prompt.md` is a separate provider instruction
+document; do not change its behavioral instructions unless explicitly asked.
 
-4. Create the task branch after that fetch, then merge computer 3 into the new
-   branch:
+When changing Lua that is already loaded, restart the CC Codex process on the
+target ComputerCraft computer. This means the program running in CC, not the
+Codex desktop application or this agent session.
 
-   ```powershell
-   git switch -c codex/<task-slug>
-   git merge --no-edit computer-3/codex/computer-3-work
-   ```
+Run the offline Lua suite from the repository root:
 
-Resolve any merge conflicts on the task branch before beginning the task. Do
-not merge computer 3 directly into `master`. If Git history is not available,
-use `merge-from-computer.ps1` for a read-only report and manually review the
-source differences.
-
-## Finish completed work by handing it back
-
-After implementation and validation, commit the completed task branch. When
-computer 3 is idle and clean, preview and perform the fast-forward handoff:
-
-```powershell
-.\deploy.ps1 -GitBranch codex/<task-slug> -DryRun
-.\deploy.ps1 -GitBranch codex/<task-slug>
+```text
+lua computer/codex/tests/run.lua
 ```
 
-Then restart Codex through the host/CC bridge so the computer loads the handed-
-back code:
+The same suite can also run on the ComputerCraft computer after an in-game
+source edit:
 
-```powershell
-.\cc-command.ps1 -Restart -ComputerNumber 3 -TimeoutSeconds 60 -WhatIf
-.\cc-command.ps1 -Restart -ComputerNumber 3 -TimeoutSeconds 60
+```text
+lua codex/tests/run.lua
 ```
 
-The non-`WhatIf` deploy and restart are live-tree mutations. Confirm the target
-is idle/clean, review both dry runs, and treat them as explicit handoff actions.
-Never send credentials through the command mailbox. Do not modify computer 3
-while its LLM is still editing.
+Run the host-only LuaLS check from the repository root:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File host/checks/check-lua.ps1
+```
+
+Live model requests, Minecraft interaction, and mailbox commands are separate
+actions. Do not invoke them while doing offline source work unless the user
+explicitly asks for that live action.
+
+API keys belong in ComputerCraft settings and must not be committed. The
+repository ignores local runtime state; do not put secrets in source, test
+fixtures, or mailbox files.
