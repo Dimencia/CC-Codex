@@ -57,12 +57,13 @@ local function codec(decoded, encoded)
     }
 end
 
-local function mailbox(fs, decoded, encoded, submitted)
+local function mailbox(fs, decoded, encoded, submitted, maxRetainedResults)
     return ClientMailbox.new({
         fs = fs,
         json = codec(decoded, encoded),
         requestDirectory = "requests",
         resultDirectory = "results",
+        maxRetainedResults = maxRetainedResults,
         legacyRequestPath = "client-request.json",
         legacyResultPath = "client-result.json",
         submit = function(text, route)
@@ -73,6 +74,50 @@ local function mailbox(fs, decoded, encoded, submitted)
 end
 
 return {
+    {
+        name = "retains a result until the client acknowledges it",
+        fn = function()
+            local fs = fileSystem()
+            local encoded, submitted = {}, {}
+            local adapter = mailbox(fs, {}, encoded, submitted)
+            local route = { adapterId = "client_mailbox", requestId = "client-a" }
+
+            Harness.truthy(adapter:deliver(route, "answer", "final"))
+            Harness.equal("client-a:final\n", fs.files["results/client-a.json"])
+
+            fs.delete("results/client-a.json")
+            Harness.equal(nil, fs.files["results/client-a.json"])
+        end
+    },
+    {
+        name = "bounds abandoned scoped results while preserving the newest result",
+        fn = function()
+            local fs = fileSystem()
+            local encoded, submitted = {}, {}
+            local adapter = mailbox(fs, {}, encoded, submitted, 2)
+
+            Harness.truthy(adapter:deliver(
+                { adapterId = "client_mailbox", requestId = "client-a" },
+                "first",
+                "final"
+            ))
+            Harness.truthy(adapter:deliver(
+                { adapterId = "client_mailbox", requestId = "client-b" },
+                "second",
+                "final"
+            ))
+            Harness.truthy(adapter:deliver(
+                { adapterId = "client_mailbox", requestId = "client-c" },
+                "third",
+                "final"
+            ))
+
+            Harness.equal(nil, fs.files["results/client-a.json"])
+            Harness.equal("client-b:final\n", fs.files["results/client-b.json"])
+            Harness.equal("client-c:final\n", fs.files["results/client-c.json"])
+            Harness.equal(2, #fs.list("results"))
+        end
+    },
     {
         name = "processes multiple request-scoped client files independently",
         fn = function()

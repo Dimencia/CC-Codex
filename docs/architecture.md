@@ -60,8 +60,11 @@ image path, and conversation-log identifier; separate files hold preferences,
 catalog and diagnostic logs, usage records, artifacts, and client mailbox data.
 Client requests and replies use one file per request ID under
 `data/client-requests/` and `data/client-results/`, so concurrent clients do
-not overwrite one shared result. The service temporarily reads the older
-singular mailbox paths for rollout compatibility.
+not overwrite one shared result. A terminal acknowledges a result by deleting
+it after reading, while the service bounds unacknowledged scoped results to 32
+files and prunes the oldest request filenames when publishing beyond that
+bound. The service temporarily reads the older singular mailbox paths for
+rollout compatibility.
 ComputerCraft settings contain the API key. The key is not source and must not
 be committed or placed in runtime request files.
 
@@ -90,3 +93,11 @@ Keep policy portable and keep CC effects at the supervisor/bootstrap and adapter
 boundaries. Prefer a smaller method or deleted branch to a new service. Add a
 module only for a distinct lifecycle, reusable policy, or effect boundary that
 is visible in the current implementation.
+
+Treat simplicity and documentation as gates on every change. Inspect the patch
+for newly obsolete code and duplicate ownership, keep cleanup inside the changed
+boundary, and re-read each document that describes affected behavior, paths,
+commands, settings, tests, safety, installation, or deployment. Update the
+CC-facing guide when the running agent needs the result. See
+[`parallel-workflow.md`](parallel-workflow.md) before starting autonomous work
+on a roadmap item.

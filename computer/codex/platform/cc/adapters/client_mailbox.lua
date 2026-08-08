@@ -11,6 +11,7 @@
 ---@field json StateJsonCodec
 ---@field requestDirectory string
 ---@field resultDirectory string
+---@field maxRetainedResults number|nil
 ---@field legacyRequestPath string|nil
 ---@field legacyResultPath string|nil
 ---@field submit fun(text: string, route: ReplyRoute): boolean|nil, string|nil
@@ -22,10 +23,12 @@
 ---@field options ClientMailboxOptions
 ---@field stopped boolean
 ---@field preferLegacy boolean
+---@field maxRetainedResults number
 local ClientMailbox = {}
 ClientMailbox.__index = ClientMailbox
 
 local REQUEST_FILE_PATTERN = "^([%w_-]+)%.json$"
+local DEFAULT_MAX_RETAINED_RESULTS = 32
 
 ---@param operation function
 ---@param ... unknown
@@ -81,6 +84,11 @@ function ClientMailbox.new(options)
         "client mailbox request directory is required")
     assert(type(options.resultDirectory) == "string" and options.resultDirectory ~= "",
         "client mailbox result directory is required")
+    local maxRetainedResults = options.maxRetainedResults or DEFAULT_MAX_RETAINED_RESULTS
+    assert(type(maxRetainedResults) == "number"
+        and maxRetainedResults > 0
+        and maxRetainedResults == math.floor(maxRetainedResults),
+        "client mailbox max retained results must be a positive integer")
     assert(type(options.fs.list) == "function", "client mailbox filesystem list is required")
     assert(type(options.fs.combine) == "function", "client mailbox filesystem combine is required")
     if options.legacyRequestPath ~= nil then
@@ -95,8 +103,41 @@ function ClientMailbox.new(options)
         critical = false,
         options = options,
         stopped = false,
-        preferLegacy = false
+        preferLegacy = false,
+        maxRetainedResults = maxRetainedResults
     }, ClientMailbox)
+end
+
+---@param self ClientMailbox
+---@param protectedPath string
+---@return boolean|nil
+---@return string|nil
+local function cleanupResults(self, protectedPath)
+    local names, listError = listFiles(self.options.fs, self.options.resultDirectory)
+    if not names then return nil, "Could not inspect client results: " .. tostring(listError) end
+
+    local resultNames = {}
+    for _, name in ipairs(names) do
+        if type(name) == "string" and name:match(REQUEST_FILE_PATTERN) then
+            resultNames[#resultNames + 1] = name
+        end
+    end
+    table.sort(resultNames)
+
+    local excess = #resultNames - self.maxRetainedResults
+    if excess <= 0 then return true end
+    for _, name in ipairs(resultNames) do
+        if excess <= 0 then break end
+        local resultPath = self.options.fs.combine(self.options.resultDirectory, name)
+        if resultPath ~= protectedPath then
+            local removed, removeError = filesystemCall(self.options.fs.delete, resultPath)
+            if not removed then
+                return nil, "Could not clean up client result: " .. tostring(removeError)
+            end
+            excess = excess - 1
+        end
+    end
+    return true
 end
 
 ---@param self ClientMailbox
@@ -146,6 +187,11 @@ local function publishResult(self, result, resultPath)
         resultPath
     )
     if not moved then return nil, "Could not publish client result: " .. tostring(moveError) end
+
+    local cleaned, cleanupError = cleanupResults(self, resultPath)
+    if not cleaned and self.options.onError then
+        self.options.onError(cleanupError or "Could not clean up client results")
+    end
     return true
 end
 

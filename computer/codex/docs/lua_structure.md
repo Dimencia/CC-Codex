@@ -86,6 +86,14 @@ and adapter boundaries. Add a module only for a distinct lifecycle, reusable
 policy, or effect boundary. Prefer a smaller method or deleted branch to a new
 service.
 
+Every implementation change includes a simplification and documentation audit.
+Check whether the change makes a branch, setting, helper, file, or duplicated
+responsibility obsolete. Keep cleanup within the same behavioral boundary so
+the patch remains easy to verify and merge. Re-read the documentation for every
+changed behavior, path, command, setting, test, safety boundary, install, or
+deployment step. Update this deployed guide or the roadmap when the CC agent
+needs the information; do not copy host-only process detail into runtime docs.
+
 ## Local runtime files
 
 These are per-computer state, not shared source:
@@ -99,8 +107,11 @@ These are per-computer state, not shared source:
 - `codex/data/usage.jsonl` - aggregate turn metrics.
 - `codex/data/client-requests/<request-id>.json` and
   `codex/data/client-results/<request-id>.json` - request-scoped client mailbox
-  files. The service reads the older singular `client-request.json` and writes
-  `client-result.json` during rollout so an older terminal client can finish.
+  files. A terminal acknowledges each result by deleting it after reading; the
+  service bounds unacknowledged scoped results to 32 files and removes the
+  oldest request filenames when publishing beyond that bound. The service
+  reads the older singular `client-request.json` and writes `client-result.json`
+  during rollout so an older terminal client can finish.
 - `codex/artifacts/images/` - generated image files.
 - `codex/.codex-restart` - transient supervisor marker used for a validated
   managed restart.

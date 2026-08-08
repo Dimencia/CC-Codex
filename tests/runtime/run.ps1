@@ -24,6 +24,7 @@ foreach ($stalePath in @(
     (Join-Path $outputFullPath "cc-summary.json"),
     (Join-Path $outputFullPath "server-console.log"),
     (Join-Path $outputFullPath "server-latest.log"),
+    (Join-Path $outputFullPath "container-timing.json"),
     (Join-Path $outputFullPath "runtime-timing.json")
 )) {
     if (Test-Path -LiteralPath $stalePath) {
@@ -85,9 +86,10 @@ if ([int]$summary.lua_suite.passed -ne $luaTestTotal -or [int]$summary.lua_suite
 }
 
 $containerElapsedMilliseconds = $null
+$containerTimingPath = Join-Path $outputFullPath "container-timing.json"
 $timingPath = Join-Path $outputFullPath "runtime-timing.json"
-if (Test-Path -LiteralPath $timingPath) {
-    $containerTiming = Get-Content -Raw -LiteralPath $timingPath | ConvertFrom-Json
+if (Test-Path -LiteralPath $containerTimingPath) {
+    $containerTiming = Get-Content -Raw -LiteralPath $containerTimingPath | ConvertFrom-Json
     if ($null -ne $containerTiming.container_elapsed_ms) {
         $containerElapsedMilliseconds = [int64]$containerTiming.container_elapsed_ms
     }

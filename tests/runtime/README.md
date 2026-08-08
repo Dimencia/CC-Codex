@@ -38,6 +38,9 @@ slower machine.
 Runtime output is written under `tests/runtime/output/`, which is ignored. It
 includes the copied computer filesystem, server logs, combined summary, and
 `runtime-timing.json` with build, server, guest-suite, and total durations.
+The container writes its raw duration to `container-timing.json`; the host
+wrapper reads that file and writes the combined `runtime-timing.json` itself so
+Linux container ownership cannot block the final timing report.
 
 On the measured development machine, a cached run took 17.1 seconds end to end:
 2.2 seconds to build, 14.9 seconds to start/run/stop the fixture, and 0.46
