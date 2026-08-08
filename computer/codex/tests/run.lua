@@ -54,6 +54,7 @@ local suiteModules = {
     "tests.unit.request_builder_test",
     "tests.unit.state_test",
     "tests.unit.execute_lua_test",
+    "tests.unit.file_patch_test",
     "tests.unit.registry_test",
     "tests.unit.create_worker_test",
     "tests.unit.remote_exec_test",

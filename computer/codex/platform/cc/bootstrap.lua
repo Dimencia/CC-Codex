@@ -7,6 +7,7 @@ local ClientMailbox = require("platform.cc.adapters.client_mailbox")
 local Commands = require("core.commands")
 local CreateWorkerTools = require("tools.create_worker")
 local ExecuteLua = require("tools.execute_lua")
+local FilePatchTools = require("tools.file_patch")
 local InstructionStore = require("storage.instructions")
 local InstructionTools = require("tools.instructions")
 local MaintenanceTools = require("tools.maintenance")
@@ -255,6 +256,16 @@ function Bootstrap.build(config)
     requireRegistration("execute_cc_lua", tools:register(executeLua.descriptor, function(call)
         return executeLua:handle(call)
     end))
+    requireRegistration("file patch tool", FilePatchTools.register(tools, {
+        fs = fileSystem,
+        ---@diagnostic disable-next-line: assign-type-mismatch
+        json = json,
+        root = base,
+        backupDirectory = path("data/patch-backups"),
+        epoch = function() return os.epoch("utc") end,
+        maxPatchCharacters = 24000,
+        maxResultCharacters = config.maxToolResultChars
+    }))
     requireRegistration("write_preferences", InstructionTools.register(tools, {
         ---@diagnostic disable-next-line: assign-type-mismatch
         store = instructionStore, json = json, maxResultCharacters = config.maxToolResultChars

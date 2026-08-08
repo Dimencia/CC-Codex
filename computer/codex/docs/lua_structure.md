@@ -71,7 +71,7 @@ explicit source-copy workflow to update the computer.
 - `codex/providers/responses/` contains the HTTP client, request builder, and response
   reader. It does not own CC or presentation behavior.
 - `codex/tools/` contains fixed model-visible tools: `execute_cc_lua`,
-  `write_preferences`, conversation listing/naming, compaction/restart,
+  `apply_file_patch`, `write_preferences`, conversation listing/naming, compaction/restart,
   `render_image_on_monitor`, `create_worker`, and optional
   `execute_remote_lua` Rednet execution.
 - `codex/platform/cc/remote_bootstrap.lua` is a standalone worker program. The
@@ -183,6 +183,12 @@ then inspect the current source and tests before choosing an implementation
 slice. The ideas are allowed work, not instructions to implement themselves.
 Preserve the current source, provider, CC, and adapter boundaries while doing
 so.
+
+The `apply_file_patch` tool is the first file-patch slice. It accepts one
+unified diff for a source file below the running Codex root, validates exact
+context before writing, supports preview-only calls, and retains an existing
+file under `data/patch-backups/` when an applied patch succeeds. It does not
+patch runtime data or artifacts and does not delete files.
 
 ## Safety and authority boundaries
 

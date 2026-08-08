@@ -8,7 +8,9 @@ the existing integration boundaries intact.
 ## File patches
 
 Add a standard patch/file-diff tool with preview, validation, clear failures,
-and a recoverable write path.
+and a recoverable write path. The first slice is now `apply_file_patch`: it
+handles one source file per call, validates exact unified-diff context, offers
+preview-only mode, and keeps the replaced file in `data/patch-backups/`.
 
 ## Asynchronous work
 
