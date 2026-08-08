@@ -117,6 +117,44 @@ claim is a roadmap decision: the roadmap steward inspects activity and handoff
 state, then asks the user or PR coordinator to release the branch when
 necessary.
 
+## Protected roadmap publication
+
+Roadmap-only queue and agent-instruction updates bypass feature review, but
+they do not bypass the protected `test` check. Publish the documentation branch,
+dispatch CI for that branch, and record its exact commit:
+
+```powershell
+$roadmapBranch = (git branch --show-current).Trim()
+$validatedSha = (git rev-parse HEAD).Trim()
+git push -u origin $roadmapBranch
+gh workflow run ci.yml --repo Dimencia/CC-Codex --ref $roadmapBranch
+gh run list --repo Dimencia/CC-Codex --workflow CI --branch $roadmapBranch --event workflow_dispatch --json databaseId,headSha,status,conclusion --limit 10
+```
+
+Select the run whose `headSha` exactly equals `$validatedSha`, then require it
+to finish successfully:
+
+```powershell
+gh run watch <RUN_ID> --repo Dimencia/CC-Codex --exit-status
+```
+
+Before publishing, verify that neither the branch nor `master` invalidated the
+result. If `HEAD` changed, or if `origin/master` is no longer an ancestor of the
+validated commit, update the documentation branch and repeat the dispatch for
+its new SHA.
+
+```powershell
+if ((git rev-parse HEAD).Trim() -ne $validatedSha) { throw "Roadmap HEAD changed after validation" }
+git fetch origin master
+git merge-base --is-ancestor origin/master $validatedSha
+if ($LASTEXITCODE -ne 0) { throw "Roadmap branch must be refreshed and revalidated" }
+git push origin "${validatedSha}:refs/heads/master"
+```
+
+Never substitute a newer unvalidated commit, force-push `master`, open a
+roadmap PR, or use this path for product code, tests, CI, installer, or runtime
+changes.
+
 ## Periodic roadmap pass
 
 On each check-in:
