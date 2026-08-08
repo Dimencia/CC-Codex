@@ -14,6 +14,12 @@ IDs are in
   from the roadmap steward.
 - A feature worker claims one ready work-item ID and owns its branch, worktree,
   and PR until merge or explicit handoff.
+- A QA worker independently validates current PR heads and adds focused
+  regression coverage without taking over the feature branch.
+- A benchmark worker establishes reproducible performance and cost baselines,
+  then proposes measured optimizations. Read-only measurement does not claim a
+  roadmap item; benchmark harness or product changes still require an explicit
+  assignment and the normal claim workflow.
 - Feature workers update behavior documentation affected by their patch, but
   they do not reorder the roadmap or claim a second item opportunistically.
 

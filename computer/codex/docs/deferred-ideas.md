@@ -47,16 +47,21 @@ Ready, in order:
 
 1. `CC-004` - deterministic player/provider integration tests
 2. `CC-006` - conflict-aware update detection
-3. `CC-009` - image renderer measurement and fast path
-4. `CC-007` - bounded asynchronous jobs and goals
-5. `CC-008` - local searchable memory
+3. `CC-016` - reproducible runtime and token-cost benchmarks
+4. `CC-009` - image renderer measurement and fast path
+5. `CC-007` - bounded asynchronous jobs and goals
+6. `CC-008` - local searchable memory
 
 Active claims:
 
 | ID | Agent | Owning branch or PR | State |
 | --- | --- | --- | --- |
-| `CC-003` | Sprocket | `codex/cc-003-client-scoped-mailboxes` / PR #4 | Owner action: resolve conflict and bound abandoned scoped result files; duplicate work was detected, so do not claim |
-| `CC-005` | Unassigned; handoff required | `codex/file-patch-tool-9a7e` / PR #7 | Blocked: conflict plus validation, zero-count hunk, final-newline, and restart-marker safety findings; automation did not update the PR head |
+| `CC-003` | Sprocket | `codex/cc-003-client-scoped-mailboxes` / PR #4 | Current-base repair head is clean and green; independent exact-head review remains before merge |
+| `CC-005` | Spackle | `codex/file-patch-tool-9a7e` / PR #7 | Explicit same-branch handoff accepted; repaired head is green and reviewed but must refresh the latest `master` before merge |
+
+The separate entrypoint-harness isolation follow-up remains PR #9 under Quill's
+QA ownership. Its reviewed head must also refresh the latest `master`; it is
+part of Stabilization even though it is not a separate roadmap feature claim.
 
 Claiming is an atomic documentation update on `master`, not a branch-name
 convention. Before feature edits, create a fresh roadmap-only branch from the
@@ -257,6 +262,24 @@ text, tool arguments/results, and world data by default.
 Keep the bundle local unless the user explicitly chooses to share it. Prefer a
 small JSON or text artifact assembled from existing state over a resident
 telemetry service, upload path, or new logging framework.
+
+#### CC-016 Reproducible runtime and token-cost benchmarks
+
+Establish small, repeatable baselines before optimizing runtime or model cost.
+Measure service and turn phases, request wire size and reported token usage,
+tool-schema overhead, context growth and compaction, and other cross-cutting
+hot paths with deterministic offline fixtures. Keep image-specific profiling
+and renderer changes under `CC-009` so the two efforts do not duplicate work.
+
+Record the runtime, fixture, warmup, repetition count, median and tail result,
+and known noise for every published number. CI should use stable regression
+budgets only where the runner is predictable; machine-sensitive benchmarks are
+reports, not flaky pass/fail gates. Live-model cost or latency experiments need
+separate user approval and an explicit request/cost cap.
+
+Do not merge an optimization without a before/after result on the same fixture
+and a simplicity audit that weighs the measured gain against added code. Prefer
+bounded scripts and existing telemetry over a resident benchmark framework.
 
 ### P3 - experiments, not foundations
 
