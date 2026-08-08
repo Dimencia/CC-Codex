@@ -85,6 +85,15 @@ suite, then repository-wide checks when practical. Prefer the commands in
 `AGENTS.md`. Record each material command and distinguish pre-existing failures
 from failures introduced by the branch.
 
+Every PR must have a successful `Runtime Integration` check on its exact
+current head before merge. For changes that can affect shipped ComputerCraft
+behavior, run `& .\tests\runtime\run.ps1` locally when Docker is available;
+do not substitute the native Lua suite for the real headless Minecraft fixture.
+If the branch changes after either result, rerun the affected gate. Report the
+Docker/CC result as routine integration evidence. Reserve "not exercised" for
+external boundaries such as a live model, persistent deployed computer,
+real-player/world interaction, or remote target.
+
 Compare the branch against its intended base. Check the diff and status for
 accidental files, secrets, generated output, debug code, commented-out
 experiments, and unrelated edits.
@@ -114,6 +123,16 @@ Why this approach was selected and any important design constraint.
 ## Validation
 
 - `exact command` — passed/failed/skipped
+
+## Runtime integration
+
+- Local Docker/CC fixture — passed/failed/skipped with reason
+- Exact-head `Runtime Integration` check — passed/pending/failed
+
+## External boundaries not exercised
+
+- Live model, persistent deployment/restart, real-player/world interaction, or
+  remote target; do not list the Docker/CC fixture here
 
 ## Risks and notes
 

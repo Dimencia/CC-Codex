@@ -26,9 +26,11 @@ Every change must include a small simplification and documentation audit:
 4. Re-read every document that describes the changed behavior, path, command,
    setting, test, safety boundary, or deployment step. Update the host and
    CC-facing copies that actually need the information.
-5. Run the required tests and state explicitly which live boundaries were not
-   exercised. Offline tests never prove model, GitHub, Minecraft, peripheral,
-   reboot, or remote-computer behavior.
+5. Run focused, native, and real headless Minecraft/CC integration tests as
+   applicable. Treat the repository Docker fixture as routine validation and
+   state its result explicitly. Separately identify genuinely external
+   boundaries such as live-model contact, persistent deployment/restart,
+   real-player/world interaction, or remote-computer behavior.
 
 The goal is not to minimize line count at any cost. The goal is the smallest
 clear implementation that preserves the real contracts.
