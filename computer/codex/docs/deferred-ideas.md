@@ -63,11 +63,13 @@ Release-safety gates before any live-model lane (not separate claims):
 
 Ready, in order:
 
-1. `CC-016` - reproducible runtime and token-cost benchmarks
-2. `CC-004` - deterministic player/provider integration tests (after CC-017 fixture isolation)
-3. `CC-009` - image renderer measurement and fast path
-4. `CC-007` - bounded asynchronous jobs and goals
-5. `CC-008` - local searchable memory
+1. `CC-018` - lean deployed package and focused in-place tests
+2. `CC-020` - bounded local diagnostic storage
+3. `CC-016` - reproducible runtime and token-cost benchmarks
+4. `CC-004` - deterministic player/provider integration tests (after CC-017 fixture isolation)
+5. `CC-009` - image renderer measurement and fast path
+6. `CC-007` - bounded asynchronous jobs and goals
+7. `CC-008` - local searchable memory
 
 Active claims:
 
@@ -166,6 +168,44 @@ evidence with non-Docker tests or a fake Docker shim, then run the real fixture.
 Only consider bounded parallel full runs after measuring the host. This item
 precedes `CC-004` so the larger end-to-end fixture does not reintroduce shared
 resource collisions.
+
+#### CC-018 Lean deployed package and focused in-place tests
+
+The full `computer/codex/tests/` tree is valuable repository and CI coverage,
+but it is about 318 KB, roughly 41% of the deployed `computer/` payload. Keep
+that complete suite in the repository, CI, and the source-backed Docker fixture;
+do not delete or weaken its regression coverage. Do not install the complete
+suite on an ordinary player computer by default. The normal release should
+contain the application and a small way for the model to write or run a focused
+test for the files it changed; an optional development/test bundle may be added
+later only if it remains simpler than the player-authored path.
+
+The player should see a smaller, faster install with the same application
+behavior. A model editing one file should receive focused feedback about that
+file, not spend the computer's quota on unrelated test sources. Verify the
+release archive and installed footprint, keep the full host/CI suite green, and
+update the install, testing, and CC-facing documentation. Do not remove image
+rendering in this slice: its production code is only about 41 KB, so it is not
+the material quota reduction.
+
+#### CC-020 Bounded local diagnostic storage
+
+Conversation JSONL and usage JSONL are diagnostics, not provider history. The
+provider cursor, restart checkpoint, mailbox requests/results, preferences,
+conversation catalog, and generated artifacts have separate contracts and must
+not be pruned as a shortcut. Current logs duplicate tool input, retain full
+tool output, and have no active-file size limit; a long tool-heavy turn can
+consume most of a default computer quota and leave too little room for a
+checkpoint or unread reply.
+
+Project concise diagnostic records: remove duplicated raw tool input, bound
+persisted tool/text output with an explicit truncation marker, and give both
+conversation logs and usage records a measured byte/retention ceiling that
+leaves headroom for state and mailboxes. A logging limit must never cancel a
+model turn or make a player lose a visible reply. Test growth under the default
+quota, low-space logging, restart, conversation switching, and preserved
+authoritative state. Keep the policy local and plain JSONL; do not add a
+compression framework or a second history store.
 
 #### CC-003 Finish the headless service and replace legacy composition
 
@@ -370,9 +410,10 @@ telemetry service, upload path, or new logging framework.
 
 Establish small, repeatable baselines before optimizing runtime or model cost.
 Measure service and turn phases, request wire size and reported token usage,
-tool-schema overhead, context growth and compaction, and other cross-cutting
-hot paths with deterministic offline fixtures. Keep image-specific profiling
-and renderer changes under `CC-009` so the two efforts do not duplicate work.
+tool-schema overhead, context growth and compaction, persistent diagnostic-log
+growth, and the static release footprint with deterministic offline fixtures.
+Keep image-specific profiling and renderer changes under `CC-009` so the two
+efforts do not duplicate work.
 
 Record the runtime, fixture, warmup, repetition count, median and tail result,
 and known noise for every published number. CI should use stable regression
@@ -446,6 +487,10 @@ contracts are green and independently reviewed:
   diff/review surface from the player;
 - CC-006 quota-only pre-mutation safety is verified, with crash-atomic updates
   explicitly deferred and documented as a future tradeoff;
+- the normal install leaves enough quota for ordinary conversation state,
+  bounded diagnostics, and unread replies; the full development test suite is
+  retained in the repository/CI rather than consuming the default runtime
+  package;
 - a final local-only live low-cost-model lane exercises the real player flow
   with the configured key, steering, and no world-changing tools; the key never
   enters GitHub Actions;
