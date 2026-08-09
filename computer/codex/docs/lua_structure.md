@@ -154,7 +154,11 @@ These are per-computer state, not shared source:
   clearing memory while a restart could replay the old model turn. The
   unavailable route is logged for recovery. This bounds abandoned files while
   making queued, running, interrupted, and awaiting-delivery states visible to
-  the player.
+  the player. One crash window remains before CC-022: admission can remove the
+  accepted request before the in-memory turn handoff is durable, leaving a
+  terminal stuck on `Running` after a process failure. CC-022 will keep an
+  active request marker until a result or interruption is durable; do not treat
+  the current implementation as crash-proof in that window.
   The service reads the older singular `client-request.json` and writes
   `client-result.json` during rollout so an older terminal client can finish.
 
@@ -179,9 +183,12 @@ retries. A later visible `delivery_failed` result tells the player that the
 model turn ended without an answer, instead of leaving the player to infer
 success from silence. If a restart finds a saved turn that cannot be resumed,
 the original client receives an interruption result; the player is told to
-resend rather than waiting for a turn that no longer exists. Progress files are
-transient hints, so a stranded progress `.tmp` leaves the terminal in the
-running state and cannot be converted into a false terminal failure. When a
+resend rather than waiting for a turn that no longer exists. During normal
+operation the player sees a result or explicit interruption; the accepted
+before-handoff crash window above remains a tracked CC-022 limitation.
+Progress files are transient hints, so a stranded progress `.tmp` leaves the
+terminal in the running state and cannot be converted into a false terminal
+failure. When a
 steered turn has multiple routes and one is unavailable after restart, the
 available route receives the interruption and the checkpoint is cleared only
 after that cleanup is durable; the old turn is never resumed merely to retry a

@@ -234,12 +234,21 @@ Do not add prompt migration, merging, backups, or a source fallback.
 
 After the service accepts a player's message, a failed encode/write or a
 restart must not make that message disappear. Today a request can be removed
-before its in-memory handoff is durable, and restart cleanup can lose retry
-state or leave a client waiting forever. Keep the existing mailbox contract,
-but persist an explicit queued, interrupted, or failed outcome before deleting
-the accepted request. Preserve evidence of delivery failures and retry state
-across restart. Test write failure, process interruption, restart, and a
-client's visible result from the player's point of view.
+before its in-memory handoff is durable, so a crash in that small window can
+leave the terminal saying `Running` forever. Keep the existing mailbox and
+delivery-retry contract; do not redo the already-fixed result staging or
+acknowledgement work. Prefer the mailbox request itself as the durable record:
+admission renames it to an `active` request before deleting anything, and the
+active file remains until a final or failure result is durable. On restart,
+recover a visible result, resume only a valid saved continuation, or publish
+one clear interruption/error before removing the active file. Test write
+failure, process interruption, restart, idempotent retry, and the player's
+visible queued, running, interrupted, or final result.
+
+Keep direct terminal submissions and exactly-once provider execution outside
+this first slice unless the implementation routes them through the same
+mailbox record; do not build a general message broker or promise recovery for
+an unknown API call that was in flight during a crash.
 
 #### CC-023 Mailbox fairness and blocked-request liveness
 
@@ -478,8 +487,10 @@ efforts do not duplicate work.
 Record the runtime, fixture, warmup, repetition count, median and tail result,
 and known noise for every published number. CI should use stable regression
 budgets only where the runner is predictable; machine-sensitive benchmarks are
-reports, not flaky pass/fail gates. Live-model cost or latency experiments need
-separate user approval and an explicit request/cost cap.
+reports, not flaky pass/fail gates. Live-model cost or latency experiments are
+local-only, use a bounded transcript and the user's chosen low-cost model/key,
+and never put credentials in GitHub Actions; provider spending limits remain
+outside CC Codex.
 
 Do not merge an optimization without a before/after result on the same fixture
 and a simplicity audit that weighs the measured gain against added code. Prefer

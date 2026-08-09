@@ -83,11 +83,16 @@ startup, including the older singular mailbox's temporary result, so a failed
 rename does not lose a model answer. The terminal reports awaiting delivery only
 while its request-scoped `.json.tmp` outcome exists; a slow model turn remains
 running instead of being classified by elapsed time. The slot is released only
-after the terminal reads and acknowledges the visible result. A saved
-continuation that cannot be queued or whose adapter route is no longer usable
-receives an interruption error for its original client and its checkpoint is
-cleared after that error is delivered. This keeps queued, running, interrupted,
-and awaiting-delivery states visible without adding a broker or crash journal.
+after the terminal reads and acknowledges the visible result. One crash window
+remains: the service currently removes an accepted request before its in-memory
+handoff is durable, so a process failure there can leave the terminal reporting
+`Running` forever. CC-022 tracks the small active-request marker needed to close
+that gap; until it lands, accepted requests are not a crash-durable guarantee.
+A saved continuation that cannot be queued or whose adapter route is no longer
+usable receives an interruption error for its original client and its checkpoint
+is cleared after that error is delivered. This keeps queued, running,
+interrupted, and awaiting-delivery states visible during normal operation
+without adding a general broker.
 The service temporarily reads the older singular mailbox paths for rollout
 compatibility.
 
@@ -107,9 +112,10 @@ retries. A later visible `delivery_failed` result tells the player that the
 model turn ended without an answer, instead of leaving the player to infer
 success from silence. If a restart finds a saved turn that cannot be resumed,
 the original client receives an interruption result; the player is told to
-resend rather than waiting for a turn that no longer exists. The model may see
-one accepted turn, but the player always sees either that turn's answer or an
-explicit outcome.
+resend rather than waiting for a turn that no longer exists. During normal
+operation the player sees either that turn's answer or an explicit outcome; a
+crash in the accepted-before-handoff window is the known CC-022 gap rather than
+a promise that the current code already keeps every accepted message.
 ComputerCraft settings contain the API key. The key is not source and must not
 be committed or placed in runtime request files.
 
