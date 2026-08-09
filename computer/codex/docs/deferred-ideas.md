@@ -64,19 +64,20 @@ Release-safety gates before any live-model lane (not separate claims):
 Ready, in order:
 
 1. `CC-026` - supported ComputerCraft version and deployment preflight
-2. `CC-028` - large-file source inspection and exact editing
-3. `CC-029` - create workers on computers as well as disks
-4. `CC-030` - explicit steering and system-prompt authority
-5. `CC-022` - durable accepted answers and restart recovery
-6. `CC-023` - mailbox fairness and blocked-request liveness
-7. `CC-024` - bounded file-patch resources and output
-8. `CC-025` - correct shipped-package diagnostic instructions
-9. `CC-020` - bounded local diagnostic storage
-10. `CC-016` - reproducible runtime and token-cost benchmarks
-11. `CC-004` - deterministic player/provider integration tests (after CC-017 fixture isolation)
-12. `CC-009` - image renderer measurement and fast path
-13. `CC-007` - bounded asynchronous jobs and goals
-14. `CC-008` - local searchable memory
+2. `CC-022` - durable accepted answers and restart recovery
+3. `CC-031` - image work cannot lose the active turn
+4. `CC-028` - large-file source inspection and exact editing
+5. `CC-029` - create workers on computers as well as disks
+6. `CC-030` - explicit steering and system-prompt authority
+7. `CC-023` - mailbox fairness and blocked-request liveness
+8. `CC-024` - bounded file-patch resources and output
+9. `CC-025` - correct shipped-package diagnostic instructions
+10. `CC-020` - bounded local diagnostic storage
+11. `CC-016` - reproducible runtime and token-cost benchmarks
+12. `CC-004` - deterministic player/provider integration tests (after CC-017 fixture isolation)
+13. `CC-009` - image renderer measurement and fast path
+14. `CC-007` - bounded asynchronous jobs and goals
+15. `CC-008` - local searchable memory
 
 Active claims:
 
@@ -239,9 +240,13 @@ Do not add prompt migration, merging, backups, or a source fallback.
 After the service accepts a player's message, a failed encode/write or a
 restart must not make that message disappear. Today a request can be removed
 before its in-memory handoff is durable, so a crash in that small window can
-leave the terminal saying `Running` forever. Keep the existing mailbox and
-delivery-retry contract; do not redo the already-fixed result staging or
-acknowledgement work. Prefer the mailbox request itself as the durable record:
+leave the terminal saying `Running` forever. The current code deletes a mailbox
+request before `App:submit` has durable state, and the accepted turn then lives
+only in memory. A crash during an HTTP call, tool call, or image operation can
+therefore lose an already accepted player message and its place in the
+conversation. Keep the existing mailbox and delivery-retry contract; do not
+redo the already-fixed result staging or acknowledgement work. Prefer the
+mailbox request itself as the durable record:
 admission renames it to an `active` request before deleting anything, and the
 active file remains until a final or failure result is durable. On restart,
 recover a visible result, resume only a valid saved continuation, or publish
@@ -253,6 +258,31 @@ Keep direct terminal submissions and exactly-once provider execution outside
 this first slice unless the implementation routes them through the same
 mailbox record; do not build a general message broker or promise recovery for
 an unknown API call that was in flight during a crash.
+
+The same tests must exercise a compaction boundary: after the provider returns
+its opaque compaction item, the next request must retain the latest user
+message, steering, tool outputs, and refreshed instructions. A compaction-only
+or malformed response must become an explicit error, never a silent reset or
+stale final answer.
+
+#### CC-031 Image work cannot lose the active turn
+
+The current monitor renderer yields cooperatively, but it still runs inside the
+critical `chat_worker`; it is not a separate background operation. While a
+large image is decoding or painting, the model turn is occupied and new player
+messages wait. If that script or its module loader faults, the critical worker
+stops; without CC-022's durable accepted-turn record, the active message can
+disappear on restart. The player should see image progress or a clear failure,
+then keep the conversation available for the next message.
+
+First prove the existing behavior with a real image and monitor: the renderer
+must yield without starving input, preserve the final image path, and return a
+tool error rather than faulting the service. Then choose the smallest design:
+keep cooperative rendering if it is measurably sufficient, or run the renderer
+as a cancellable background task whose result is joined before the model sees
+success. Test a slow render, a renderer exception, a missing image, steering
+during rendering, restart during rendering, and a second player message. Do
+not add a general job system or sacrifice the unrestricted shell contract.
 
 #### CC-026 Supported ComputerCraft version and deployment preflight
 
