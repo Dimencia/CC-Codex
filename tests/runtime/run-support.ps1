@@ -35,6 +35,16 @@ function Assert-PathWithinRoot {
     }
 }
 
+function Get-RuntimeTempRoot {
+    foreach ($name in @('RUNNER_TEMP', 'TMPDIR', 'TEMP', 'TMP')) {
+        $value = [Environment]::GetEnvironmentVariable($name)
+        if (-not [string]::IsNullOrWhiteSpace($value)) {
+            return [System.IO.Path]::GetFullPath($value)
+        }
+    }
+    return [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
+}
+
 function Get-CanonicalPath {
     param([Parameter(Mandatory)][string]$Path)
 

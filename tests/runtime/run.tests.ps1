@@ -14,7 +14,19 @@ $source = [pscustomobject]@{
     source_sha = '052c48132ede2ff3fe90b05aeec10d274431d81d'
     input_sha = Get-Sha256Text -Value 'fixture-inputs'
 }
-$outputRoot = Join-Path $env:TEMP 'cc-codex-runtime-isolation-tests'
+$savedRunnerTemp = [Environment]::GetEnvironmentVariable('RUNNER_TEMP')
+$savedTemp = [Environment]::GetEnvironmentVariable('TEMP')
+try {
+    [Environment]::SetEnvironmentVariable('RUNNER_TEMP', $null)
+    [Environment]::SetEnvironmentVariable('TEMP', $null)
+    $fallbackTempRoot = Get-RuntimeTempRoot
+    if ([string]::IsNullOrWhiteSpace($fallbackTempRoot)) { throw 'Portable temporary-root fallback was empty.' }
+}
+finally {
+    [Environment]::SetEnvironmentVariable('RUNNER_TEMP', $savedRunnerTemp)
+    [Environment]::SetEnvironmentVariable('TEMP', $savedTemp)
+}
+$outputRoot = Join-Path (Get-RuntimeTempRoot) 'cc-codex-runtime-isolation-tests'
 $identityA = Get-RunIdentity -RepositoryRoot $PSScriptRoot -RuntimeDirectory $PSScriptRoot -RunId 'ci-123' -OutputRoot $outputRoot -Source $source
 $identityB = Get-RunIdentity -RepositoryRoot $PSScriptRoot -RuntimeDirectory $PSScriptRoot -RunId 'ci-123' -OutputRoot $outputRoot -Source $source
 if ($identityA.scope_key -ne $identityB.scope_key -or $identityA.image_key -ne $identityB.image_key) { throw 'Identity derivation was not deterministic.' }
@@ -25,8 +37,9 @@ Assert-Throws { Assert-ValidRunId -RunId 'bad/run' }
 Assert-Throws { Assert-ValidRunId -RunId ('x' * 65) }
 Assert-Throws { Assert-PathWithinRoot -Path (Join-Path $outputRoot '..\foreign') -Root $outputRoot }
 
-$fakeDocker = Join-Path $env:TEMP "cc-codex-fake-docker-$([Guid]::NewGuid().ToString('N')).ps1"
-$rmLog = Join-Path $env:TEMP "cc-codex-fake-docker-rm-$([Guid]::NewGuid().ToString('N')).txt"
+$tempRoot = Get-RuntimeTempRoot
+$fakeDocker = Join-Path $tempRoot "cc-codex-fake-docker-$([Guid]::NewGuid().ToString('N')).ps1"
+$rmLog = Join-Path $tempRoot "cc-codex-fake-docker-rm-$([Guid]::NewGuid().ToString('N')).txt"
 @'
 param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)
 if ($Arguments -contains 'inspect') {
