@@ -73,6 +73,7 @@ jobs:
           test "$(tar --list --file "dist/CC-Codex-v${VERSION}.tar" | grep -c '^install.lua$')" -eq 1
           test "$(tar --list --file "dist/CC-Codex-v${VERSION}.tar" | grep -c '^computer/')" -gt 0
           test "$(tar --list --file "dist/CC-Codex-v${VERSION}.tar" | grep -c '^computer/codex/tests/')" -eq 0
+          test "$(tar --list --file "dist/CC-Codex-v${VERSION}.tar" | grep -c '^computer/codex/docs/system_prompt\.md$')" -eq 1
 
       - name: Create GitHub release
         env:

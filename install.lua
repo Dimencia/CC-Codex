@@ -8,6 +8,8 @@ local releasesApiUrl = "https://api.github.com/repos/" .. repository .. "/releas
 local apiKeySetting = "cc_codex.api_key"
 local sourcePrefix = "computer/"
 local maxArchiveBytes = 8 * 1024 * 1024
+local promptPackagePath = "computer/codex/docs/system_prompt.md"
+local promptDestination = "codex/docs/system_prompt.md"
 
 local runningProgram
 local computerRoot
@@ -214,7 +216,6 @@ local function isProtectedDestination(path)
     return path == ".settings"
         or path == ".codex-restart"
         or path == "codex/.codex-restart"
-        or path == "codex/docs/system_prompt.md"
         or hasPathPrefix(path, "codex/data")
         or hasPathPrefix(path, "codex/artifacts")
 end
@@ -243,6 +244,8 @@ end
 local function validatePackage(entries)
     local hasInstaller = false
     local hasComputer = false
+    local promptCount = 0
+    local hasTests = false
     for _, entry in ipairs(entries) do
         local path = entry.path
         validatePackagePath(path)
@@ -254,6 +257,21 @@ local function validatePackage(entries)
         end
         if entry.kind == "file" and type(entry.content) ~= "string" then
             error("Package file has no content: " .. path, 0)
+        end
+
+        if path == promptPackagePath then
+            if entry.kind ~= "file" then
+                error("Package system prompt is not a file.", 0)
+            end
+            if not entry.content:match("%S") then
+                error("Package system prompt is empty.", 0)
+            end
+            promptCount = promptCount + 1
+        end
+
+        if path:sub(1, #sourcePrefix) == sourcePrefix
+            and hasPathPrefix(path:sub(#sourcePrefix + 1), "codex/tests") then
+            hasTests = true
         end
 
         local destination = packageDestination(path)
@@ -273,6 +291,12 @@ local function validatePackage(entries)
     end
     if not hasInstaller then error("Package is missing install.lua.", 0) end
     if not hasComputer then error("Package is missing computer/.", 0) end
+    if promptCount ~= 1 then
+        error("Package must contain exactly one system prompt.", 0)
+    end
+    if hasTests then
+        error("Package must not contain codex/tests/.", 0)
+    end
 end
 
 local function checkExistingParents(path)
@@ -320,6 +344,10 @@ local function preparePackage(entries)
         if destination then
             if entry.kind == "directory" then
                 prepared.directories[#prepared.directories + 1] = destination
+            elseif destination == promptDestination and fs.exists(rootPath(destination)) then
+                -- A player's local prompt is authoritative. Validation above
+                -- proves the package contains a usable replacement for fresh
+                -- installs; updates leave the existing regular file alone.
             elseif not (destination == "codex/install.lua"
                 and normalizePath(selfPath or "") == normalizePath(rootPath(destination))) then
                 prepared.files[#prepared.files + 1] = {
