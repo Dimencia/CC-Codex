@@ -5,16 +5,16 @@ local runningProgram = type(shell) == "table"
     and type(shell.getRunningProgram) == "function"
     and shell.getRunningProgram()
 if type(runningProgram) == "string"
-    and runningProgram:match("image/img2mon%.lua$")
-    and type(fs) == "table"
-    and type(fs.getDir) == "function"
-    and type(fs.combine) == "function" then
-    local codexRoot = fs.getDir(fs.getDir(runningProgram))
-    package.path = table.concat({
-        fs.combine(codexRoot, "?.lua"),
-        fs.combine(codexRoot, "?/init.lua"),
-        package.path
-    }, ";")
+    and type(package) == "table"
+    and type(package.path) == "string" then
+    local codexRoot = runningProgram:match("^(.*)/image/img2mon%.lua$")
+    if codexRoot then
+        package.path = table.concat({
+            codexRoot .. "/?.lua",
+            codexRoot .. "/?/init.lua",
+            package.path
+        }, ";")
+    end
 end
 
 local Img2MonCommand = require("image.command")
