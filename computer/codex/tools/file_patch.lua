@@ -240,7 +240,6 @@ local function splitLines(value)
 end
 
 local function composeLines(lines, hasFinalNewline)
-    if #lines == 0 then return "" end
     local content = table.concat(lines, "\n")
     if hasFinalNewline then content = content .. "\n" end
     return content

@@ -303,6 +303,29 @@ return {
         end
     },
     {
+        name = "preserves final newline when an EOF edit removes every logical line",
+        fn = function()
+            local deps, registry = setup({ files = { ["codex/core/app.lua"] = "only\n" } })
+            local result = call(deps, registry, "edit_source_file", editArguments(
+                "core/app.lua", "only\n",
+                {{ start_line = 1, delete_count = 1, old_lines = { "only" }, replacement_lines = {} }}
+            ))
+            Harness.truthy(result.ok)
+            Harness.equal("\n", deps.files["codex/core/app.lua"])
+            Harness.equal(0, result.new_lines)
+            Harness.truthy(result.final_newline)
+
+            result = call(deps, registry, "edit_source_file", editArguments(
+                "core/app.lua", "\n",
+                {{ start_line = 1, delete_count = 1, old_lines = { "" }, replacement_lines = {} }},
+                { final_newline = false }
+            ))
+            Harness.truthy(result.ok)
+            Harness.equal("", deps.files["codex/core/app.lua"])
+            Harness.falsy(result.final_newline)
+        end
+    },
+    {
         name = "rejects CRLF source and LF-containing edit input",
         fn = function()
             local deps, registry = setup({ files = { ["codex/core/app.lua"] = "old\r\n" } })
