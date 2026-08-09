@@ -16,7 +16,8 @@ render generated images on a monitor.
   `lua_structure.md` is its implementation and integration guide, and
   `deferred-ideas.md` is its requested-work backlog.
 - `computer/codex/tests/` contains the Lua and fixture tests. The complete suite
-  runs with native Lua both offline on the host and on a ComputerCraft computer.
+  stays in the repository, CI, and source-backed Docker fixture; fresh release
+  packages omit it from ordinary player computers.
 - `host/checks/` contains Windows-side static checks.
 - `docs/` contains the short architecture, testing, and future-ideas notes.
 
@@ -36,12 +37,14 @@ install
 The installer resolves the latest published release, downloads one
 uncompressed `CC-Codex-vX.Y.Z.tar` package into memory, validates every USTAR
 entry and final destination, and checks the ComputerCraft free-space quota
-before changing an installed file. It then publishes the validated package
-directly to ordinary files and places the package installer at
-`codex/install.lua`; there is no on-disk package staging copy. If the quota is
-short, the installer reports the required bytes, available bytes, and shortfall,
-leaves the existing service, runtime data, and settings unchanged, and does not
-reboot. Free space (or temporarily raise the ComputerCraft quota) and retry.
+before changing an installed file. The release package omits the repository's
+`computer/codex/tests/` tree, but the installer never deletes files from an
+existing installation. It then publishes the validated package directly to
+ordinary files and places the package installer at `codex/install.lua`; there
+is no on-disk package staging copy. If the quota is short, the installer reports
+the required bytes, available bytes, and shortfall, leaves the existing service,
+runtime data, and settings unchanged, and does not reboot. Free space (or
+temporarily raise the ComputerCraft quota) and retry.
 
 If the latest release archive cannot be resolved, this release-safety slice does
 not use the old GitHub source-tree fallback. Retry later or provide an exact

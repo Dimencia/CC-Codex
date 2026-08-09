@@ -305,6 +305,7 @@ local function seedRuntime()
         { path = "codex/data/conversations.json", content = "old conversations" },
         { path = "codex/data/client-results/mail.json", content = "old mailbox" },
         { path = "codex/artifacts/old-image", content = "old artifact" },
+        { path = "codex/tests/old-test.lua", content = "old test" },
         { path = "codex/.codex-restart", content = "restart" },
         { path = ".settings", content = "cc_codex.api_key=fixture" }
     }
@@ -362,6 +363,7 @@ local function assertSentinels(state)
     assert(state.files["codex/data/conversations.json"] == "old conversations")
     assert(state.files["codex/data/client-results/mail.json"] == "old mailbox")
     assert(state.files["codex/artifacts/old-image"] == "old artifact")
+    assert(state.files["codex/tests/old-test.lua"] == "old test")
     assert(state.files["codex/.codex-restart"] == "restart")
     assert(state.files[".settings"] == "cc_codex.api_key=fixture")
 end
