@@ -63,22 +63,23 @@ Release-safety gates before any live-model lane (not separate claims):
 
 Ready, in order:
 
-1. `CC-022` - durable accepted answers and restart recovery
-2. `CC-023` - mailbox fairness and blocked-request liveness
-3. `CC-024` - bounded file-patch resources and output
-4. `CC-025` - correct shipped-package diagnostic instructions
-5. `CC-020` - bounded local diagnostic storage
-6. `CC-016` - reproducible runtime and token-cost benchmarks
-7. `CC-004` - deterministic player/provider integration tests (after CC-017 fixture isolation)
-8. `CC-009` - image renderer measurement and fast path
-9. `CC-007` - bounded asynchronous jobs and goals
-10. `CC-008` - local searchable memory
+1. `CC-026` - supported ComputerCraft version and deployment preflight
+2. `CC-022` - durable accepted answers and restart recovery
+3. `CC-023` - mailbox fairness and blocked-request liveness
+4. `CC-024` - bounded file-patch resources and output
+5. `CC-025` - correct shipped-package diagnostic instructions
+6. `CC-020` - bounded local diagnostic storage
+7. `CC-016` - reproducible runtime and token-cost benchmarks
+8. `CC-004` - deterministic player/provider integration tests (after CC-017 fixture isolation)
+9. `CC-009` - image renderer measurement and fast path
+10. `CC-007` - bounded asynchronous jobs and goals
+11. `CC-008` - local searchable memory
 
 Active claims:
 
 | ID | Agent | Owning branch or PR | State |
 | --- | --- | --- | --- |
-| *(none)* | | | |
+| `CC-027` | Agent: Sprocket (feature worker) | `codex/cc-027-tool-authority` | Keep model-executed Lua from launching service-owned programs or process controls; renderer/package failures must return a tool error and keep the service alive. |
 
 Completed claims: `CC-005` completed in PR #7 (merge `7948736`), `CC-019`
 completed in PR #10 (merge `ecfd636`), `CC-006` completed in PR #11 (merge
@@ -249,6 +250,32 @@ Keep direct terminal submissions and exactly-once provider execution outside
 this first slice unless the implementation routes them through the same
 mailbox record; do not build a general message broker or promise recovery for
 an unknown API call that was in flight during a crash.
+
+#### CC-026 Supported ComputerCraft version and deployment preflight
+
+The current release uses ComputerCraft APIs and ROM modules that older or
+partially updated computers do not provide. A player can otherwise install a
+mixed tree, see `cc.expect` or another module-not-found error from the shell,
+and be left with a computer that cannot start Codex. State the supported
+CC:Tweaked version floor, check it before changing source files, and print one
+plain repair instruction that preserves local data/settings. Add a headless
+fixture check for the launcher and the required ROM module. Do not bundle a
+replacement `cc.expect` library or silently support an older runtime by
+copying private ROM code.
+
+#### CC-027 Model tool authority and renderer failure containment
+
+The model must not be able to launch service-owned programs, restart/shutdown
+the computer, or turn a renderer error into a crashed Codex worker through the
+general `execute_cc_lua` tool. Keep useful, bounded CC inspection/edit actions,
+but give model code an explicit safe environment or narrowly wrapped APIs. A
+missing image artifact, unsupported image-generation response, or `img2mon`
+failure must become a concise tool error that the player can understand; the
+service must continue and the conversation must receive a result. Test denied
+service paths/process controls, renderer errors inside the critical turn, and
+the real installed launcher/image command in the headless fixture. Do not add
+a general sandbox or promise protection from a player who already has shell or
+server-admin authority.
 
 #### CC-023 Mailbox fairness and blocked-request liveness
 
