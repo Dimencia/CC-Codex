@@ -174,6 +174,7 @@ worker bootstrap on pull requests and pushes to `master`. The separate
 `Runtime Integration` workflow runs the real CC-only fixture on pull
 requests, relevant `master` changes, or manually. Every pull request runs the
 fixture even when its changed paths would not otherwise match the push filter.
+Pushes to `codex/roadmap-*` branches also run the fixture for roadmap commits.
 The coordinator treats its `integration` job as a required exact-head merge
 gate. The `Release` workflow
 listens for the completed `CI` run and continues only after a successful

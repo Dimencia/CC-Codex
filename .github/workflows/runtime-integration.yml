@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - master
+      - 'codex/roadmap-*'
     paths:
       - computer/**
       - tests/runtime/**
