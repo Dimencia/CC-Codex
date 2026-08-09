@@ -29,12 +29,17 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
 
+      - name: Validate fixture identity and cleanup safeguards
+        shell: pwsh
+        run: .\tests\runtime\run.tests.ps1
+
       - name: Build and run real CC fixture
         shell: pwsh
         run: |
           $parameters = @{
             OutputPath = Join-Path $env:GITHUB_WORKSPACE "tests/runtime/output"
             TimeoutSeconds = 180
+            RunId = $env:GITHUB_RUN_ID
           }
           & (Join-Path $env:GITHUB_WORKSPACE "tests/runtime/run.ps1") @parameters
 

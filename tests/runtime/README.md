@@ -31,15 +31,35 @@ preserves the generated world under `world-debug/` for diagnosis.
 Docker Desktop must be running. The CC-only test is:
 
 ```powershell
-& .\tests\runtime\run.ps1
+& .\tests\runtime\run.tests.ps1
+& .\tests\runtime\run.ps1 -RunId local-smoke
 ```
 
 Use `-TimeoutSeconds` to shorten a local diagnostic run or extend it for a
 slower machine.
 
-Runtime output is written under `tests/runtime/output/`, which is ignored. It
-includes the copied computer filesystem, server logs, combined summary, and
-`runtime-timing.json` with build, server, guest-suite, and total durations.
+Each run derives an opaque scope from the canonical worktree and `-RunId`, then
+uses that scope in its container, image, and output-directory names. Raw paths,
+branch names, and RunId text never enter Docker resource names. Runtime output is
+written under `tests/runtime/output/<scope>/`, which is ignored. A non-empty
+existing scope directory is rejected rather than removed. The wrapper writes a
+manifest before execution and final evidence after execution; these bind the
+exact checkout SHA, fixture input hash, RunId, resource IDs, output hashes, and
+exit status. Runtime source and fixture inputs must be clean so a passing run
+cannot be mistaken for an exact-head result from a modified tree.
+
+The output includes the copied computer filesystem, server logs, combined
+summary, `runtime-timing.json`, `run-manifest.json`, and
+`runtime-evidence.json`. Cleanup uses only the captured container ID after
+verifying its ownership labels. Cached images are retained; a missing captured
+container is treated as already cleaned. If a terminal is interrupted before
+cleanup, the unique container and manifest make the run identifiable; cleanup
+must still use the captured ID and matching labels, never a fixed name or broad
+Docker prune.
+
+Full Minecraft fixture runs remain serialized because unique names prevent
+collisions but do not remove JVM, disk, or network contention. The host-only
+identity and fake-Docker cleanup checks run before the real fixture in CI.
 The container writes its raw duration to `container-timing.json`; the host
 wrapper reads that file and writes the combined `runtime-timing.json` itself so
 Linux container ownership cannot block the final timing report.

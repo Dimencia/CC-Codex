@@ -17,13 +17,18 @@ now_ms() {
 runtime_started_ms="$(now_ms)"
 
 mkdir -p "$output_dir"
-rm -rf "$output_dir/computer-fs"
-rm -rf "$output_dir/world-debug"
-rm -f "$output_dir/cc-summary.json" "$output_dir/server-latest.log"
 
 console_pipe="/tmp/cc-codex-runtime-console.$$"
 mkfifo "$console_pipe"
-trap 'rm -f "$console_pipe"' EXIT
+server_pid=''
+watcher_pid=''
+cleanup() {
+    if [ -n "$watcher_pid" ]; then kill "$watcher_pid" 2>/dev/null || true; fi
+    if [ -n "$server_pid" ]; then kill "$server_pid" 2>/dev/null || true; fi
+    exec 3>&- 2>/dev/null || true
+    rm -f "$console_pipe"
+}
+trap cleanup EXIT INT TERM
 
 set +e
 timeout --foreground "$timeout_seconds" /server/run.sh --nogui <"$console_pipe" >"$server_log" 2>&1 &
@@ -45,9 +50,11 @@ watcher_pid=$!
 wait "$server_pid"
 server_exit=$?
 kill "$watcher_pid" 2>/dev/null || true
+watcher_pid=''
 exec 3>&-
+server_pid=''
 rm -f "$console_pipe"
-trap - EXIT
+trap - EXIT INT TERM
 set -e
 
 runtime_finished_ms="$(now_ms)"
