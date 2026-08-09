@@ -1,4 +1,5 @@
--- Minimal terminal client for the headless CC Codex service.
+-- Minimal terminal client for the headless CC Codex service. Each request has
+-- its own mailbox file so multiple terminal clients can run concurrently.
 
 package.path = table.concat({
     "codex/?.lua",
@@ -9,9 +10,16 @@ package.path = table.concat({
 local ComponentText = require("core.component_text")
 local Text = require("core.text")
 
-local requestPath = "codex/data/client-request.json"
-local resultPath = "codex/data/client-result.json"
+local requestDirectory = "codex/data/client-requests"
+local resultDirectory = "codex/data/client-results"
 local requestCounter = 0
+local computerId = type(os.computerID) == "function" and os.computerID() or 0
+local clientNonce = table.concat({
+    tostring(os.epoch("utc")),
+    tostring(computerId),
+    tostring(math.floor(os.clock() * 1000000)),
+    tostring(math.random(0, 2147483647))
+}, "-")
 
 local json = {
     encode = function(value)
@@ -24,7 +32,16 @@ local json = {
 
 local function nextRequestId()
     requestCounter = requestCounter + 1
-    return tostring(os.epoch("utc")) .. "-" .. tostring(requestCounter)
+    return clientNonce .. "-" .. tostring(requestCounter)
+end
+
+local function mailboxPath(directory, id)
+    return fs.combine(directory, id .. ".json")
+end
+
+local function ensureMailboxes()
+    fs.makeDir(requestDirectory)
+    fs.makeDir(resultDirectory)
 end
 
 local function readJson(path)
@@ -38,8 +55,8 @@ local function readJson(path)
 end
 
 local function writeRequest(request)
-    while fs.exists(requestPath) do sleep(0.25) end
-    if fs.exists(resultPath) then fs.delete(resultPath) end
+    ensureMailboxes()
+    local requestPath = mailboxPath(requestDirectory, request.id)
     local temporaryPath = requestPath .. ".tmp"
     local handle = assert(fs.open(temporaryPath, "w"))
     handle.write(json.encode(request))
@@ -61,6 +78,7 @@ local function displayResult(result)
 end
 
 local function waitForResult(id)
+    local resultPath = mailboxPath(resultDirectory, id)
     while true do
         if fs.exists(resultPath) then
             local result = readJson(resultPath)

@@ -105,8 +105,23 @@ These are per-computer state, not shared source:
 - `codex/data/conversations.json` and `codex/data/conversations/` - conversation catalog
   and plaintext diagnostic JSONL logs.
 - `codex/data/usage.jsonl` - aggregate turn metrics.
-- `codex/data/client-request.json` and `codex/data/client-result.json` - transient
-  client mailbox files.
+- `codex/data/client-requests/<request-id>.json` and
+  `codex/data/client-results/<request-id>.json` - request-scoped client mailbox
+  files. A terminal acknowledges each result by deleting it after reading. The
+  service reserves at most 32 distinct unread or in-flight scoped result slots
+  and never evicts an unread file. Admission reserves a slot through progress
+  and until final or error delivery is attempted. A successfully published
+  terminal result continues occupying the slot until acknowledgement; a failed
+  terminal publication reports an error and releases the ended route's
+  in-memory reservation. A managed restart reconstructs reservations for its
+  saved scoped continuation routes. At capacity, a new scoped request remains
+  durable and unconsumed until a slot is released, normally when a terminal
+  result is acknowledged. A second request using an occupied ID also waits;
+  progress and final delivery for the admitted request may replace its own
+  result. This bounds abandoned files while applying backpressure when clients
+  do not acknowledge.
+  The service reads the older singular `client-request.json` and writes
+  `client-result.json` during rollout so an older terminal client can finish.
 - `codex/artifacts/images/` - generated image files.
 - `codex/.codex-restart` - transient supervisor marker used for a validated
   managed restart.
