@@ -63,13 +63,12 @@ Release-safety gates before any live-model lane (not separate claims):
 
 Ready, in order:
 
-1. `CC-018` - lean deployed package and focused in-place tests
-2. `CC-020` - bounded local diagnostic storage
-3. `CC-016` - reproducible runtime and token-cost benchmarks
-4. `CC-004` - deterministic player/provider integration tests (after CC-017 fixture isolation)
-5. `CC-009` - image renderer measurement and fast path
-6. `CC-007` - bounded asynchronous jobs and goals
-7. `CC-008` - local searchable memory
+1. `CC-020` - bounded local diagnostic storage
+2. `CC-016` - reproducible runtime and token-cost benchmarks
+3. `CC-004` - deterministic player/provider integration tests (after CC-017 fixture isolation)
+4. `CC-009` - image renderer measurement and fast path
+5. `CC-007` - bounded asynchronous jobs and goals
+6. `CC-008` - local searchable memory
 
 Active claims:
 
@@ -77,6 +76,7 @@ Active claims:
 | --- | --- | --- | --- |
 | `CC-006` | Agent: Spackle (feature worker) | `codex/cc-006-quota-safe-installer` | Quota-only pre-mutation safety; crash-atomic updates explicitly deferred. |
 | `CC-017` | Agent: Quanta (benchmark tester) | `codex/cc-017-runtime-fixtures` | Collision-free names, ownership-safe cleanup, and exact-head manifests/evidence; serialized full-server default. |
+| `CC-018` | Agent: Sprocket (feature worker) | `codex/cc-018-lean-package` | Keep the full suite in repository/CI/Docker while omitting `computer/codex/tests/` from fresh player packages and source fallback; do not delete tests from existing installs. |
 
 Completed claims: `CC-005` completed in PR #7 (merge `7948736`), and
 `CC-019` completed in PR #10 (merge `ecfd636`). Both were refreshed onto the
