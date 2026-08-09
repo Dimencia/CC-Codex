@@ -109,23 +109,49 @@ These are per-computer state, not shared source:
   `codex/data/client-results/<request-id>.json` - request-scoped client mailbox
   files. A terminal acknowledges each result by deleting it after reading. The
   service reserves at most 32 distinct unread or in-flight scoped result slots
-  and never evicts an unread file. Admission reserves a slot through progress
-  and until final or error delivery is attempted. A successfully published
-  terminal result continues occupying the slot until acknowledgement; a failed
-  terminal publication reports an error and releases the ended route's
-  in-memory reservation. A managed restart reconstructs reservations for its
-  saved scoped continuation routes. At capacity, a new scoped request remains
-  durable and unconsumed until a slot is released, normally when a terminal
-  result is acknowledged. A second request using an occupied ID also waits;
-  progress and final delivery for the admitted request may replace its own
-  result. This bounds abandoned files while applying backpressure when clients
-  do not acknowledge.
+  and never evicts an unread file. Admission reserves a slot before consuming a
+  request and keeps it through the final or error outcome until the terminal
+  acknowledges that outcome. At capacity, a new scoped request remains durable
+  and unconsumed; the terminal reports that it is queued rather than silently
+  waiting. A second request using an occupied ID also waits. Progress and final
+  delivery for the admitted request may replace its own result.
+
+  If final or error publication fails, the service keeps the route reserved and
+  retries the existing atomic temporary result through the mailbox task. After
+  the bounded retry budget it changes the pending outcome to one explicit
+  `delivery_failed` error result. A valid temporary result is rehydrated on
+  service startup, so a failed rename does not lose a model answer. The slot is
+  released only after the terminal reads and acknowledges the visible result.
+  A saved continuation that cannot be queued or whose adapter route is no
+  longer usable receives an interruption error for its original client and its
+  checkpoint is cleared after that error is delivered. This bounds abandoned
+  files while making queued, running, interrupted, and awaiting-delivery states
+  visible to the player.
   The service reads the older singular `client-request.json` and writes
   `client-result.json` during rollout so an older terminal client can finish.
+
 - `codex/artifacts/images/` - generated image files.
 - `codex/.codex-restart` - transient supervisor marker used for a validated
   managed restart.
 - `.settings` - CC settings, including the API key.
+
+### User-visible request flow
+
+A player sends a message from the terminal, then may steer from the same
+terminal or use another client while waiting. If all result slots are occupied,
+the request file stays on disk and the terminal says it is queued; neither the
+player nor the model is told that the message was consumed. Once admitted, the
+terminal says it is running. A final result is displayed once and deleted as
+the acknowledgement, so the player sees the answer and the service can admit
+the next queued message.
+
+If the model has acted but result publication is temporarily broken, the
+terminal says it is awaiting delivery while the service retains the route and
+retries. A later visible `delivery_failed` result tells the player that the
+model turn ended without an answer, instead of leaving the player to infer
+success from silence. If a restart finds a saved turn that cannot be resumed,
+the original client receives an interruption result; the player is told to
+resend rather than waiting for a turn that no longer exists.
 
 Do not put credentials or runtime data into source. Do not treat local logs or
 client request/result files as provider history. Runtime files stay local when

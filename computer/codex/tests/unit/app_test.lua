@@ -6,7 +6,7 @@ local Commands = require("core.commands")
 local Session = require("core.session")
 local TurnQueue = require("core.turn_queue")
 
-local function fixture(inputStop)
+local function fixture(inputStop, canResume)
     local emitted = {}
     local spawned = {}
     local delivered = {}
@@ -75,6 +75,7 @@ local function fixture(inputStop)
         },
         commands = commands,
         inputs = inputs,
+        canResume = canResume,
         deliver = function(route, text, kind)
             delivered[#delivered + 1] = { route = route, text = text, kind = kind }
             return true
@@ -167,6 +168,26 @@ return {
             Harness.equal("resp_12", assert(pending.continuation).previousResponseId)
             app:submit("later", { adapterId = "terminal" })
             Harness.equal(13, app.queue:take().id)
+        end
+    },
+    {
+        name = "reports an interruption when a saved continuation cannot be resumed",
+        fn = function()
+            local app, _, _, _, delivered, _, state = fixture(nil, function()
+                return nil, "the saved client route is unavailable"
+            end)
+            Harness.truthy(app.session:checkpoint({
+                turnId = 12,
+                previousResponseId = "resp_12",
+                input = {},
+                replyRoutes = { { adapterId = "terminal", requestId = "client-12" } }
+            }))
+            app:start()
+            Harness.equal(1, #delivered)
+            Harness.equal("error", delivered[1].kind)
+            Harness.truthy(delivered[1].text:find("interrupted", 1, true))
+            Harness.equal(nil, app.session:pending())
+            Harness.equal(nil, assert(state()).checkpoint)
         end
     },
     {

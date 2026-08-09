@@ -12,6 +12,8 @@ local Text = require("core.text")
 
 local requestDirectory = "codex/data/client-requests"
 local resultDirectory = "codex/data/client-results"
+local requestPollSeconds = 0.25
+local statusIntervalPolls = 20
 local requestCounter = 0
 local computerId = type(os.computerID) == "function" and os.computerID() or 0
 local clientNonce = table.concat({
@@ -77,9 +79,44 @@ local function displayResult(result)
     print(Text.toAscii(message))
 end
 
+local function displayStatus(message)
+    print(message)
+end
+
 local function waitForResult(id)
     local resultPath = mailboxPath(resultDirectory, id)
+    local requestPath = mailboxPath(requestDirectory, id)
+    local polls = 0
+    local lastStatus
+    local statusAge = statusIntervalPolls
+
+    local function reportStatus(status, message)
+        if status ~= lastStatus or statusAge >= statusIntervalPolls then
+            displayStatus(message)
+            lastStatus = status
+            statusAge = 0
+        end
+    end
+
     while true do
+        local requestPending = fs.exists(requestPath)
+        if requestPending then
+            reportStatus(
+                "queued",
+                "Queued: waiting for available reply capacity; your request is safe on disk."
+            )
+        elseif polls < statusIntervalPolls then
+            reportStatus(
+                "running",
+                "Running: Codex accepted the request and is waiting for the model."
+            )
+        else
+            reportStatus(
+                "awaiting_delivery",
+                "Awaiting delivery: the service is still trying to publish this request's outcome."
+            )
+        end
+
         if fs.exists(resultPath) then
             local result = readJson(resultPath)
             if result and result.id == id then
@@ -88,7 +125,9 @@ local function waitForResult(id)
                 if result.kind ~= "progress" then return end
             end
         end
-        sleep(0.25)
+        polls = polls + 1
+        statusAge = statusAge + 1
+        sleep(requestPollSeconds)
     end
 end
 

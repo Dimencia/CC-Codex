@@ -358,6 +358,24 @@ function Bootstrap.build(config)
         if not adapter then return nil, "Unknown reply adapter: " .. tostring(route.adapterId) end
         return adapter:deliver(route, message, kind, metadata)
     end
+    local function canResume(checkpoint)
+        if type(checkpoint) ~= "table" or type(checkpoint.replyRoutes) ~= "table"
+            or #checkpoint.replyRoutes == 0 then
+            return nil, "Saved continuation has no reply route."
+        end
+        for _, route in ipairs(checkpoint.replyRoutes) do
+            local adapter = type(route) == "table" and adapters[route.adapterId] or nil
+            if not adapter then
+                return nil, "Saved continuation reply adapter is unavailable: "
+                    .. tostring(type(route) == "table" and route.adapterId or "unknown")
+            end
+            if type(adapter.canDeliver) == "function" then
+                local valid, validationError = adapter:canDeliver(route)
+                if not valid then return nil, validationError end
+            end
+        end
+        return true
+    end
     local function recordConversation(record)
         if not conversationLogId then return end
         local recorded, recordError = conversationLog:record(record)
@@ -514,6 +532,7 @@ function Bootstrap.build(config)
         commands = commands,
         inputs = inputs,
         deliver = deliver,
+        canResume = canResume,
         console = console,
         onTurnCompleted = syncConversationCatalog
     })

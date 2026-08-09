@@ -10,6 +10,7 @@
 
 ---@class DisplayAdapter
 ---@field deliver fun(self: DisplayAdapter, route: ReplyRoute, text: string, kind: string, metadata: DeliveryMetadata|nil): boolean|nil, string|nil, string|nil
+---@field canDeliver? fun(self: DisplayAdapter, route: ReplyRoute): boolean|nil, string|nil
 
 ---@alias AppDelivery fun(route: ReplyRoute, text: string, kind: 'progress'|'final'|'error', metadata: DeliveryMetadata|nil): boolean|nil, string|nil, string|nil
 
@@ -26,6 +27,7 @@
 ---@field commands Commands
 ---@field inputs InputAdapter[]
 ---@field deliver AppDelivery
+---@field canResume? fun(checkpoint: ContinuationCheckpoint): boolean|nil, string|nil
 ---@field console ApplicationConsole
 ---@field onTurnCompleted? fun(result: AppTurnResult)
 
@@ -39,6 +41,7 @@
 ---@field commands Commands
 ---@field inputs InputAdapter[]
 ---@field deliver AppDelivery
+---@field canResume fun(checkpoint: ContinuationCheckpoint): boolean|nil, string|nil
 ---@field console ApplicationConsole
 ---@field onTurnCompleted fun(result: AppTurnResult)|nil
 ---@field private startedInputs InputAdapter[]
@@ -47,6 +50,11 @@
 ---@field private shuttingDown boolean
 local App = {}
 App.__index = App
+
+local INTERRUPTED_CONTINUATION_MESSAGE = table.concat({
+    "This request was interrupted during restart and could not be resumed.",
+    "The model has no active turn for it now; please send the message again."
+}, " ")
 
 ---@param console ApplicationConsole
 ---@param label string
@@ -81,6 +89,7 @@ function App.new(options)
         commands = options.commands,
         inputs = options.inputs,
         deliver = options.deliver,
+        canResume = options.canResume or function() return true end,
         console = options.console,
         onTurnCompleted = options.onTurnCompleted,
         startedInputs = {},
@@ -135,18 +144,55 @@ end
 ---@param request TurnRequest
 ---@param message string
 ---@param kind 'progress'|'final'|'error'
----@return boolean
+---@return boolean deliveredAny
+---@return integer failed
 function App:_reply(request, message, kind)
     local deliveredAny = false
+    local failed = 0
     for _, route in ipairs(request.replyRoutes or {}) do
         local delivered, deliveryError = self.deliver(route, message, kind)
         if delivered then
             deliveredAny = true
         else
+            failed = failed + 1
             self.console:error(deliveryError or "Reply delivery failed.")
         end
     end
-    return deliveredAny
+    return deliveredAny, failed
+end
+
+---@param self CodexApp
+---@param checkpoint ContinuationCheckpoint
+---@param reason string|nil
+local function interruptPendingContinuation(self, checkpoint, reason)
+    local delivered, failed = self:_reply(
+        { id = checkpoint.turnId, replyRoutes = checkpoint.replyRoutes },
+        INTERRUPTED_CONTINUATION_MESSAGE,
+        "error"
+    )
+    if not delivered or failed > 0 then
+        self.console:error(table.concat({
+            "Saved continuation was interrupted but its client failure could not be delivered",
+            reason and (": " .. tostring(reason)) or "."
+        }))
+        return
+    end
+
+    local cleared, clearError = self.session:checkpoint(nil)
+    if not cleared then
+        self.console:error("Interrupted continuation could not be cleared: " .. tostring(clearError))
+        return
+    end
+    local state = self.session:durableState()
+    local saved, saveError
+    if state then
+        saved, saveError = self.stateStore:save(state)
+    else
+        saved, saveError = self.stateStore:clear()
+    end
+    if not saved then
+        self.console:error("Interrupted continuation was reported but state cleanup failed: " .. tostring(saveError))
+    end
 end
 
 ---@param self CodexApp
@@ -199,13 +245,18 @@ end
 function App:_queuePendingContinuation()
     local checkpoint = self.session:pending()
     if not checkpoint then return end
+    local resumable, resumeError = self.canResume(checkpoint)
+    if not resumable then
+        interruptPendingContinuation(self, checkpoint, resumeError)
+        return
+    end
     local accepted, queueError = self.queue:submit({
         id = checkpoint.turnId,
         continuation = checkpoint,
         replyRoutes = checkpoint.replyRoutes or {}
     })
     if not accepted then
-        self.console:error("Saved continuation could not be queued: " .. tostring(queueError))
+        interruptPendingContinuation(self, checkpoint, queueError)
         return
     end
     self.nextTurnId = math.max(self.nextTurnId, checkpoint.turnId + 1)
