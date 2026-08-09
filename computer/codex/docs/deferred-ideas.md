@@ -51,11 +51,10 @@ clear implementation that preserves the real contracts.
 Workers may claim only IDs in the Ready queue. The detailed specifications stay
 below even while an item is active so its contract remains readable.
 
-Queue mode: **Stabilization**. PR #11 shipped the quota-only installer safety
-slice and PR #13 shipped the lean player package. CC-017 remains owner-action
-blocked by a Runtime Integration failure before the real fixture starts; keep
-the Ready priorities visible but do not claim new work until that owned PR is
-resolved or explicitly reassigned.
+Queue mode: **Ready**. PR #11 shipped the quota-only installer safety slice,
+PR #12 shipped collision-free exact-head runtime fixtures, and PR #13 shipped
+the lean player package. The retrospective backlog is reordered below; normal
+claims may resume from the first Ready item.
 
 Release-safety gates before any live-model lane (not separate claims):
 
@@ -80,13 +79,14 @@ Active claims:
 
 | ID | Agent | Owning branch or PR | State |
 | --- | --- | --- | --- |
-| `CC-017` | Agent: Quanta (benchmark tester) | `codex/cc-017-runtime-fixtures` | Owner-action blocked: Runtime Integration still fails during pre-fixture host validation on head `51f5543`; the workflow also needs PR-head checkout for honest exact-head evidence. |
+| *(none)* | | | |
 
 Completed claims: `CC-005` completed in PR #7 (merge `7948736`), `CC-019`
 completed in PR #10 (merge `ecfd636`), `CC-006` completed in PR #11 (merge
-`0316740`), and `CC-018` completed in PR #13 (merge `b147c8c`). Each was
-refreshed onto the current base, passed exact-head CI/Runtime Integration and
-independent review, and was merged by Switchboard.
+`0316740`), `CC-017` completed in PR #12 (merge `d046e6f`), and `CC-018`
+completed in PR #13 (merge `b147c8c`). Each was refreshed onto the current
+base, passed exact-head CI/Runtime Integration and independent review, and was
+merged by Switchboard.
 
 `CC-003` request-scoped mailboxes are merged. The superseded remote ref
 `codex/cc-003-client-mailboxes` has no PR and is not an active claim; retain it
