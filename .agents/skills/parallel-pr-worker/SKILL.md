@@ -12,6 +12,11 @@ reviewable GitHub pull request, and review unreviewed peer pull-request heads.
 Own that branch and pull request until merge or explicit handoff. Do not merge
 it, busy-poll it, or create a scheduled follow-up.
 
+Codex tasks are resumable. Finish a bounded turn with an exact handoff and stop;
+the roadmap steward or coordinator should send a concrete follow-up to this
+same task when owner action becomes available. Do not require a worker to loop
+or report unchanged GitHub state merely to remain reachable.
+
 ## Preflight
 
 1. Confirm the current directory is inside the intended Git repository.
@@ -149,6 +154,13 @@ contract, diff, tests, documentation, simplification, and untested live
 boundaries. Submit actionable file/line findings or an approval directly; do
 not post `@codex review`, edit the other branch, or treat review as a claim.
 Prefix the review body with `[<callsign>]` and include the Agent identity line.
+
+Before posting a finding, compare it with existing comments by user-visible
+risk, affected contract/path, and root cause. Confirm an existing item rather
+than duplicating it. For a merge-only base refresh whose feature blobs are
+unchanged, review the incoming delta and interaction risk, reuse the prior
+feature verdict, and require fresh exact-head gates; do not repeat the full
+review without a changed cause.
 
 When addressing review feedback, load the current PR, review summary, inline
 comments, discussion, and checks. Evaluate findings, fix legitimate issues with
