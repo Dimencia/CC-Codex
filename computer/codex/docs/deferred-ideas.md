@@ -51,10 +51,11 @@ clear implementation that preserves the real contracts.
 Workers may claim only IDs in the Ready queue. The detailed specifications stay
 below even while an item is active so its contract remains readable.
 
-Queue mode: **Ready**. The stabilization slices are complete: PR #7 shipped
-deterministic source edits and PR #10 shipped visible durable request outcomes.
-One bounded release-safety slice is now active; the remaining Ready priorities
-stay visible for independent, non-overlapping work.
+Queue mode: **Stabilization**. PR #11 shipped the quota-only installer safety
+slice and PR #13 shipped the lean player package. CC-017 remains owner-action
+blocked by a Runtime Integration failure before the real fixture starts; keep
+the Ready priorities visible but do not claim new work until that owned PR is
+resolved or explicitly reassigned.
 
 Release-safety gates before any live-model lane (not separate claims):
 
@@ -74,14 +75,13 @@ Active claims:
 
 | ID | Agent | Owning branch or PR | State |
 | --- | --- | --- | --- |
-| `CC-006` | Agent: Spackle (feature worker) | `codex/cc-006-quota-safe-installer` | Quota-only pre-mutation safety; crash-atomic updates explicitly deferred. |
-| `CC-017` | Agent: Quanta (benchmark tester) | `codex/cc-017-runtime-fixtures` | Collision-free names, ownership-safe cleanup, and exact-head manifests/evidence; serialized full-server default. |
-| `CC-018` | Agent: Sprocket (feature worker) | `codex/cc-018-lean-package` | Keep the full suite in repository/CI/Docker while omitting `computer/codex/tests/` from fresh player packages and source fallback; do not delete tests from existing installs. |
+| `CC-017` | Agent: Quanta (benchmark tester) | `codex/cc-017-runtime-fixtures` | Owner-action blocked: Runtime Integration exits before the real fixture on head `a883506`; fix and rerun exact-head evidence. |
 
-Completed claims: `CC-005` completed in PR #7 (merge `7948736`), and
-`CC-019` completed in PR #10 (merge `ecfd636`). Both were refreshed onto the
-current base, passed exact-head CI/Runtime Integration and independent review,
-and were merged by Switchboard.
+Completed claims: `CC-005` completed in PR #7 (merge `7948736`), `CC-019`
+completed in PR #10 (merge `ecfd636`), `CC-006` completed in PR #11 (merge
+`0316740`), and `CC-018` completed in PR #13 (merge `b147c8c`). Each was
+refreshed onto the current base, passed exact-head CI/Runtime Integration and
+independent review, and was merged by Switchboard.
 
 `CC-003` request-scoped mailboxes are merged. The superseded remote ref
 `codex/cc-003-client-mailboxes` has no PR and is not an active claim; retain it
