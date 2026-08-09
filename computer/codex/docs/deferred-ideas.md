@@ -64,22 +64,25 @@ Release-safety gates before any live-model lane (not separate claims):
 Ready, in order:
 
 1. `CC-026` - supported ComputerCraft version and deployment preflight
-2. `CC-022` - durable accepted answers and restart recovery
-3. `CC-023` - mailbox fairness and blocked-request liveness
-4. `CC-024` - bounded file-patch resources and output
-5. `CC-025` - correct shipped-package diagnostic instructions
-6. `CC-020` - bounded local diagnostic storage
-7. `CC-016` - reproducible runtime and token-cost benchmarks
-8. `CC-004` - deterministic player/provider integration tests (after CC-017 fixture isolation)
-9. `CC-009` - image renderer measurement and fast path
-10. `CC-007` - bounded asynchronous jobs and goals
-11. `CC-008` - local searchable memory
+2. `CC-028` - large-file source inspection and exact editing
+3. `CC-029` - create workers on computers as well as disks
+4. `CC-030` - explicit steering and system-prompt authority
+5. `CC-022` - durable accepted answers and restart recovery
+6. `CC-023` - mailbox fairness and blocked-request liveness
+7. `CC-024` - bounded file-patch resources and output
+8. `CC-025` - correct shipped-package diagnostic instructions
+9. `CC-020` - bounded local diagnostic storage
+10. `CC-016` - reproducible runtime and token-cost benchmarks
+11. `CC-004` - deterministic player/provider integration tests (after CC-017 fixture isolation)
+12. `CC-009` - image renderer measurement and fast path
+13. `CC-007` - bounded asynchronous jobs and goals
+14. `CC-008` - local searchable memory
 
 Active claims:
 
 | ID | Agent | Owning branch or PR | State |
 | --- | --- | --- | --- |
-| `CC-027` | Agent: Sprocket (feature worker) | `codex/cc-027-tool-authority` | Keep model-executed Lua from launching service-owned programs or process controls; renderer/package failures must return a tool error and keep the service alive. |
+| `CC-027` | Agent: Sprocket (feature worker) | `codex/cc-027-tool-authority` | Preserve unrestricted shell/filesystem access with the normal module environment; renderer/package failures must return a tool error and keep the service alive. |
 
 Completed claims: `CC-005` completed in PR #7 (merge `7948736`), `CC-019`
 completed in PR #10 (merge `ecfd636`), `CC-006` completed in PR #11 (merge
@@ -280,6 +283,50 @@ and the real installed launcher/image command in the headless fixture. Do not
 add a general sandbox or promise protection from a player who already has shell
 or server-admin authority.
 
+#### CC-028 Large-file source inspection and exact editing
+
+The source edit helper is limited to about 8 KB and has no pagination. A model
+then has to read the whole file and perform a Lua find-and-replace through the
+ordinary CC shell, which is more reliable but harder to describe, validate, and
+recover when a match is wrong. A player should not need to understand that
+workaround just because a source file is large.
+
+Provide bounded page/range reads and deterministic exact edits for large files.
+Each edit must carry the file's base hash, line range, and exact old text; stale
+pages, ambiguous matches, line-ending changes, and partial writes fail before
+the file changes. Test large files, page boundaries, UTF-8, empty files, stale
+hashes, and injected write failures. Do not add fuzzy matching, regular
+expression replacement, or a graphical review screen.
+
+#### CC-029 Create workers on computers as well as disks
+
+`create_worker` currently accepts only a writable disk in the drive. A computer
+placed in the drive is also a natural worker target, but it is rejected or
+never receives the expected bootstrap. The player should be told which target
+was selected and see a clear error for missing, read-only, duplicate, or
+unauthorized targets.
+
+Define the two target types, place the minimal worker files in the correct
+location, and never overwrite an existing unrelated computer or disk. Test a
+writable disk, writable computer, absent drive, read-only target, duplicate
+identity, restart, and authorization failure. Do not auto-deploy to every
+attached computer or create a second worker protocol.
+
+#### CC-030 Explicit steering and system-prompt authority
+
+Steering is a new user instruction during an active turn, not a signal that the
+model may finish immediately. The worker prompt must say that the next turn
+continues from the steering message and must not emit a normal final response
+until the requested work is actually complete. Add a regression with a tool call,
+mid-turn steering, and the next model input/final-result boundary.
+
+An explicit user request may update `docs/system_prompt.md`, but the ordinary
+edit helper currently refuses that path, encouraging an opaque shell workaround.
+Create one intentional authority path that requires the explicit request and
+records the result; reject edits to that file otherwise. Test allowed and
+refused edits, steering continuation, and restart. Do not silently make prompt
+files generally writable or change provider instructions without a user request.
+
 #### CC-023 Mailbox fairness and blocked-request liveness
 
 When several scoped requests are present, attempting only the first sorted
@@ -290,21 +337,24 @@ conversation appearing frozen while another request could have progressed.
 
 #### CC-024 Bounded file-patch resources and output
 
-The deterministic edit tool has separate read and validation limits, does not
-count empty replacement lines consistently, keeps backups indefinitely, and
-reports an empty output with a misleading zero-line count. Unify the limits,
-bound entry/backup growth, and make the result metadata describe empty files
-accurately. Keep the line-based contract and add focused regressions; do not
-build a review UI or general diff engine.
+The deterministic edit tool has an approximately 8 KB source response limit
+and no pagination, so large files push the model toward ad-hoc Lua replacement.
+It also has separate read and validation limits, does not count empty
+replacement lines consistently, keeps backups indefinitely, and reports an
+empty output with a misleading zero-line count. Add bounded pagination/range
+reads, unify limits, bound entry/backup growth, and make result metadata
+describe empty files accurately. Keep the line-based contract and add focused
+regressions; do not build a review UI or general diff engine.
 
 #### CC-025 Correct shipped-package diagnostic instructions
 
 The normal player package no longer contains `codex/tests/`, but the CC-facing
 documentation still tells a fresh player to run `lua codex/tests/run.lua`.
 Update the instructions to distinguish a repository/Docker diagnostic from a
-deliberately installed test bundle, and make the failure message actionable.
-Keep this documentation-only and do not re-add the full suite to normal
-installs.
+deliberately installed test bundle, and make the failure message actionable. A
+missing or zero-case runner is not a successful test: every report must name
+the exact suite and path, runtime, and meaningful pass count. Keep this
+documentation-only and do not re-add the full suite to normal installs.
 
 #### CC-003 Finish the headless service and replace legacy composition
 
@@ -646,3 +696,4 @@ When periodically updating this roadmap:
 7. Mark an open PR with unresolved owner-action escalation as blocked in Active.
    Wake its original worker or explicitly reassign the same branch; never start
    a duplicate implementation merely because automated fixes did not land.
+
