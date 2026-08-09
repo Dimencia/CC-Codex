@@ -1,30 +1,3 @@
-if not require then
-    local loadedModules = {}
-    local function fallbackRequire(name)
-        if loadedModules[name] ~= nil then return loadedModules[name] end
-        local modulePath = "codex/" .. name:gsub("%.", "/") .. ".lua"
-        local file = fs.open(modulePath, "r")
-        if not file then error("module not found: " .. name, 0) end
-        local source = file.readAll()
-        file.close()
-        local moduleEnv = setmetatable({ require = fallbackRequire }, { __index = _ENV })
-        ---@diagnostic disable-next-line: param-type-mismatch
-        local chunk, loadError = load(source, modulePath, "t", moduleEnv)
-        if not chunk then error(loadError, 0) end
-        local result = chunk()
-        if result == nil then result = true end
-        loadedModules[name] = result
-        return result
-    end
-    require = fallbackRequire
-end
-
-package.path = table.concat({
-    "codex/?.lua",
-    "codex/?/init.lua",
-    package.path
-}, ";")
-
 local Img2MonCommand = require("image.command")
 
 local fileSystem = fs and {

@@ -1,6 +1,7 @@
 ---@class ImageRenderAdapterOptions
 ---@field renderScript string
----@field loadfile fun(path: string): function|nil, string|nil
+---@field loadfile fun(path: string, mode: string, environment: table): function|nil, string|nil
+---@field environment table
 ---@field yieldBeforeRun fun()
 
 ---@class ImageRenderAdapter
@@ -15,6 +16,7 @@ function ImageRenderAdapter.new(options)
     assert(type(options.renderScript) == "string" and options.renderScript ~= "",
         "image render script is required")
     assert(type(options.loadfile) == "function", "image render script loader is required")
+    assert(type(options.environment) == "table", "image render environment is required")
     assert(type(options.yieldBeforeRun) == "function", "image render yield callback is required")
     return setmetatable({ options = options }, ImageRenderAdapter)
 end
@@ -29,7 +31,15 @@ function ImageRenderAdapter:render(imagePath, monitorName)
         return nil, "No generated image is available to render."
     end
 
-    local runner, loadError = self.options.loadfile(self.options.renderScript)
+    local loaded, runner, loadError = pcall(
+        self.options.loadfile,
+        self.options.renderScript,
+        "t",
+        self.options.environment
+    )
+    if not loaded then
+        return nil, "Could not load " .. self.options.renderScript .. ": " .. tostring(runner)
+    end
     if not runner then
         return nil, "Could not load " .. self.options.renderScript .. ": " .. tostring(loadError)
     end
@@ -43,7 +53,10 @@ function ImageRenderAdapter:render(imagePath, monitorName)
     -- Let CraftOS process one event before entering the script. The script owns
     -- the actual image work and its os.pullEvent checkpoints; this avoids doing
     -- a long first decode/render slice inside the tool-dispatch turn.
-    self.options.yieldBeforeRun()
+    local yielded, yieldError = pcall(self.options.yieldBeforeRun)
+    if not yielded then
+        return nil, "img2mon.lua could not start: " .. tostring(yieldError)
+    end
 
     local ok, runError = pcall(runner, table.unpack(arguments))
     if not ok then

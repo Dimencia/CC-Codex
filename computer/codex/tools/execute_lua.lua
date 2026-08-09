@@ -100,7 +100,18 @@ end
 ---@return table
 local function makeEnvironment(self, capture)
     local environment = {}
-    setmetatable(environment, { __index = self.options.globals })
+    local configuredGlobals = self.options.globals
+    setmetatable(environment, {
+        __index = function(_, key)
+            local configured = configuredGlobals[key]
+            if configured ~= nil then return configured end
+            return _ENV[key]
+        end
+    })
+    -- `load` receives a fresh table, not the running CC program environment.
+    -- Keep the usual environment handles visible so a tool script can use the
+    -- same module loader and globals as an ordinary CC program.
+    environment._ENV = environment
     environment._G = environment
     environment.print = function(...)
         local values = table.pack(...)

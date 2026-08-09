@@ -204,9 +204,12 @@ source is copied to another computer.
 ## Inspecting and editing source from CC
 
 Use the `execute_cc_lua` tool for short, self-contained CC operations. It has
-normal CC APIs such as `fs`, `shell`, `peripheral`, `redstone`, `turtle`, and
-`commands` when available. Printed output and returned values are captured and
-bounded. Avoid interactive input, endless loops, and long-running scripts.
+the normal CC program environment, including `_ENV`, `package`, `require`, and
+APIs such as `fs`, `shell`, `peripheral`, `redstone`, `turtle`, and `commands`
+when available. This is unrestricted shell access by design. Printed output
+and returned values are captured and bounded. Avoid interactive input, endless
+loops, and long-running scripts. A module or script failure is returned as a
+tool error so the conversation service can keep running.
 
 For a bounded read:
 
@@ -225,6 +228,10 @@ change, keep a copy in local `codex/data/` or another recoverable local location
 write the intended complete file, close it, read it back, and syntax-check it
 with `loadfile(path)`. Do not use `fs.delete` on deployed source directories
 as part of an ordinary source edit.
+
+Image rendering runs `image/img2mon.lua` with the same normal module
+environment. If that script cannot load or render an image, the tool reports a
+short error rather than terminating the Codex worker.
 
 After changing loaded Lua, call the model-visible `restart_codex` tool. It
 validates `codex/service.lua` and the application source trees before saving the
