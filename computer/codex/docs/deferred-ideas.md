@@ -51,16 +51,24 @@ clear implementation that preserves the real contracts.
 Workers may claim only IDs in the Ready queue. The detailed specifications stay
 below even while an item is active so its contract remains readable.
 
-Queue mode: **Stabilization**. Two independent owner-action slices are active:
-replace PR #7's overbroad patch parser, and close the remaining user-visible
-request-outcome gaps after PR #4. Ready priorities remain visible, but no new
-claim starts until both slices are reviewed at their exact heads.
+Queue mode: **Ready**. The stabilization slices are complete: PR #7 shipped
+deterministic source edits and PR #10 shipped visible durable request outcomes.
+No active claims remain. The next work starts with the release-safety gates
+below, then returns to the ordered Ready queue.
+
+Release-safety gates before any approved live-model lane (not separate claims):
+
+- The installer must fail clearly or make room on a fresh default-quota
+  computer before staging the package; never leave a half-installed service.
+- Provider defaults must validate the effective model/output limit and bounded
+  spend before sending a request; a model-facing limit mismatch is a user
+  failure, not a benchmark result.
 
 Ready, in order:
 
-1. `CC-017` - collision-free exact-head runtime fixtures
-2. `CC-004` - deterministic player/provider integration tests
-3. `CC-006` - conflict-aware update detection
+1. `CC-006` - conflict-aware update detection and quota-safe installation
+2. `CC-017` - collision-free exact-head runtime fixtures
+3. `CC-004` - deterministic player/provider integration tests
 4. `CC-016` - reproducible runtime and token-cost benchmarks
 5. `CC-009` - image renderer measurement and fast path
 6. `CC-007` - bounded asynchronous jobs and goals
@@ -68,10 +76,10 @@ Ready, in order:
 
 Active claims:
 
-| ID | Agent | Owning branch or PR | State |
-| --- | --- | --- | --- |
-| `CC-005` | Spackle | `codex/file-patch-tool-9a7e` / PR #7 | Replace the current unified-diff parser on the same branch with exact-base deterministic line edits; do not merge the existing parser |
-| `CC-019` | Sprocket | `codex/cc-019-visible-request-outcomes` | Claimed for the smallest explicit queued, interrupted, and delivery-failure contract after merged PR #4 |
+No active claims. `CC-005` completed in PR #7 (merge `7948736`), and
+`CC-019` completed in PR #10 (merge `ecfd636`). Both were refreshed onto the
+current base, passed exact-head CI/Runtime Integration and independent review,
+and were merged by Switchboard.
 
 `CC-003` request-scoped mailboxes are merged. The superseded remote ref
 `codex/cc-003-client-mailboxes` has no PR and is not an active claim; retain it
@@ -219,10 +227,16 @@ The live lane must never run merely because a pull request was opened. A fake
 provider is not a substitute for the live lane, and the live lane is not a
 substitute for deterministic CI.
 
+Before the live lane is enabled, validate the effective provider capability and
+output cap. The current default sends `maxOutputTokens = 256000` for
+`gpt-5.6-luna`; treat that as an explicit configuration/regression gate until
+the active model limit and hard spend ceiling are validated. Do not silently
+retry an over-limit request or spend through a misconfigured default.
+
 #### CC-005 Deterministic source edit tools
 
-PR #7 remains open and must not merge in its current form. Replace raw unified
-diff input on the same owned branch with a deliberately smaller deterministic
+PR #7 merged as `7948736`. The shipped contract replaces raw unified diff input
+with a deliberately smaller deterministic
 agent-only edit contract. A bounded read tool returns the current LF-only source,
 final-newline state, and exact base SHA-256. The edit tool accepts that confined
 path and hash plus ordered, non-overlapping base-file edits. Each edit uses a
@@ -247,11 +261,18 @@ edges. The player flow should be simple: the model proposes numbered edits, a
 tool applies them only while the exact base is unchanged, and the model reports
 the outcome. Do not add a graphical review surface or make the user inspect diffs.
 
-#### CC-006 Conflict-aware update detection and installation
+#### CC-006 Conflict-aware update detection and quota-safe installation
 
 The installer already resolves the latest GitHub release, stages its package,
 and preserves runtime data when the user runs `codex/install`. Build on that
 instead of adding a second updater.
+
+The first slice is a release-safety fix, not an updater feature: the current
+package can exhaust a fresh default ComputerCraft quota while staging, even
+though the same install/reboot path passes with a temporary 4 MB quota. Add a
+bounded quota preflight or smaller safe staging path, preserve runtime data, and
+leave a clear recoverable failure when space is insufficient. Test the default
+and constrained quotas before unattended update detection.
 
 Publish a source manifest with release version and hashes. Store the last
 installed manifest locally. On a bounded, idle-time check, compare base,
@@ -326,6 +347,12 @@ reviewed instruction files that declare when they apply and which fixed tools
 they need. Add MCP or remote tool discovery only after schema cost, trust,
 authentication, timeout, and availability behavior are measured. Do not make
 every external integration visible on every turn.
+
+An app-server bridge is not currently a claim. If this idea returns, specify it
+as a separate bounded slice: start with a fake no-model-contact transcript,
+prefer the supported stdio seam, bind one short-lived capability to one task,
+cap bytes/time, and expose no host shell, filesystem, approval, or tool-selection
+authority. Do not combine it with `CC-007`'s local jobs/goals work.
 
 #### CC-015 Redacted local diagnostic bundle
 

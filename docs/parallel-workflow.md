@@ -201,6 +201,15 @@ they do not bypass the protected `test` check. Use a
 `codex/roadmap-<unique-suffix>` branch, record its exact commit, and push it.
 That push triggers the required CI check:
 
+The current `Main protection` ruleset requires the GitHub Actions check-run
+context `test`, which is the `test` job in the `CI` workflow. Pull requests also
+produce the `integration` job from `Runtime Integration`; the coordinator treats
+that exact-head check as a merge gate by project policy. Do not infer either
+context from a workflow title alone, and do not rename or alias jobs to work
+around a missing check. If protection should require `integration` too, change
+the ruleset explicitly as a repository-policy operation, then revalidate the
+exact current head.
+
 ```powershell
 $roadmapBranch = (git branch --show-current).Trim()
 $validatedSha = (git rev-parse HEAD).Trim()
