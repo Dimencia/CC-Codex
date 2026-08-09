@@ -96,9 +96,12 @@ supplied through `install --archive-url URL`.
 
 `tests/installer/run.lua` exercises archive checksum/path/type/layout checks,
 default and constrained quota behavior, the exact shortfall message, retry,
-protected paths, malformed or conflicting package preconditions, existing
-runtime-data preservation, active-installer behavior, and success/no-reboot
-outcomes. The tests use an injected filesystem and never claim crash recovery:
+protected paths, the canonical system-prompt package contract, fresh prompt
+creation, update preservation of a player-edited prompt, malformed or
+conflicting package preconditions, existing runtime-data preservation,
+active-installer behavior, and success/no-reboot outcomes. A missing, empty,
+or invalid prompt and a local prompt type conflict are rejected before any
+write or reboot. The tests use an injected filesystem and never claim crash recovery:
 after quota preflight, a process crash or disk-write failure can still leave a
 partial direct publication until a future rollback design is implemented. An
 exact release or CI package can be exercised with `install --archive-url URL`;

@@ -12,12 +12,16 @@ the computer needs it; the root `docs/` files are not automatically deployed.
 
 The top-level `install.lua` is a self-contained ComputerCraft bootstrap. It
 normally downloads the latest release's uncompressed USTAR package, validates
-and extracts its test-free player `computer/` tree. `--archive-url` can select
-an exact package for a release or CI smoke test. If the latest release cannot
-be verified, the installer fails safely instead of downloading an unverified
-source tree. Existing files are preserved when a package omits them, including
-an older installed `codex/tests/` directory. The installed `codex/` directory
-is not a symlink or junction. In the repository, `computer/startup/cc_codex.lua`
+and extracts its test-free player `computer/` tree. The package must contain
+one non-empty `computer/codex/docs/system_prompt.md`: a fresh install creates
+it, while an update preserves an existing regular prompt because player edits
+are authoritative. A missing/empty prompt or local type conflict fails before
+any write or reboot. `--archive-url` can select an exact package for a release
+or CI smoke test. If the latest release cannot be verified, the installer fails
+safely instead of downloading an unverified source tree. Existing files are
+preserved when a package omits them, including an older installed
+`codex/tests/` directory. The installed `codex/` directory is not a symlink or
+junction. In the repository, `computer/startup/cc_codex.lua`
 assumes multishell, starts the headless service as a background process, and
 keeps the ordinary CraftOS shell in the main tab. After installation these
 paths are `startup/...` on the CC computer.

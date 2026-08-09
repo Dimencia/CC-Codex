@@ -45,8 +45,13 @@ The installer copies it to the installed computer, where:
 
 The installer normally downloads the latest release's uncompressed USTAR
 package into memory, validates every destination/type/parent and protected
-runtime path, and checks the free-space quota before its first live write. It
-then creates ordinary files in the computer root without a disk staging copy.
+runtime path, and checks the free-space quota before its first live write. The
+release must contain one non-empty `computer/codex/docs/system_prompt.md`.
+Fresh installs create that canonical prompt; updates preserve an existing
+regular prompt because player edits are authoritative. A prompt directory or
+other type conflict, or a missing/empty archive prompt, fails before any write
+or reboot. It then creates ordinary files in the computer root without a disk
+staging copy.
 The player package omits `codex/tests/`; the complete suite remains in the
 repository, CI, and source-backed Docker fixture. Use `install --archive-url URL`
 for an exact release or CI package. If the latest release archive is

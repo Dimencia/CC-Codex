@@ -66,13 +66,15 @@ local function packageEntries(serviceContent, installerContent)
         { path = "computer/startup", kind = "directory" },
         { path = "computer/startup/cc_codex.lua", content = "print('new startup')" },
         { path = "computer/codex", kind = "directory" },
-        { path = "computer/codex/service.lua", content = serviceContent or "return 'new service'" }
+        { path = "computer/codex/service.lua", content = serviceContent or "return 'new service'" },
+        { path = "computer/codex/docs", kind = "directory" },
+        { path = "computer/codex/docs/system_prompt.md", content = "# Canonical system prompt\n" }
     }
 end
 
 local package = makeTar(packageEntries())
 local entries = installer.parseTar(package)
-assert(#entries == 6, "expected six TAR entries")
+assert(#entries == 8, "expected eight TAR entries")
 assert(entries[1].path == "install.lua" and entries[1].content == "return 'new installer'")
 assert(installer.validatePackage(entries) == nil)
 
@@ -170,7 +172,8 @@ local unexpected = installer.parseTar(makeTar({
 raises(function() installer.validatePackage(unexpected) end, "unexpected path")
 
 local onlyComputer = installer.parseTar(makeTar({
-    { path = "computer", kind = "directory" }
+    { path = "computer", kind = "directory" },
+    { path = "computer/codex/docs/system_prompt.md", content = "# prompt" }
 }))
 raises(function() installer.validatePackage(onlyComputer) end, "missing install.lua")
 
@@ -181,7 +184,8 @@ raises(function() installer.validatePackage(onlyInstaller) end, "missing compute
 
 local computerFile = installer.parseTar(makeTar({
     { path = "install.lua", content = "return true" },
-    { path = "computer", content = "not a directory" }
+    { path = "computer", content = "not a directory" },
+    { path = "computer/codex/docs/system_prompt.md", content = "# prompt" }
 }))
 raises(function() installer.validatePackage(computerFile) end, "computer/ is not a directory")
 
@@ -307,6 +311,7 @@ local function seedRuntime()
         { path = "codex/artifacts/old-image", content = "old artifact" },
         { path = "codex/tests/old-test.lua", content = "old test" },
         { path = "codex/.codex-restart", content = "restart" },
+        { path = "codex/docs/system_prompt.md", content = "# Player-edited prompt\n" },
         { path = ".settings", content = "cc_codex.api_key=fixture" }
     }
 end
@@ -366,6 +371,7 @@ local function assertSentinels(state)
     assert(state.files["codex/tests/old-test.lua"] == "old test")
     assert(state.files["codex/.codex-restart"] == "restart")
     assert(state.files[".settings"] == "cc_codex.api_key=fixture")
+    assert(state.files["codex/docs/system_prompt.md"] == "# Player-edited prompt\n")
 end
 
 local constrained = newFakeFs(seedRuntime())
@@ -406,8 +412,18 @@ end)
 assert(ok, failure)
 assert(retry.files["codex/service.lua"] == "return 'new service'")
 assert(retry.files["startup/cc_codex.lua"] == "print('new startup')")
+assert(retry.files["codex/docs/system_prompt.md"] == "# Player-edited prompt\n")
 assertSentinels(retry)
 assert(retry.reboots == 1)
+
+local fresh = newFakeFs()
+fresh.quota = math.huge
+ok, failure = withFixture(fresh, package, "install.lua", function()
+    installer.main({ "--archive-url", "fixture://fresh" })
+end)
+assert(ok, failure)
+assert(fresh.files["codex/docs/system_prompt.md"] == "# Canonical system prompt\n")
+assert(fresh.reboots == 1)
 
 local function rejectsPackage(extra, pattern, state)
     state = state or newFakeFs(seedRuntime())
@@ -425,13 +441,34 @@ for _, protectedPath in ipairs({
     "computer/.settings",
     "computer/codex/data/overwrite",
     "computer/codex/artifacts/overwrite",
-    "computer/codex/.codex-restart",
-    "computer/codex/docs/system_prompt.md"
+    "computer/codex/.codex-restart"
 }) do
     local protectedEntries = packageEntries()
     protectedEntries[#protectedEntries + 1] = { path = protectedPath, content = "must reject" }
     rejectsPackage(protectedEntries, "protected runtime path")
 end
+
+local missingPromptEntries = packageEntries()
+for index = #missingPromptEntries, 1, -1 do
+    if missingPromptEntries[index].path == "computer/codex/docs/system_prompt.md" then
+        table.remove(missingPromptEntries, index)
+    end
+end
+rejectsPackage(missingPromptEntries, "exactly one system prompt")
+
+local emptyPromptEntries = packageEntries()
+for _, entry in ipairs(emptyPromptEntries) do
+    if entry.path == "computer/codex/docs/system_prompt.md" then entry.content = "  \n" end
+end
+rejectsPackage(emptyPromptEntries, "system prompt is empty")
+
+local promptDirectoryEntries = packageEntries()
+for index, entry in ipairs(promptDirectoryEntries) do
+    if entry.path == "computer/codex/docs/system_prompt.md" then
+        promptDirectoryEntries[index] = { path = entry.path, kind = "directory" }
+    end
+end
+rejectsPackage(promptDirectoryEntries, "system prompt is not a file")
 
 local conflictingEntries = packageEntries()
 conflictingEntries[#conflictingEntries + 1] = {
@@ -456,14 +493,24 @@ existingParent.addFile("new", "blocking file")
 local existingParentEntries = {
     { path = "install.lua", content = "return 'new installer'" },
     { path = "computer", kind = "directory" },
-    { path = "computer/new/child.lua", content = "child" }
+    { path = "computer/new/child.lua", content = "child" },
+    { path = "computer/codex/docs/system_prompt.md", content = "# prompt" }
 }
 rejectsPackage(existingParentEntries, "parent is a file", existingParent)
+
+local testsEntries = packageEntries()
+testsEntries[#testsEntries + 1] = { path = "computer/codex/tests/old.lua", content = "return true" }
+rejectsPackage(testsEntries, "must not contain codex/tests")
 
 local typeConflict = newFakeFs(seedRuntime())
 typeConflict.files["codex/service.lua"] = nil
 typeConflict.addDir("codex/service.lua")
 rejectsPackage(packageEntries(), "type conflicts", typeConflict)
+
+local promptTypeConflict = newFakeFs(seedRuntime())
+promptTypeConflict.files["codex/docs/system_prompt.md"] = nil
+promptTypeConflict.addDir("codex/docs/system_prompt.md")
+rejectsPackage(packageEntries(), "type conflicts", promptTypeConflict)
 
 local active = newFakeFs(seedRuntime())
 active.addFile("codex/install.lua", "old active installer")
