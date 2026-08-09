@@ -120,14 +120,7 @@ try {
     [Environment]::SetEnvironmentVariable('CC_CODEX_TEST_RUN', $failureIdentity.run_id)
     [Environment]::SetEnvironmentVariable('CC_CODEX_TEST_SOURCE', $failureIdentity.source_sha)
     [Environment]::SetEnvironmentVariable('CC_CODEX_TEST_CLEANUP_LOG', $cleanupLog)
-    $powerShellCommand = Get-Command pwsh -ErrorAction Stop
-    $powerShell = $powerShellCommand.Path
-    if ([string]::IsNullOrWhiteSpace($powerShell)) {
-        $powerShell = $powerShellCommand.Source
-    }
-    if ([string]::IsNullOrWhiteSpace($powerShell)) {
-        throw 'Could not resolve the PowerShell executable for the nested runtime regression.'
-    }
+    $powerShell = 'pwsh'
     $runScript = Join-Path $PSScriptRoot 'run.ps1'
     $failureOutput = & $powerShell -NoProfile -File $runScript -OutputPath $failureOutputRoot -RunId $failureRunId -DockerCommand $failureDocker 2>&1
     $failureExitCode = $LASTEXITCODE
