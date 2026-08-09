@@ -44,10 +44,19 @@ The installer copies it to the installed computer, where:
 - `codex/setup/set_api_key.lua` stores `cc_codex.api_key` in local CC settings.
 
 The installer normally downloads the latest release's uncompressed USTAR
-package, validates it, and creates ordinary files in the computer root. Use
-`install --archive-url URL` for an exact release or CI package. If no compatible
-release package is available, it falls back to the GitHub source tree. The
-installed `codex/` directory and `codex.lua` are not symlinks or junctions.
+package into memory, validates every destination/type/parent and protected
+runtime path, and checks the free-space quota before its first live write. It
+then creates ordinary files in the computer root without a disk staging copy.
+Use `install --archive-url URL` for an exact release or CI package. If the
+latest release archive is unavailable, retry later or provide that exact URL;
+the source-tree fallback is disabled because it cannot provide the same
+pre-mutation quota guarantee. A short quota reports required/available/shortfall
+and leaves the old service and data unchanged, with no reboot.
+
+This is quota-only pre-mutation safety, not crash recovery. A crash or disk
+write failure after the check can interrupt direct publication; crash-atomic
+rollback is explicitly deferred. The installed `codex/` directory and
+`codex.lua` are not symlinks or junctions.
 Updating the repository therefore requires copying the changed source tree
 again; Git history, branches, and commits remain host-side responsibilities.
 

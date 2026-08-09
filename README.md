@@ -34,13 +34,21 @@ install
 ```
 
 The installer resolves the latest published release, downloads one
-uncompressed `CC-Codex-vX.Y.Z.tar` package, validates its USTAR entries, and
-extracts the `computer/` tree before placing the package installer at
-`codex/install.lua`. If a compatible release archive is unavailable, it falls
-back to the GitHub source tree downloader. It prompts for `cc_codex.api_key`
-only when it is missing and reboots. CC Codex assumes multishell and runs the
-headless service in a separate tab after reboot, leaving the main tab for the
-ordinary CraftOS shell.
+uncompressed `CC-Codex-vX.Y.Z.tar` package into memory, validates every USTAR
+entry and final destination, and checks the ComputerCraft free-space quota
+before changing an installed file. It then publishes the validated package
+directly to ordinary files and places the package installer at
+`codex/install.lua`; there is no on-disk package staging copy. If the quota is
+short, the installer reports the required bytes, available bytes, and shortfall,
+leaves the existing service, runtime data, and settings unchanged, and does not
+reboot. Free space (or temporarily raise the ComputerCraft quota) and retry.
+
+If the latest release archive cannot be resolved, this release-safety slice does
+not use the old GitHub source-tree fallback. Retry later or provide an exact
+archive with `--archive-url`. The installer prompts for `cc_codex.api_key` only
+when it is missing and follows the existing success reboot path. CC Codex assumes
+multishell and runs the headless service in a separate tab after reboot, leaving
+the main tab for the ordinary CraftOS shell.
 
 To update an existing installation, run:
 
@@ -54,9 +62,13 @@ To install an exact release or CI-built package, pass its archive URL:
 codex/install --archive-url https://example.invalid/CC-Codex-v0.0.0.tar
 ```
 
-The installer preserves computer-local runtime data and settings. It needs
-access to `api.github.com` and the GitHub release asset host; the fallback
-source-tree path also uses `raw.githubusercontent.com`.
+The installer preserves computer-local runtime data and settings, and rejects
+package destinations that would replace those paths or the provider
+instruction document. It needs access to `api.github.com` and the GitHub
+release asset host. The preflight is quota-only: after it passes, a process
+crash or disk-write failure can still interrupt direct publication, because
+crash-atomic rollback is a separate future task. Do not mistake the quota check
+for crash recovery.
 
 ## Automated releases
 
