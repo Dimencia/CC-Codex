@@ -119,7 +119,9 @@ These are per-computer state, not shared source:
   If final or error publication fails, the service keeps the route reserved and
   retries the existing atomic temporary result through the mailbox task. After
   the bounded retry budget it changes the pending outcome to one explicit
-  `delivery_failed` error result. A valid temporary result is rehydrated on
+  `delivery_failed` error result. That failure is staged separately so a
+  previously durable answer remains recoverable until the explicit failure
+  is visible. A valid temporary result is rehydrated on
   service startup, including the older singular mailbox's temporary result, so
   a failed rename does not lose a model answer. The terminal reports awaiting
   delivery only while its request-scoped `.json.tmp` outcome exists; it keeps

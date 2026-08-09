@@ -394,6 +394,85 @@ return {
         end
     },
     {
+        name = "preserves the original temporary result when failure staging fails",
+        fn = function()
+            local fs = fileSystem({ ["requests/client-a.json"] = "request-a" })
+            local decoded = {
+                ["request-a"] = { id = "client-a", action = "chat", text = "first" },
+                ["client-a:final\n"] = {
+                    id = "client-a", action = "chat", ok = true,
+                    kind = "final", message = "first"
+                }
+            }
+            local encoded, submitted = {}, {}
+            local adapter = mailbox(fs, decoded, encoded, submitted)
+
+            Harness.truthy(adapter:poll())
+            fs.failMoveTo = "results/client-a.json"
+            fs.failMoveCount = 4
+            fs.failWritePath = "results/client-a.json.failure.tmp"
+            fs.failWriteCount = 1
+            Harness.truthy(adapter:deliver(submitted[1].route, "first", "final"))
+
+            local cycles = 0
+            ---@diagnostic disable-next-line: missing-fields
+            adapter:run({
+                isCancelled = function() return cycles >= 4 end,
+                sleep = function() cycles = cycles + 1 end
+            })
+            Harness.equal("client-a:final\n", fs.files["results/client-a.json.tmp"])
+            Harness.equal(nil, fs.files["results/client-a.json"])
+            Harness.equal(nil, fs.files["results/client-a.json.failure.tmp"])
+
+            fs.failMoveTo = nil
+            local restarted = mailbox(fs, decoded, encoded, submitted)
+            Harness.truthy(restarted.pendingDeliveries["results/client-a.json"])
+            cycles = 0
+            ---@diagnostic disable-next-line: missing-fields
+            restarted:run({
+                isCancelled = function() return cycles >= 1 end,
+                sleep = function() cycles = cycles + 1 end
+            })
+            Harness.equal("client-a:final\n", fs.files["results/client-a.json"])
+            Harness.falsy(restarted.pendingDeliveries["results/client-a.json"])
+        end
+    },
+    {
+        name = "rehydrates an explicit delivery failure staged before restart",
+        fn = function()
+            local fs = fileSystem({
+                ["results/client-a.json.tmp"] = "client-a:final\n",
+                ["results/client-a.json.failure.tmp"] = "client-a:error\n"
+            })
+            local decoded = {
+                ["client-a:final\n"] = {
+                    id = "client-a", action = "chat", ok = true,
+                    kind = "final", message = "first"
+                },
+                ["client-a:error\n"] = {
+                    id = "client-a", action = "chat", ok = false,
+                    kind = "error", error_code = "delivery_failed",
+                    error = "delivery failed"
+                }
+            }
+            local encoded, submitted = {}, {}
+            local adapter = mailbox(fs, decoded, encoded, submitted)
+
+            local pending = assert(adapter.pendingDeliveries["results/client-a.json"])
+            Harness.truthy(pending.failureResult)
+            local cycles = 0
+            ---@diagnostic disable-next-line: missing-fields
+            adapter:run({
+                isCancelled = function() return cycles >= 1 end,
+                sleep = function() cycles = cycles + 1 end
+            })
+            Harness.equal("client-a:error\n", fs.files["results/client-a.json"])
+            Harness.falsy(fs.files["results/client-a.json.tmp"])
+            Harness.falsy(fs.files["results/client-a.json.failure.tmp"])
+            Harness.falsy(adapter.pendingDeliveries["results/client-a.json"])
+        end
+    },
+    {
         name = "rehydrates a pending legacy result from its temporary file after restart",
         fn = function()
             local fs = fileSystem({ ["client-result.json.tmp"] = "legacy-a:final\n" })

@@ -353,6 +353,16 @@ function Bootstrap.build(config)
     adapters[clientMailbox.id] = clientMailbox
     if config.clientEnabled then
         inputs[#inputs + 1] = clientMailbox
+    else
+        -- Saved client routes may still need bounded delivery retries even
+        -- when new client requests are disabled. Keep polling off while the
+        -- mailbox's existing lifecycle continues to retry staged outcomes.
+        inputs[#inputs + 1] = {
+            id = "client_mailbox_delivery",
+            critical = false,
+            run = function(_, context) clientMailbox:run(context, false) end,
+            stop = function() return clientMailbox:stop() end
+        }
     end
     local chatBoxWarning = buildOptionalChatBox(config, json, submit, path, terminal, inputs, adapters)
 
