@@ -128,6 +128,7 @@ local function registerOptionalImageTool(config, tools, json, session, path)
     local constructed, adapter = pcall(ImageRenderAdapter.new, {
         renderScript = path("image/img2mon.lua"),
         loadfile = loadfile,
+        environment = _ENV,
         yieldBeforeRun = function()
             os.queueEvent("codex_img2mon_start")
             os.pullEvent("codex_img2mon_start")
@@ -263,7 +264,10 @@ function Bootstrap.build(config)
         ---@diagnostic disable-next-line: assign-type-mismatch
         json = json,
         loadChunk = load,
-        globals = _G,
+        -- `_G` is the shared global table, while `_ENV` is the normal
+        -- ComputerCraft program environment that also carries package and
+        -- require. Tool chunks should behave like scripts run by the shell.
+        globals = _ENV,
         serializeValue = function(value)
             return textutils.serialize(value, { compact = true, allow_repetitions = true })
         end

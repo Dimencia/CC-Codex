@@ -88,6 +88,23 @@ local function check(name, fn)
     writeResult(record)
 end
 
+check("standalone image command loads its modules", function()
+    local environment = setmetatable({
+        shell = {
+            getRunningProgram = function()
+                return stagedSourceRoot .. "/image/img2mon.lua"
+            end
+        }
+    }, { __index = _ENV })
+    local previousPath = package.path
+    local runner, loadError = loadfile(stagedSourceRoot .. "/image/img2mon.lua", "t", environment)
+    local ok, runError = false, loadError
+    if runner then ok, runError = pcall(runner, "--help") end
+    package.path = previousPath
+    assert(runner, tostring(loadError))
+    assert(ok, tostring(runError))
+end)
+
 check("computer identity", function()
     assert(type(os.getComputerID()) == "number")
 end)

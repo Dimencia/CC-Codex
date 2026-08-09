@@ -1,29 +1,21 @@
-if not require then
-    local loadedModules = {}
-    local function fallbackRequire(name)
-        if loadedModules[name] ~= nil then return loadedModules[name] end
-        local modulePath = "codex/" .. name:gsub("%.", "/") .. ".lua"
-        local file = fs.open(modulePath, "r")
-        if not file then error("module not found: " .. name, 0) end
-        local source = file.readAll()
-        file.close()
-        local moduleEnv = setmetatable({ require = fallbackRequire }, { __index = _ENV })
-        ---@diagnostic disable-next-line: param-type-mismatch
-        local chunk, loadError = load(source, modulePath, "t", moduleEnv)
-        if not chunk then error(loadError, 0) end
-        local result = chunk()
-        if result == nil then result = true end
-        loadedModules[name] = result
-        return result
+-- A direct `lua codex/image/img2mon.lua ...` launch does not inherit the
+-- service's package path. Keep normal `require` semantics, but add the
+-- installed Codex root when this file is the running program.
+local runningProgram = type(shell) == "table"
+    and type(shell.getRunningProgram) == "function"
+    and shell.getRunningProgram()
+if type(runningProgram) == "string"
+    and type(package) == "table"
+    and type(package.path) == "string" then
+    local codexRoot = runningProgram:match("^(.*)/image/img2mon%.lua$")
+    if codexRoot then
+        package.path = table.concat({
+            codexRoot .. "/?.lua",
+            codexRoot .. "/?/init.lua",
+            package.path
+        }, ";")
     end
-    require = fallbackRequire
 end
-
-package.path = table.concat({
-    "codex/?.lua",
-    "codex/?/init.lua",
-    package.path
-}, ";")
 
 local Img2MonCommand = require("image.command")
 
@@ -46,3 +38,5 @@ Img2MonCommand:run({ ... }, {
     end,
     print = print
 })
+
+return true

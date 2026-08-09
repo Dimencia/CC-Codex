@@ -48,6 +48,37 @@ return {
         end
     },
     {
+        name = "exposes package require and the chunk environment",
+        fn = function()
+            local fallback = newTool():executeResult(
+                "return type(package), type(require), _G == _ENV"
+            )
+            harness.truthy(fallback.ok)
+            harness.arrayEqual({ "table", "function", "true" }, fallback.returned)
+
+            local module = { answer = 42 }
+            local globals = {
+                package = { marker = "package-visible" },
+                require = function(name)
+                    harness.equal("fixture.module", name)
+                    return module
+                end
+            }
+            local tool = ExecuteLua.new({
+                maxCharacters = 1000,
+                json = { encode = function() return "{}" end, decode = function() end },
+                loadChunk = load,
+                globals = globals,
+                serializeValue = function(value) return tostring(value) end
+            })
+            local result = tool:executeResult(
+                "return package.marker, require('fixture.module').answer, _ENV.package.marker"
+            )
+            harness.truthy(result.ok)
+            harness.arrayEqual({ "package-visible", "42", "package-visible" }, result.returned)
+        end
+    },
+    {
         name = "reports compile errors with capture state",
         fn = function()
             local result = newTool():executeResult("this is not lua")
