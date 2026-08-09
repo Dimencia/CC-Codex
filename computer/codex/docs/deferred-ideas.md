@@ -258,24 +258,27 @@ partially updated computers do not provide. A player can otherwise install a
 mixed tree, see `cc.expect` or another module-not-found error from the shell,
 and be left with a computer that cannot start Codex. State the supported
 CC:Tweaked version floor, check it before changing source files, and print one
-plain repair instruction that preserves local data/settings. Add a headless
-fixture check for the launcher and the required ROM module. Do not bundle a
-replacement `cc.expect` library or silently support an older runtime by
-copying private ROM code.
+plain repair instruction that preserves local data/settings. Detect the old
+root `startup.lua`, `img2mon.lua`, or `lib/` layout left by an earlier release
+so two boot paths are not silently mixed. Add a headless fixture check for the
+launcher and required ROM module. Do not bundle a replacement `cc.expect`
+library or silently support an older runtime by copying private ROM code.
 
-#### CC-027 Model tool authority and renderer failure containment
+#### CC-027 Model tool environment and renderer failure containment
 
-The model must not be able to launch service-owned programs, restart/shutdown
-the computer, or turn a renderer error into a crashed Codex worker through the
-general `execute_cc_lua` tool. Keep useful, bounded CC inspection/edit actions,
-but give model code an explicit safe environment or narrowly wrapped APIs. A
-missing image artifact, unsupported image-generation response, or `img2mon`
-failure must become a concise tool error that the player can understand; the
-service must continue and the conversation must receive a result. Test denied
-service paths/process controls, renderer errors inside the critical turn, and
-the real installed launcher/image command in the headless fixture. Do not add
-a general sandbox or promise protection from a player who already has shell or
-server-admin authority.
+The model is intentionally allowed to use the normal CC shell and filesystem;
+that is the point of `execute_cc_lua`. The current execution environment is
+missing the normal `_ENV`/`package`/`require` plumbing, so a script such as
+`img2mon.lua` can fail before its own error handling. Preserve unrestricted
+shell access, but make the execution environment complete and ensure a
+renderer or script failure becomes a concise tool error instead of killing the
+Codex worker or losing the conversation. If the selected model/account does
+not support image generation, the turn should report that capability cleanly
+instead of failing as if the package were missing. Test direct module-loading
+scripts, renderer errors inside the active turn, unsupported image capability,
+and the real installed launcher/image command in the headless fixture. Do not
+add a general sandbox or promise protection from a player who already has shell
+or server-admin authority.
 
 #### CC-023 Mailbox fairness and blocked-request liveness
 
