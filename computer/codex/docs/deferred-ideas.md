@@ -60,24 +60,21 @@ Release-safety gates before any live-model lane (not separate claims):
 
 - CC-006 must establish quota-only pre-mutation safety before any live change;
   crash-atomic updates are explicitly deferred.
-- Provider defaults must validate the effective model/output limit and bounded
-  spend before sending a request; a model-facing limit mismatch or incomplete
-  response is a user failure, not a benchmark result.
 
 Ready, in order:
 
 1. `CC-017` - collision-free exact-head runtime fixtures
 2. `CC-016` - reproducible runtime and token-cost benchmarks
-3. `CC-009` - image renderer measurement and fast path
-4. `CC-007` - bounded asynchronous jobs and goals
-5. `CC-008` - local searchable memory
+3. `CC-004` - deterministic player/provider integration tests (after CC-017 fixture isolation)
+4. `CC-009` - image renderer measurement and fast path
+5. `CC-007` - bounded asynchronous jobs and goals
+6. `CC-008` - local searchable memory
 
 Active claims:
 
 | ID | Agent | Owning branch or PR | State |
 | --- | --- | --- | --- |
 | `CC-006` | Agent: Spackle (feature worker) | `codex/cc-006-quota-safe-installer` | Quota-only pre-mutation safety; crash-atomic updates explicitly deferred. |
-| `CC-004` | Agent: Sprocket (feature worker) | `codex/cc-004-provider-gate` | Provider capability, incomplete-response, and local request-budget gate; shared runtime fixture remains CC-017. |
 
 Completed claims: `CC-005` completed in PR #7 (merge `7948736`), and
 `CC-019` completed in PR #10 (merge `ecfd636`). Both were refreshed onto the
@@ -217,33 +214,25 @@ turn this into a general message broker or arbitrary crash journal.
 
 Extend the existing real headless Minecraft/CC:Tweaked fixture in two lanes:
 
-The first active slice is the provider-safety gate only. Sprocket owns the
-provider/configuration and focused test files, not `tests/runtime/**`: reject an
-unverified model/output limit before HTTP, reject incomplete provider output
-before it becomes a final answer, and enforce a bounded local request budget.
-CC-017 owns the fixture identity and output isolation. The player/steering
-fixture work follows after that boundary is available, without two workers
-editing the same harness.
+CC-017 owns the fixture identity and output isolation first. Do not add a
+provider billing, model-cap, or request-budget framework here: those limits are
+controlled by the user and provider. Once CC-017 is complete, CC-004 can add the
+smallest deterministic player/steering lane without two workers editing the
+same harness.
 
 - A deterministic CI lane uses a tiny fake Responses-compatible server. It
   proves player input, service/client routing, tool rounds, steering while a
   turn is active, final delivery, conversation switching, restart continuation,
   and bounded failure behavior without secrets or spend.
-- A local-only live lane uses the configured low-cost model/key, a hard test
-  spend/call limit, a bounded multi-turn transcript with steering, no
-  world-changing tools, and retained evidence. Run it only as the final local
-  development gate after the deterministic gates pass; never put the key in
-  GitHub Actions or run this lane on a pull request.
+- A local-only live lane uses the configured low-cost model/key and a bounded
+  multi-turn transcript with steering, no world-changing tools, and retained
+  evidence. Provider billing limits remain the user's/provider's concern. Run
+  it only as the final local development gate after the deterministic gates
+  pass; never put the key in GitHub Actions or run this lane on a pull request.
 
 The live lane must never run merely because a pull request was opened. A fake
 provider is not a substitute for the live lane, and the live lane is not a
 substitute for deterministic CI.
-
-Before the live lane is enabled, validate the effective provider capability and
-output cap. The current default sends `maxOutputTokens = 256000` for
-`gpt-5.6-luna`; treat that as an explicit configuration/regression gate until
-the active model limit and hard spend ceiling are validated. Do not silently
-retry an over-limit request or spend through a misconfigured default.
 
 #### CC-005 Deterministic source edit tools
 
@@ -403,8 +392,9 @@ Keep the existing manual override, then add one small selector call using the
 cheap Luna low/medium lane. It returns the model tier needed for the prompt;
 the service uses that choice or falls back to the current default when the
 selector fails. Do not add a classifier framework or require deterministic
-selection, but keep the override, bounded selector budget, and selected model
-visible in usage records. The selector must not silently switch providers.
+selection, but keep the override and selected model visible in usage records.
+The selector must not silently switch providers; provider billing and model
+limits remain outside CC Codex's control.
 
 #### CC-013 Permission-aware Minecraft visual feedback
 
@@ -457,8 +447,8 @@ contracts are green and independently reviewed:
 - CC-006 quota-only pre-mutation safety is verified, with crash-atomic updates
   explicitly deferred and documented as a future tradeoff;
 - a final local-only live low-cost-model lane exercises the real player flow
-  with the configured key, steering, a hard test budget, and no world-changing
-  tools; the key never enters GitHub Actions;
+  with the configured key, steering, and no world-changing tools; the key never
+  enters GitHub Actions;
 - local memory has real model-facing tools, durable local search, inspect/delete,
   rebuild, and secret exclusion;
 - one durable goal can continue itself across bounded turns until completion,
