@@ -117,8 +117,20 @@ finally {
         try { $cleanup = Remove-OwnedDockerContainer -DockerCommand $DockerCommand -ContainerId $containerId -Identity $identity } catch { if ($null -eq $failure) { $failure = $_.Exception.Message }; $exitCode = 1 }
     }
     if ($null -ne $identity.output_path -and (Test-Path -LiteralPath $identity.output_path)) {
-        try { Write-RunManifest -Path $manifestPath -Identity $identity -Status ($(if ($exitCode -eq 0) { 'passed' } else { 'failed' })) -ExitCode $exitCode -Failure $failure -Evidence $(if (Test-Path -LiteralPath (Join-Path $identity.output_path 'runtime-evidence.json')) { Get-Content -Raw -LiteralPath (Join-Path $identity.output_path 'runtime-evidence.json') | ConvertFrom-Json } else { $null }) } catch { Write-Warning "Could not finalize runtime manifest: $($_.Exception.Message)" }
+        try {
+            Write-RunManifest -Path $manifestPath -Identity $identity -Status ($(if ($exitCode -eq 0) { 'passed' } else { 'failed' })) -ExitCode $exitCode -Failure $failure -Evidence $(if (Test-Path -LiteralPath (Join-Path $identity.output_path 'runtime-evidence.json')) { Get-Content -Raw -LiteralPath (Join-Path $identity.output_path 'runtime-evidence.json') | ConvertFrom-Json } else { $null })
+        } catch {
+            $manifestFailure = $_.Exception.Message
+            if ($null -eq $failure) { $failure = $manifestFailure }
+            $exitCode = 1
+            Write-Warning "Could not finalize runtime manifest: $manifestFailure"
+        }
     }
+}
+
+if ($exitCode -ne 0) {
+    if ([string]::IsNullOrWhiteSpace($failure)) { $failure = 'Runtime integration finalization failed.' }
+    throw $failure
 }
 
 Write-Host ("Passed {0} CC runtime checks and {1} Lua tests; output: {2}" -f $summary.passed, $summary.lua_suite.passed, $identity.output_path)

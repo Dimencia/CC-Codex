@@ -67,4 +67,82 @@ Assert-Throws { Remove-OwnedDockerContainer -DockerCommand $fakeDocker -Containe
 if (Test-Path -LiteralPath $rmLog) { throw 'Foreign container cleanup was attempted.' }
 
 Remove-Item -LiteralPath $fakeDocker -Force
+
+$failureDocker = Join-Path $tempRoot "cc-codex-failure-docker-$([Guid]::NewGuid().ToString('N')).ps1"
+$failureOutputRoot = Join-Path $tempRoot "cc-codex-runtime-finalization-$([Guid]::NewGuid().ToString('N'))"
+$failureRunId = 'ci-cleanup-failure'
+$failureRepositoryRoot = (Resolve-Path (Join-Path (Join-Path $PSScriptRoot '..') '..')).Path
+$failureRuntimeDirectory = Join-Path $failureRepositoryRoot 'tests/runtime'
+$failureSource = Get-SourceIdentity -RepositoryRoot $failureRepositoryRoot -RuntimeDirectory $failureRuntimeDirectory
+$failureIdentity = Get-RunIdentity -RepositoryRoot $failureRepositoryRoot -RuntimeDirectory $failureRuntimeDirectory -RunId $failureRunId -OutputRoot $failureOutputRoot -Source $failureSource
+@'
+param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)
+$command = $Arguments[0]
+if ($command -eq 'build') { exit 0 }
+if ($command -eq 'create') {
+    Write-Output ('a' * 64)
+    exit 0
+}
+if ($command -eq 'start') {
+    $summary = @{
+        schema = 2
+        status = 'passed'
+        failed = 0
+        passed = 1
+        integration = @{ status = 'passed'; elapsed_ms = 1; passed = 1; failed = 0 }
+        lua_suite = @{ status = 'passed'; elapsed_ms = 1; total = 1; passed = 1; failed = 0; failure_details = @{} }
+        total_elapsed_ms = 2
+    }
+    $summary | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $env:CC_CODEX_TEST_OUTPUT_PATH 'cc-summary.json') -Encoding utf8
+    @{ schema = 1; container_elapsed_ms = 1 } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $env:CC_CODEX_TEST_OUTPUT_PATH 'container-timing.json') -Encoding utf8
+    exit 0
+}
+if ($command -eq 'inspect') {
+    Write-Output ('{"cc-codex.owner":"runtime-fixture","cc-codex.scope":"' + $env:CC_CODEX_TEST_SCOPE + '","cc-codex.run":"' + $env:CC_CODEX_TEST_RUN + '","cc-codex.source":"' + $env:CC_CODEX_TEST_SOURCE + '"}')
+    exit 0
+}
+if ($command -eq 'rm') {
+    Add-Content -LiteralPath $env:CC_CODEX_TEST_CLEANUP_LOG -Value 'cleanup-attempted'
+    exit 7
+}
+exit 0
+'@ | Set-Content -LiteralPath $failureDocker -Encoding utf8
+
+$savedTestOutput = [Environment]::GetEnvironmentVariable('CC_CODEX_TEST_OUTPUT_PATH')
+$savedTestScope = [Environment]::GetEnvironmentVariable('CC_CODEX_TEST_SCOPE')
+$savedTestRun = [Environment]::GetEnvironmentVariable('CC_CODEX_TEST_RUN')
+$savedTestSource = [Environment]::GetEnvironmentVariable('CC_CODEX_TEST_SOURCE')
+$savedTestCleanupLog = [Environment]::GetEnvironmentVariable('CC_CODEX_TEST_CLEANUP_LOG')
+$cleanupLog = Join-Path $failureOutputRoot 'cleanup.log'
+try {
+    [Environment]::SetEnvironmentVariable('CC_CODEX_TEST_OUTPUT_PATH', $failureIdentity.output_path)
+    [Environment]::SetEnvironmentVariable('CC_CODEX_TEST_SCOPE', $failureIdentity.scope_key)
+    [Environment]::SetEnvironmentVariable('CC_CODEX_TEST_RUN', $failureIdentity.run_id)
+    [Environment]::SetEnvironmentVariable('CC_CODEX_TEST_SOURCE', $failureIdentity.source_sha)
+    [Environment]::SetEnvironmentVariable('CC_CODEX_TEST_CLEANUP_LOG', $cleanupLog)
+    $powerShell = (Get-Command pwsh -ErrorAction Stop).Source
+    $runScript = Join-Path $PSScriptRoot 'run.ps1'
+    $failureOutput = & $powerShell -NoProfile -File $runScript -OutputPath $failureOutputRoot -RunId $failureRunId -DockerCommand $failureDocker 2>&1
+    $failureExitCode = $LASTEXITCODE
+    if ($failureExitCode -eq 0) { throw 'Runtime runner returned success after owned-container cleanup failed.' }
+    $failureManifestPath = Join-Path $failureIdentity.output_path 'run-manifest.json'
+    if (-not (Test-Path -LiteralPath $failureManifestPath)) { throw "Failed runtime did not preserve its manifest. Exit code: $failureExitCode; output: $($failureOutput -join "`n")" }
+    $failureManifest = Get-Content -Raw -LiteralPath $failureManifestPath | ConvertFrom-Json
+    if ($failureManifest.status -ne 'failed' -or [int]$failureManifest.exit_code -ne 1) { throw 'Cleanup failure did not produce a failed manifest with exit code 1.' }
+    if ($failureManifest.failure -notmatch 'cleanup failed') { throw 'Cleanup failure was not preserved in the final manifest.' }
+    if ($null -eq $failureManifest.evidence -or [string]::IsNullOrWhiteSpace($failureManifest.evidence.output_sha256)) { throw 'Failed manifest did not preserve output evidence.' }
+    if (-not (Test-Path -LiteralPath (Join-Path $failureIdentity.output_path 'runtime-evidence.json'))) { throw 'Failed run lost runtime evidence.' }
+    if ((Get-Content -Raw -LiteralPath $cleanupLog).Trim() -ne 'cleanup-attempted') { throw 'Cleanup failure regression did not exercise the owned cleanup path.' }
+    if (($failureOutput -join "`n") -match 'Passed \d+ CC runtime checks') { throw 'Failed runtime was reported as passed.' }
+}
+finally {
+    [Environment]::SetEnvironmentVariable('CC_CODEX_TEST_OUTPUT_PATH', $savedTestOutput)
+    [Environment]::SetEnvironmentVariable('CC_CODEX_TEST_SCOPE', $savedTestScope)
+    [Environment]::SetEnvironmentVariable('CC_CODEX_TEST_RUN', $savedTestRun)
+    [Environment]::SetEnvironmentVariable('CC_CODEX_TEST_SOURCE', $savedTestSource)
+    [Environment]::SetEnvironmentVariable('CC_CODEX_TEST_CLEANUP_LOG', $savedTestCleanupLog)
+    if (Test-Path -LiteralPath $failureDocker) { Remove-Item -LiteralPath $failureDocker -Force }
+    if (Test-Path -LiteralPath $failureOutputRoot) { Remove-Item -LiteralPath $failureOutputRoot -Recurse -Force }
+}
+
 Write-Host 'Runtime fixture isolation host tests passed.'
