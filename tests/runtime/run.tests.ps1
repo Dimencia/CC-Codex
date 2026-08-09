@@ -44,6 +44,7 @@ $rmLog = Join-Path $tempRoot "cc-codex-fake-docker-rm-$([Guid]::NewGuid().ToStri
 @'
 param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)
 if ($Arguments -contains 'inspect') {
+    if ($env:CC_CODEX_FAKE_DOCKER_MODE -eq 'absent') { exit 1 }
     if ($env:CC_CODEX_FAKE_DOCKER_MODE -eq 'foreign') {
         Write-Output '{"cc-codex.owner":"runtime-fixture","cc-codex.scope":"foreign","cc-codex.run":"foreign","cc-codex.source":"foreign"}'
     } else {
@@ -66,6 +67,10 @@ Remove-Item -LiteralPath $rmLog -Force
 $env:CC_CODEX_FAKE_DOCKER_MODE = 'foreign'
 Assert-Throws { Remove-OwnedDockerContainer -DockerCommand $fakeDocker -ContainerId 'foreign123' -Identity $identityA | Out-Null }
 if (Test-Path -LiteralPath $rmLog) { throw 'Foreign container cleanup was attempted.' }
+
+$env:CC_CODEX_FAKE_DOCKER_MODE = 'absent'
+$absentCleanup = Remove-OwnedDockerContainer -DockerCommand $fakeDocker -ContainerId 'absent123' -Identity $identityA
+if ($absentCleanup -ne 'absent' -or $LASTEXITCODE -ne 0) { throw 'Absent container cleanup did not clear the expected native exit status.' }
 
 Remove-Item -LiteralPath $fakeDocker -Force
 

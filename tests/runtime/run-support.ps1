@@ -194,6 +194,7 @@ function Remove-OwnedDockerContainer {
     $labelsJson = & $DockerCommand inspect --format '{{json .Config.Labels}}' $ContainerId 2>$null
     if ($LASTEXITCODE -ne 0) {
         # An exited --rm container is already cleaned. No name-based lookup is attempted.
+        $global:LASTEXITCODE = 0
         return 'absent'
     }
     try { $labels = ($labelsJson -join "`n") | ConvertFrom-Json } catch { throw 'Docker ownership metadata was not valid JSON; refusing cleanup.' }
