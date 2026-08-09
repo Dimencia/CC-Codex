@@ -67,17 +67,17 @@ Release-safety gates before any live-model lane (not separate claims):
 Ready, in order:
 
 1. `CC-017` - collision-free exact-head runtime fixtures
-2. `CC-004` - deterministic player/provider integration tests
-3. `CC-016` - reproducible runtime and token-cost benchmarks
-4. `CC-009` - image renderer measurement and fast path
-5. `CC-007` - bounded asynchronous jobs and goals
-6. `CC-008` - local searchable memory
+2. `CC-016` - reproducible runtime and token-cost benchmarks
+3. `CC-009` - image renderer measurement and fast path
+4. `CC-007` - bounded asynchronous jobs and goals
+5. `CC-008` - local searchable memory
 
 Active claims:
 
 | ID | Agent | Owning branch or PR | State |
 | --- | --- | --- | --- |
-| `CC-006` | Spackle | `codex/cc-006-quota-safe-installer` | Quota-only pre-mutation safety; crash-atomic updates explicitly deferred. |
+| `CC-006` | Agent: Spackle (feature worker) | `codex/cc-006-quota-safe-installer` | Quota-only pre-mutation safety; crash-atomic updates explicitly deferred. |
+| `CC-004` | Agent: Sprocket (feature worker) | `codex/cc-004-provider-gate` | Provider capability, incomplete-response, and local request-budget gate; shared runtime fixture remains CC-017. |
 
 Completed claims: `CC-005` completed in PR #7 (merge `7948736`), and
 `CC-019` completed in PR #10 (merge `ecfd636`). Both were refreshed onto the
@@ -216,6 +216,14 @@ turn this into a general message broker or arbitrary crash journal.
 #### CC-004 End-to-end player and low-cost-model integration tests
 
 Extend the existing real headless Minecraft/CC:Tweaked fixture in two lanes:
+
+The first active slice is the provider-safety gate only. Sprocket owns the
+provider/configuration and focused test files, not `tests/runtime/**`: reject an
+unverified model/output limit before HTTP, reject incomplete provider output
+before it becomes a final answer, and enforce a bounded local request budget.
+CC-017 owns the fixture identity and output isolation. The player/steering
+fixture work follows after that boundary is available, without two workers
+editing the same harness.
 
 - A deterministic CI lane uses a tiny fake Responses-compatible server. It
   proves player input, service/client routing, tool rounds, steering while a
