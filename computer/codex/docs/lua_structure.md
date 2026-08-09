@@ -131,11 +131,13 @@ These are per-computer state, not shared source:
   acknowledges the visible result. A saved continuation that cannot be queued
   or whose adapter route is no longer usable receives an interruption error for
   every route that can accept it. If at least one route durably receives or
-  queues that interruption, the checkpoint is cleared even when another route
-  is unavailable, so the old turn cannot resume and duplicate model actions;
-  the unavailable route is logged for recovery. This bounds abandoned files
-  while making queued, running, interrupted, and awaiting-delivery states
-  visible to the player.
+  queues that interruption, the service first persists the checkpoint without
+  the old turn and only then clears the live checkpoint. A failed state write
+  leaves the checkpoint available for the next retry instead of silently
+  clearing memory while a restart could replay the old model turn. The
+  unavailable route is logged for recovery. This bounds abandoned files while
+  making queued, running, interrupted, and awaiting-delivery states visible to
+  the player.
   The service reads the older singular `client-request.json` and writes
   `client-result.json` during rollout so an older terminal client can finish.
 
@@ -164,8 +166,12 @@ resend rather than waiting for a turn that no longer exists. Progress files are
 transient hints, so a stranded progress `.tmp` leaves the terminal in the
 running state and cannot be converted into a false terminal failure. When a
 steered turn has multiple routes and one is unavailable after restart, the
-available route receives the interruption and the checkpoint is cleared; the
-old turn is never resumed merely to retry a route that already failed.
+available route receives the interruption and the checkpoint is cleared only
+after that cleanup is durable; the old turn is never resumed merely to retry a
+route that already failed. The
+checkpoint cleanup is durable before the service forgets it; if that write
+fails, the service keeps the checkpoint and retries the explicit interruption
+after restart rather than replaying model work.
 
 Do not put credentials or runtime data into source. Do not treat local logs or
 client request/result files as provider history. Runtime files stay local when

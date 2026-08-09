@@ -6,7 +6,7 @@ local Commands = require("core.commands")
 local Session = require("core.session")
 local TurnQueue = require("core.turn_queue")
 
-local function fixture(inputStop, canResume, deliverRoute)
+local function fixture(inputStop, canResume, deliverRoute, saveState, snapshot)
     local emitted = {}
     local spawned = {}
     local delivered = {}
@@ -42,10 +42,11 @@ local function fixture(inputStop, canResume, deliverRoute)
             stop = function() inputStops = inputStops + 1 end
         }
     }
-    local session = Session.new({ previousResponseId = "resp" })
+    local session = Session.new(snapshot or { previousResponseId = "resp" })
     local stateStore = {
         save = function(_, state)
             saved = state
+            if saveState then return saveState(state) end
             return true
         end,
         clear = function() return true end
@@ -223,6 +224,56 @@ return {
             Harness.equal(nil, app.session:pending())
             Harness.equal(nil, assert(state()).checkpoint)
             Harness.truthy(table.concat(errors, "\n"):find("clearing the checkpoint", 1, true))
+        end
+    },
+    {
+        name = "retains an interruption checkpoint when cleanup persistence fails",
+        fn = function()
+            local durableState = {
+                previousResponseId = "resp",
+                checkpoint = {
+                    turnId = 12,
+                    previousResponseId = "resp_12",
+                    input = {},
+                    replyRoutes = { { adapterId = "terminal", requestId = "client-12" } }
+                }
+            }
+            local attempted
+            local app, _, _, _, delivered, errors, state = fixture(
+                nil,
+                function() return nil, "the saved client route is unavailable" end,
+                nil,
+                function(value)
+                    attempted = value
+                    return nil, "conversation state disk is unavailable"
+                end
+            )
+            Harness.truthy(app.session:checkpoint(durableState.checkpoint))
+
+            app:start()
+            Harness.equal(1, #delivered)
+            Harness.equal("error", delivered[1].kind)
+            Harness.truthy(app.session:pending())
+            Harness.equal(12, app.session:pending().turnId)
+            Harness.equal(nil, attempted.checkpoint)
+            Harness.truthy(durableState.checkpoint)
+            Harness.truthy(table.concat(errors, "\n"):find("retaining it for retry", 1, true))
+            local _, _, chatTurns = state()
+            Harness.equal(0, chatTurns)
+
+            local restarted, _, _, _, redelivered, _, restartState = fixture(
+                nil,
+                function() return nil, "the saved client route is still unavailable" end,
+                nil,
+                nil,
+                durableState
+            )
+            restarted:start()
+            Harness.equal(1, #redelivered)
+            Harness.equal("error", redelivered[1].kind)
+            Harness.equal(nil, restarted.session:pending())
+            local _, _, restartedChatTurns = restartState()
+            Harness.equal(0, restartedChatTurns)
         end
     },
     {

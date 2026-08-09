@@ -162,6 +162,28 @@ function App:_reply(request, message, kind)
 end
 
 ---@param self CodexApp
+---@return boolean|nil
+---@return string|nil
+local function persistInterruptedCheckpointCleanup(self)
+    local state = self.session:durableState()
+    local persisted, persistError
+    if state and (state.previousResponseId or state.conversationLogId) then
+        -- Save a copy with the checkpoint removed before changing the live
+        -- session. If this fails, the old checkpoint remains available for a
+        -- later startup to retry the interruption instead of replaying work.
+        state.checkpoint = nil
+        persisted, persistError = self.stateStore:save(state)
+    else
+        persisted, persistError = self.stateStore:clear()
+    end
+    if not persisted then return nil, persistError end
+
+    local cleared, clearError = self.session:checkpoint(nil)
+    if not cleared then return nil, clearError end
+    return true
+end
+
+---@param self CodexApp
 ---@param checkpoint ContinuationCheckpoint
 ---@param reason string|nil
 local function interruptPendingContinuation(self, checkpoint, reason)
@@ -187,20 +209,12 @@ local function interruptPendingContinuation(self, checkpoint, reason)
         )
     end
 
-    local cleared, clearError = self.session:checkpoint(nil)
+    local cleared, clearError = persistInterruptedCheckpointCleanup(self)
     if not cleared then
-        self.console:error("Interrupted continuation could not be cleared: " .. tostring(clearError))
-        return
-    end
-    local state = self.session:durableState()
-    local saved, saveError
-    if state then
-        saved, saveError = self.stateStore:save(state)
-    else
-        saved, saveError = self.stateStore:clear()
-    end
-    if not saved then
-        self.console:error("Interrupted continuation was reported but state cleanup failed: " .. tostring(saveError))
+        self.console:error(
+            "Interrupted continuation was delivered, but its checkpoint could not be "
+                .. "persistently cleared; retaining it for retry: " .. tostring(clearError)
+        )
     end
 end
 
