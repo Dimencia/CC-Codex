@@ -892,13 +892,14 @@ return {
             local state = fixture({ responses = { finalResponse("done", "answer") } })
             local result = state.engine:runTurn(turn(1, "hello", {
                 { adapterId = "client_mailbox", requestId = "client-a", legacyMailbox = true },
-                { adapterId = "client_mailbox", requestId = "client-b" }
+                { adapterId = "client_mailbox", requestId = "client-b", legacyMailbox = false }
             }))
             assert(result)
             Harness.equal(2, #state.deliveries)
             Harness.equal("client-a", state.deliveries[1].route.requestId)
             Harness.truthy(state.deliveries[1].route.legacyMailbox)
             Harness.equal("client-b", state.deliveries[2].route.requestId)
+            Harness.equal(false, state.deliveries[2].route.legacyMailbox)
         end
     },
     {

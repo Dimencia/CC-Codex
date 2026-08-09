@@ -63,11 +63,16 @@ Client requests and replies use one file per request ID under
 not overwrite one shared result. A terminal acknowledges a result by deleting
 it after reading. The service reserves at most 32 distinct unread or in-flight
 scoped result slots and never evicts an unread file. Admission reserves a slot
-until a final or error result is published; acknowledging a progress result
-does not release that reservation. At capacity, a new scoped request remains
-durable and unconsumed until an existing final result is acknowledged.
-Replacing the same request ID remains allowed. This bounds abandoned files
-while applying backpressure when clients do not acknowledge.
+through progress and until final or error delivery is attempted. A successfully
+published terminal result continues occupying the slot until acknowledgement;
+a failed terminal publication reports an error and releases the ended route's
+in-memory reservation. A managed restart reconstructs reservations for its
+saved scoped continuation routes. At capacity, a new scoped request remains
+durable and unconsumed until a slot is released, normally when a terminal
+result is acknowledged. A second request using an occupied ID also waits;
+progress and final delivery for the admitted request may replace its own result.
+This bounds abandoned files while applying backpressure when clients do not
+acknowledge.
 The service temporarily reads the older singular mailbox paths for rollout
 compatibility.
 ComputerCraft settings contain the API key. The key is not source and must not

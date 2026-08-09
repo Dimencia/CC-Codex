@@ -192,6 +192,94 @@ return {
         end
     },
     {
+        name = "bootstrap restores mailbox capacity for a saved continuation route",
+        fn = function()
+            local files = {
+                ["data/codex-state.json"] = "saved",
+                ["data/client-requests/client-new.json"] = "request-new"
+            }
+            for index = 1, 31 do
+                files["data/client-results/client-old-" .. tostring(index) .. ".json"] = "result"
+            end
+            local capture = {
+                files = files,
+                decoded = {
+                    saved = {
+                        version = 3,
+                        checkpoint = {
+                            turn_id = 7,
+                            previous_response_id = "resp-tool",
+                            input = {},
+                            reply_routes = {
+                                {
+                                    adapterId = "client_mailbox",
+                                    requestId = "client-active",
+                                    legacyMailbox = false
+                                }
+                            }
+                        }
+                    },
+                    ["request-new"] = {
+                        id = "client-new", action = "chat", text = "new"
+                    }
+                }
+            }
+
+            withCcGlobals(function()
+                local app = CcBootstrap.build(Config.new({ apiKey = "test", chatBoxEnabled = false }))
+                local mailbox
+                for _, adapter in ipairs(app.inputs) do
+                    if adapter.id == "client_mailbox" then mailbox = adapter end
+                end
+                assert(mailbox)
+                Harness.falsy(mailbox:poll())
+                Harness.equal("request-new", fs.open(
+                    "data/client-requests/client-new.json", "r"
+                ).readAll())
+
+                local activeRoute = {
+                    adapterId = "client_mailbox",
+                    requestId = "client-active",
+                    legacyMailbox = false
+                }
+                Harness.truthy(mailbox:deliver(activeRoute, "done", "final"))
+                Harness.falsy(mailbox:poll())
+                fs.delete("data/client-results/client-active.json")
+                Harness.truthy(mailbox:poll())
+            end, capture)
+        end
+    },
+    {
+        name = "bootstrap migrates a pre-scoped continuation to the legacy mailbox",
+        fn = function()
+            local capture = {
+                files = { ["data/codex-state.json"] = "saved" },
+                decoded = {
+                    saved = {
+                        version = 3,
+                        checkpoint = {
+                            turn_id = 7,
+                            previous_response_id = "resp-tool",
+                            input = {},
+                            reply_routes = {
+                                { adapterId = "client_mailbox", requestId = "legacy-active" }
+                            }
+                        }
+                    }
+                }
+            }
+
+            withCcGlobals(function()
+                local app = CcBootstrap.build(Config.new({ apiKey = "test", chatBoxEnabled = false }))
+                local route = assert(app.session:pending()).replyRoutes[1]
+                Harness.truthy(route.legacyMailbox)
+                Harness.truthy(app.chatEngine.deliver(route, "done", "final"))
+                Harness.truthy(fs.exists("data/client-result.json"))
+                Harness.falsy(fs.exists("data/client-results/legacy-active.json"))
+            end, capture)
+        end
+    },
+    {
         name = "bootstrap forwards ephemeral delivery metadata to adapters",
         fn = function()
             local app = withCcGlobals(function()

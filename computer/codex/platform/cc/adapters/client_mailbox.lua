@@ -14,6 +14,7 @@
 ---@field maxRetainedResults number|nil
 ---@field legacyRequestPath string|nil
 ---@field legacyResultPath string|nil
+---@field pendingReplyRoutes ReplyRoute[]|nil
 ---@field submit fun(text: string, route: ReplyRoute): boolean|nil, string|nil
 ---@field onError fun(message: string)|nil
 
@@ -30,6 +31,14 @@ ClientMailbox.__index = ClientMailbox
 
 local REQUEST_FILE_PATTERN = "^([%w_-]+)%.json$"
 local DEFAULT_MAX_RETAINED_RESULTS = 32
+
+---@param value unknown
+---@return boolean
+local function isScopedRequestId(value)
+    return type(value) == "string"
+        and value ~= ""
+        and value:match("^[%w_-]+$") ~= nil
+end
 
 ---@param operation function
 ---@param ... unknown
@@ -99,6 +108,18 @@ function ClientMailbox.new(options)
             "legacy client result path is required when request path is configured")
     end
     assert(type(options.submit) == "function", "client mailbox submit callback is required")
+    local pendingResultPaths = {}
+    for _, route in ipairs(options.pendingReplyRoutes or {}) do
+        if type(route) == "table"
+            and route.adapterId == "client_mailbox"
+            and route.legacyMailbox == false
+            and isScopedRequestId(route.requestId) then
+            pendingResultPaths[options.fs.combine(
+                options.resultDirectory,
+                route.requestId .. ".json"
+            )] = true
+        end
+    end
     return setmetatable({
         id = "client_mailbox",
         critical = false,
@@ -106,15 +127,16 @@ function ClientMailbox.new(options)
         stopped = false,
         preferLegacy = false,
         maxRetainedResults = maxRetainedResults,
-        pendingResultPaths = {}
+        pendingResultPaths = pendingResultPaths
     }, ClientMailbox)
 end
 
 ---@param self ClientMailbox
 ---@param resultPath string
+---@param replaceExisting boolean
 ---@return boolean|nil
 ---@return string|nil
-local function ensureResultCapacity(self, resultPath)
+local function ensureResultCapacity(self, resultPath, replaceExisting)
     local names, listError = listFiles(self.options.fs, self.options.resultDirectory)
     if not names then return nil, "Could not inspect client results: " .. tostring(listError) end
 
@@ -126,7 +148,10 @@ local function ensureResultCapacity(self, resultPath)
     end
     for pendingPath in pairs(self.pendingResultPaths) do occupiedPaths[pendingPath] = true end
 
-    if occupiedPaths[resultPath] then return true end
+    if occupiedPaths[resultPath] then
+        if replaceExisting then return true end
+        return false, "A client request with this ID is already in flight or has an unread result."
+    end
 
     local resultCount = 0
     for _ in pairs(occupiedPaths) do resultCount = resultCount + 1 end
@@ -148,7 +173,7 @@ end
 ---@return string|nil
 local function publishResult(self, result, resultPath, scoped)
     if scoped then
-        local capacity, capacityError = ensureResultCapacity(self, resultPath)
+        local capacity, capacityError = ensureResultCapacity(self, resultPath, true)
         if not capacity then return nil, capacityError end
     end
 
@@ -206,14 +231,6 @@ local function requestId(request)
         or ""
 end
 
----@param value unknown
----@return boolean
-local function isScopedRequestId(value)
-    return type(value) == "string"
-        and value ~= ""
-        and value:match("^[%w_-]+$") ~= nil
-end
-
 ---@param self ClientMailbox
 ---@param requestIdValue string
 ---@return string
@@ -230,7 +247,7 @@ end
 ---@param scoped boolean
 local function publishFailure(self, result, resultPath, scoped)
     local published, publishError = publishResult(self, result, resultPath, scoped)
-    if published and scoped then self.pendingResultPaths[resultPath] = nil end
+    if scoped then self.pendingResultPaths[resultPath] = nil end
     if not published and self.options.onError then self.options.onError(publishError or "unknown error") end
 end
 
@@ -327,7 +344,7 @@ function ClientMailbox:poll()
     local function processScoped()
         if not scopedId or not scopedPath then return false end
         local resultPath = scopedResultPath(self, scopedId)
-        local capacity, capacityError = ensureResultCapacity(self, resultPath)
+        local capacity, capacityError = ensureResultCapacity(self, resultPath, false)
         if capacity == false then return false end
         if capacity == nil then return nil, capacityError end
         self.pendingResultPaths[resultPath] = true
@@ -397,8 +414,7 @@ function ClientMailbox:deliver(route, message, kind, metadata)
         message = message,
         metadata = metadata
     }, resultPath, route.legacyMailbox ~= true)
-    if delivered
-        and route.legacyMailbox ~= true
+    if route.legacyMailbox ~= true
         and (kind == "final" or kind == "error") then
         self.pendingResultPaths[resultPath] = nil
     end

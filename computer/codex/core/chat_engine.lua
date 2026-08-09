@@ -195,7 +195,7 @@ local function copyRoute(route)
     end
     local copy = { adapterId = route.adapterId }
     if type(route.requestId) == "string" then copy.requestId = route.requestId end
-    if route.legacyMailbox == true then copy.legacyMailbox = true end
+    if type(route.legacyMailbox) == "boolean" then copy.legacyMailbox = route.legacyMailbox end
     if type(route.address) == "table" then
         copy.address = {}
         for key, value in pairs(route.address) do

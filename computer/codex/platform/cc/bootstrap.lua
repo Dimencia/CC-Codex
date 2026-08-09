@@ -336,6 +336,7 @@ function Bootstrap.build(config)
         resultDirectory = path("data/client-results"),
         legacyRequestPath = path("data/client-request.json"),
         legacyResultPath = path("data/client-result.json"),
+        pendingReplyRoutes = session:pending() and session:pending().replyRoutes,
         submit = submit,
         onError = function(message) console:error("Client mailbox: " .. message) end
     })

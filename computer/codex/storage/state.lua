@@ -44,6 +44,15 @@ local function checkpointFrom(value)
         or type(value.reply_routes) ~= "table" then
         return nil, "Conversation checkpoint is incomplete."
     end
+    -- Checkpoints written before request-scoped mailboxes used this adapter ID
+    -- without a mode flag and must resume through the singular result file.
+    for _, route in ipairs(value.reply_routes) do
+        if type(route) == "table"
+            and route.adapterId == "client_mailbox"
+            and route.legacyMailbox == nil then
+            route.legacyMailbox = true
+        end
+    end
     return {
         turnId = value.turn_id,
         previousResponseId = value.previous_response_id,

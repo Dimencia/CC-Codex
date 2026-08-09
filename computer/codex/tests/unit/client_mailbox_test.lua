@@ -40,6 +40,7 @@ local function fileSystem(initial)
     function fs.delete(path) files[path] = nil end
 
     function fs.move(from, to)
+        if fs.failMoveTo == to then return false end
         files[to], files[from] = files[from], nil
     end
 
@@ -57,7 +58,7 @@ local function codec(decoded, encoded)
     }
 end
 
-local function mailbox(fs, decoded, encoded, submitted, maxRetainedResults)
+local function mailbox(fs, decoded, encoded, submitted, maxRetainedResults, pendingReplyRoutes)
     return ClientMailbox.new({
         fs = fs,
         json = codec(decoded, encoded),
@@ -66,6 +67,7 @@ local function mailbox(fs, decoded, encoded, submitted, maxRetainedResults)
         maxRetainedResults = maxRetainedResults,
         legacyRequestPath = "client-request.json",
         legacyResultPath = "client-result.json",
+        pendingReplyRoutes = pendingReplyRoutes,
         submit = function(text, route)
             submitted[#submitted + 1] = { text = text, route = route }
             return true
@@ -228,6 +230,75 @@ return {
             Harness.equal("legacy-a", submitted[1].route.requestId)
             Harness.truthy(submitted[1].route.legacyMailbox)
             Harness.equal("request-a", fs.files["requests/client-a.json"])
+        end
+    },
+    {
+        name = "rehydrates a saved continuation reservation after restart",
+        fn = function()
+            local fs = fileSystem({ ["requests/client-new.json"] = "request-new" })
+            local encoded, submitted = {}, {}
+            local pendingRoute = {
+                adapterId = "client_mailbox", requestId = "client-active", legacyMailbox = false
+            }
+            local adapter = mailbox(fs, {
+                ["request-new"] = { id = "client-new", action = "chat", text = "new" }
+            }, encoded, submitted, 1, { pendingRoute })
+
+            Harness.falsy(adapter:poll())
+            Harness.equal("request-new", fs.files["requests/client-new.json"])
+            Harness.truthy(adapter:deliver(pendingRoute, "done", "final"))
+            Harness.falsy(adapter:poll())
+            fs.delete("results/client-active.json")
+            Harness.truthy(adapter:poll())
+            Harness.equal(1, #submitted)
+            Harness.equal("client-new", submitted[1].route.requestId)
+        end
+    },
+    {
+        name = "leaves a duplicate request id durable until its prior result is acknowledged",
+        fn = function()
+            local fs = fileSystem({ ["requests/client-a.json"] = "request-one" })
+            local encoded, submitted = {}, {}
+            local adapter = mailbox(fs, {
+                ["request-one"] = { id = "client-a", action = "chat", text = "first" },
+                ["request-two"] = { id = "client-a", action = "chat", text = "second" }
+            }, encoded, submitted, 2)
+
+            Harness.truthy(adapter:poll())
+            fs.files["requests/client-a.json"] = "request-two"
+            Harness.falsy(adapter:poll())
+            Harness.equal(1, #submitted)
+            Harness.equal("request-two", fs.files["requests/client-a.json"])
+
+            Harness.truthy(adapter:deliver(submitted[1].route, "first", "final"))
+            Harness.falsy(adapter:poll())
+            fs.delete("results/client-a.json")
+            Harness.truthy(adapter:poll())
+            Harness.equal(2, #submitted)
+            Harness.equal("second", submitted[2].text)
+        end
+    },
+    {
+        name = "releases a terminal reservation after result publication fails",
+        fn = function()
+            local fs = fileSystem({ ["requests/client-a.json"] = "request-a" })
+            local encoded, submitted = {}, {}
+            local adapter = mailbox(fs, {
+                ["request-a"] = { id = "client-a", action = "chat", text = "first" },
+                ["request-b"] = { id = "client-b", action = "chat", text = "second" }
+            }, encoded, submitted, 1)
+
+            Harness.truthy(adapter:poll())
+            fs.failMoveTo = "results/client-a.json"
+            local delivered, deliveryError = adapter:deliver(submitted[1].route, "first", "final")
+            Harness.falsy(delivered)
+            assert(deliveryError)
+
+            fs.failMoveTo = nil
+            fs.files["requests/client-b.json"] = "request-b"
+            Harness.truthy(adapter:poll())
+            Harness.equal(2, #submitted)
+            Harness.equal("client-b", submitted[2].route.requestId)
         end
     },
     {
