@@ -6,7 +6,7 @@ local Commands = require("core.commands")
 local Session = require("core.session")
 local TurnQueue = require("core.turn_queue")
 
-local function fixture(inputStop, canResume)
+local function fixture(inputStop, canResume, deliverRoute)
     local emitted = {}
     local spawned = {}
     local delivered = {}
@@ -78,6 +78,7 @@ local function fixture(inputStop, canResume)
         canResume = canResume,
         deliver = function(route, text, kind)
             delivered[#delivered + 1] = { route = route, text = text, kind = kind }
+            if deliverRoute then return deliverRoute(route, text, kind) end
             return true
         end,
         console = {
@@ -188,6 +189,40 @@ return {
             Harness.truthy(delivered[1].text:find("interrupted", 1, true))
             Harness.equal(nil, app.session:pending())
             Harness.equal(nil, assert(state()).checkpoint)
+        end
+    },
+    {
+        name = "clears a mixed-route interruption after one route receives it",
+        fn = function()
+            local app, _, _, _, delivered, errors, state = fixture(
+                nil,
+                function() return nil, "the saved Chat Box route is unavailable" end,
+                function(route)
+                    if route.adapterId == "chat_box" then
+                        return nil, "Chat Box is unavailable"
+                    end
+                    return true
+                end
+            )
+            Harness.truthy(app.session:checkpoint({
+                turnId = 12,
+                previousResponseId = "resp_12",
+                input = {},
+                replyRoutes = {
+                    {
+                        adapterId = "client_mailbox",
+                        requestId = "client-12",
+                        legacyMailbox = false
+                    },
+                    { adapterId = "chat_box", address = { username = "Alex" } }
+                }
+            }))
+
+            app:start()
+            Harness.equal(2, #delivered)
+            Harness.equal(nil, app.session:pending())
+            Harness.equal(nil, assert(state()).checkpoint)
+            Harness.truthy(table.concat(errors, "\n"):find("clearing the checkpoint", 1, true))
         end
     },
     {

@@ -473,6 +473,29 @@ return {
         end
     },
     {
+        name = "does not recover a progress temporary file as a terminal outcome",
+        fn = function()
+            local fs = fileSystem({ ["results/client-a.json.tmp"] = "client-a:progress\n" })
+            local decoded = {
+                ["client-a:progress\n"] = {
+                    id = "client-a", action = "chat", ok = true,
+                    kind = "progress", message = "working"
+                }
+            }
+            local encoded, submitted = {}, {}
+            local pendingRoute = {
+                adapterId = "client_mailbox",
+                requestId = "client-a",
+                legacyMailbox = false
+            }
+            local adapter = mailbox(fs, decoded, encoded, submitted, 1, { pendingRoute })
+
+            Harness.falsy(adapter.pendingDeliveries["results/client-a.json"])
+            Harness.truthy(adapter.pendingResultPaths["results/client-a.json"])
+            Harness.falsy(fs.files["results/client-a.json.tmp"])
+        end
+    },
+    {
         name = "rehydrates a pending legacy result from its temporary file after restart",
         fn = function()
             local fs = fileSystem({ ["client-result.json.tmp"] = "legacy-a:final\n" })

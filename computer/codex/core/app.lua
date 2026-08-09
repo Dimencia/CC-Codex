@@ -170,12 +170,21 @@ local function interruptPendingContinuation(self, checkpoint, reason)
         INTERRUPTED_CONTINUATION_MESSAGE,
         "error"
     )
-    if not delivered or failed > 0 then
+    if not delivered then
         self.console:error(table.concat({
             "Saved continuation was interrupted but its client failure could not be delivered",
             reason and (": " .. tostring(reason)) or "."
         }))
         return
+    end
+    if failed > 0 then
+        -- One durable interruption is enough to prevent the old turn from
+        -- resuming. Unavailable routes are logged, but retaining this
+        -- checkpoint would replay an already interrupted request.
+        self.console:error(
+            "Saved continuation interruption reached some reply routes; "
+                .. "clearing the checkpoint so the old turn cannot resume."
+        )
     end
 
     local cleared, clearError = self.session:checkpoint(nil)

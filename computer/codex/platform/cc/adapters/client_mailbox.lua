@@ -125,6 +125,15 @@ local function isDeliveryFailureResult(result, requestIdValue)
         and result.error_code == "delivery_failed"
 end
 
+---@param result table|nil
+---@param requestIdValue string
+---@return boolean
+local function isTerminalResult(result, requestIdValue)
+    return type(result) == "table"
+        and result.id == requestIdValue
+        and (result.kind == "final" or result.kind == "error")
+end
+
 ---@param options ClientMailboxOptions
 ---@return ClientMailbox
 function ClientMailbox.new(options)
@@ -175,7 +184,10 @@ function ClientMailbox.new(options)
         or nil
     if legacyTemporaryPath and options.legacyResultPath then
         local legacyResult = readTemporaryResult(options.fs, options.json, legacyTemporaryPath)
-        if legacyResult and type(legacyResult.id) == "string" and legacyResult.id ~= "" then
+        if legacyResult
+            and type(legacyResult.id) == "string"
+            and legacyResult.id ~= ""
+            and isTerminalResult(legacyResult, legacyResult.id) then
             local visibleResult = readTemporaryResult(
                 options.fs,
                 options.json,
@@ -194,6 +206,10 @@ function ClientMailbox.new(options)
                 failureReported = false,
                 failurePublished = failureResult ~= nil
             }
+        elseif legacyResult and legacyResult.kind == "progress" then
+            -- Progress is a transient hint, not a terminal outcome. It must
+            -- not be rehydrated into a retry that can become delivery_failed.
+            filesystemCall(options.fs.delete, legacyTemporaryPath)
         end
     end
     if legacyFailureTemporaryPath and options.legacyResultPath then
@@ -244,7 +260,7 @@ function ClientMailbox.new(options)
             and temporaryPath ~= legacyTemporaryPath
             and isScopedRequestId(requestIdValue) then
             local result = readTemporaryResult(options.fs, options.json, assert(temporaryPath))
-            if result and result.id == requestIdValue then
+            if isTerminalResult(result, requestIdValue) then
                 local resultPath = options.fs.combine(
                     options.resultDirectory,
                     requestIdValue .. ".json"
@@ -264,6 +280,13 @@ function ClientMailbox.new(options)
                     failureReported = false,
                     failurePublished = failureResult ~= nil
                 }
+            elseif result
+                and result.id == requestIdValue
+                and result.kind == "progress" then
+                -- Progress delivery has no retry lifecycle across restart;
+                -- discard the stale hint and let the resumed turn publish a
+                -- fresh progress or terminal outcome.
+                filesystemCall(options.fs.delete, assert(temporaryPath))
             end
         end
     end

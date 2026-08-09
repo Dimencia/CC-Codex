@@ -121,16 +121,20 @@ These are per-computer state, not shared source:
   the bounded retry budget it changes the pending outcome to one explicit
   `delivery_failed` error result. That failure is staged separately so a
   previously durable answer remains recoverable until the explicit failure
-  is visible. A valid temporary result is rehydrated on
-  service startup, including the older singular mailbox's temporary result, so
-  a failed rename does not lose a model answer. The terminal reports awaiting
-  delivery only while its request-scoped `.json.tmp` outcome exists; it keeps
-  reporting running for a slow model turn instead of guessing from elapsed
-  time. The slot is released only after the terminal reads and acknowledges the visible result.
-  A saved continuation that cannot be queued or whose adapter route is no
-  longer usable receives an interruption error for its original client and its
-  checkpoint is cleared after that error is delivered. This bounds abandoned
-  files while making queued, running, interrupted, and awaiting-delivery states
+  is visible. Only final or error temporary results are rehydrated on service
+  startup, including the older singular mailbox's terminal result; an orphaned
+  progress `.tmp` is discarded instead of becoming a retry or `delivery_failed`
+  terminal outcome. The terminal reports awaiting delivery only while its
+  request-scoped `.json.tmp` contains a terminal outcome; it keeps reporting
+  running for a slow model turn or transient progress file instead of guessing
+  from elapsed time. The slot is released only after the terminal reads and
+  acknowledges the visible result. A saved continuation that cannot be queued
+  or whose adapter route is no longer usable receives an interruption error for
+  every route that can accept it. If at least one route durably receives or
+  queues that interruption, the checkpoint is cleared even when another route
+  is unavailable, so the old turn cannot resume and duplicate model actions;
+  the unavailable route is logged for recovery. This bounds abandoned files
+  while making queued, running, interrupted, and awaiting-delivery states
   visible to the player.
   The service reads the older singular `client-request.json` and writes
   `client-result.json` during rollout so an older terminal client can finish.
@@ -156,7 +160,12 @@ retries. A later visible `delivery_failed` result tells the player that the
 model turn ended without an answer, instead of leaving the player to infer
 success from silence. If a restart finds a saved turn that cannot be resumed,
 the original client receives an interruption result; the player is told to
-resend rather than waiting for a turn that no longer exists.
+resend rather than waiting for a turn that no longer exists. Progress files are
+transient hints, so a stranded progress `.tmp` leaves the terminal in the
+running state and cannot be converted into a false terminal failure. When a
+steered turn has multiple routes and one is unavailable after restart, the
+available route receives the interruption and the checkpoint is cleared; the
+old turn is never resumed merely to retry a route that already failed.
 
 Do not put credentials or runtime data into source. Do not treat local logs or
 client request/result files as provider history. Runtime files stay local when

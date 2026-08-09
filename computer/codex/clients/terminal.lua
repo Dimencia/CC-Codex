@@ -56,6 +56,12 @@ local function readJson(path)
     return decoded
 end
 
+local function isTerminalResult(result, id)
+    return type(result) == "table"
+        and result.id == id
+        and (result.kind == "final" or result.kind == "error")
+end
+
 local function writeRequest(request)
     ensureMailboxes()
     local requestPath = mailboxPath(requestDirectory, request.id)
@@ -109,7 +115,10 @@ local function waitForResult(id)
         end
 
         local requestPending = fs.exists(requestPath)
-        local deliveryPending = fs.exists(temporaryPath)
+        local deliveryPending = false
+        if fs.exists(temporaryPath) then
+            deliveryPending = isTerminalResult(readJson(temporaryPath), id)
+        end
         if requestPending then
             reportStatus(
                 "queued",

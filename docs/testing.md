@@ -36,7 +36,8 @@ acknowledgement, terminal queued/running/awaiting-delivery status based on the
 durable temporary-result signal rather than elapsed time, bounded
 publication retry with an explicit failure, temporary-result recovery after a
 restart for both scoped and legacy paths, rejection of an outcome that never
-reached durable storage, and interruption of an unresumable saved continuation.
+reached durable storage, progress-temporary recovery/status handling, and
+interruption of an unresumable saved continuation including mixed routes.
 The standalone
 worker bootstrap is also syntax-checked independently
 because it runs outside the installed Codex module tree.
