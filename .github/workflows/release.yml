@@ -67,10 +67,12 @@ jobs:
           mkdir -p dist/package
           cp install.lua dist/package/install.lua
           cp -R computer dist/package/computer
+          rm -rf dist/package/computer/codex/tests
           tar --format=ustar --create --file "dist/CC-Codex-v${VERSION}.tar" \
             --directory dist/package install.lua computer
           test "$(tar --list --file "dist/CC-Codex-v${VERSION}.tar" | grep -c '^install.lua$')" -eq 1
           test "$(tar --list --file "dist/CC-Codex-v${VERSION}.tar" | grep -c '^computer/')" -gt 0
+          test "$(tar --list --file "dist/CC-Codex-v${VERSION}.tar" | grep -c '^computer/codex/tests/')" -eq 0
 
       - name: Create GitHub release
         env:
