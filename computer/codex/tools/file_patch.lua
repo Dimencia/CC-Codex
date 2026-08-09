@@ -15,16 +15,24 @@
 ---@class FilePatchDependencies
 ---@field fs FilePatchFileSystem
 ---@field json FilePatchJson
+---@field bit32 table
 ---@field root string
 ---@field backupDirectory string
 ---@field epoch fun(): number
 ---@field validate fun(path: string, content: string): boolean|nil, string|nil
----@field maxPatchCharacters integer|nil
+---@field maxSourceCharacters integer|nil
+---@field maxEditCharacters integer|nil
+---@field maxEdits integer|nil
 ---@field maxValidationCharacters integer|nil
 ---@field maxResultCharacters integer|nil
 
+local Sha256 = require("tools.sha256")
+
 local FilePatch = {}
 
+local DEFAULT_MAX_SOURCE_CHARACTERS = 8000
+local DEFAULT_MAX_EDIT_CHARACTERS = 24000
+local DEFAULT_MAX_EDITS = 64
 local DEFAULT_MAX_VALIDATION_CHARACTERS = 120000
 local SOURCE_DIRECTORIES = {
     clients = true,
@@ -51,33 +59,92 @@ local RUNTIME_PATH_NAMES = {
     ["usage.jsonl"] = true
 }
 
-local DESCRIPTOR = {
+local READ_DESCRIPTOR = {
     type = "function",
-    name = "apply_file_patch",
+    name = "read_source_file",
     description = table.concat({
-        "Preview or apply one unified diff to a source file in the CC Codex source boundary. ",
-        "The patch must validate against the current file before any write. Set apply=false ",
-        "to preview only; set apply=true to publish atomically and retain a recoverable backup. ",
-        "Lua candidates pass bounded syntax validation without execution before publication. ",
-        "Runtime data, artifacts, and control/state paths cannot be patched."
+        "Read one bounded LF-only Codex source file. The result includes exact content, existence, ",
+        "line count, final-newline state, and SHA-256. Read the source before proposing numbered edits. ",
+        "Runtime data, artifacts, control/state paths, and provider instructions cannot be read."
     }),
     parameters = {
         type = "object",
         properties = {
             path = {
                 type = "string",
-                description = "Source path in the running Codex source boundary, such as core/app.lua."
-            },
-            patch = {
-                type = "string",
-                description = "One unified diff containing exactly one file and one or more hunks."
-            },
-            apply = {
-                type = "boolean",
-                description = "False validates and previews only; true writes the validated result."
+                description = "Literal relative source path, such as core/app.lua."
             }
         },
-        required = { "path", "patch", "apply" },
+        required = { "path" },
+        additionalProperties = false
+    }
+}
+
+local EDIT_DESCRIPTOR = {
+    type = "function",
+    name = "edit_source_file",
+    description = table.concat({
+        "Apply exact numbered edits directly to one unchanged LF-only source file. First call ",
+        "read_source_file. Submit its existence and SHA-256 plus ordered, non-overlapping base-line ",
+        "edits with exact old_lines and replacement_lines. Edits are never searched, fuzzed, moved, ",
+        "or parsed as a diff. An optional final_newline boolean is allowed only when an EOF edit ",
+        "changes that state. Validation, Lua syntax checking, atomic replacement, and backup occur ",
+        "before success; any mismatch fails visibly without writing."
+    }),
+    parameters = {
+        type = "object",
+        properties = {
+            path = {
+                type = "string",
+                description = "The same literal relative source path returned by read_source_file."
+            },
+            base_exists = {
+                type = "boolean",
+                description = "Whether the exact source read existed; false is used only for a new file."
+            },
+            base_sha256 = {
+                type = "string",
+                description = "The exact lowercase SHA-256 returned by read_source_file."
+            },
+            edits = {
+                type = "array",
+                minItems = 1,
+                maxItems = 64,
+                description = "Ordered, non-overlapping edits in the original 1-based line coordinates.",
+                items = {
+                    type = "object",
+                    properties = {
+                        start_line = {
+                            type = "integer",
+                            minimum = 1,
+                            description = "Base line to replace, or insertion position from 1 through line_count+1."
+                        },
+                        delete_count = {
+                            type = "integer",
+                            minimum = 0,
+                            description = "Exact number of base lines to delete."
+                        },
+                        old_lines = {
+                            type = "array",
+                            description = "Exact base lines; its length must equal delete_count.",
+                            items = { type = "string" }
+                        },
+                        replacement_lines = {
+                            type = "array",
+                            description = "Exact replacement lines without LF characters.",
+                            items = { type = "string" }
+                        }
+                    },
+                    required = { "start_line", "delete_count", "old_lines", "replacement_lines" },
+                    additionalProperties = false
+                }
+            },
+            final_newline = {
+                type = "boolean",
+                description = "Only set this when an EOF edit changes the file's final-newline state."
+            }
+        },
+        required = { "path", "base_exists", "base_sha256", "edits" },
         additionalProperties = false
     }
 }
@@ -97,10 +164,10 @@ end
 local function encode(deps, value)
     local encoded = deps.json.encode(value)
     if not encoded then
-        return '{"ok":false,"error":"Could not encode the file patch result."}'
+        return '{"ok":false,"error":"Could not encode the source edit result."}'
     end
     if #encoded > (deps.maxResultCharacters or 12000) then
-        return '{"ok":false,"error":"File patch result exceeded its output budget."}'
+        return '{"ok":false,"error":"Source edit result exceeded its output budget."}'
     end
     return encoded
 end
@@ -111,259 +178,81 @@ local function boundedText(value, limit)
     return text:sub(1, limit) .. "..."
 end
 
-local function splitLines(value)
-    local lines = {}
-    if value == "" then return lines, false end
-
-    local start = 1
-    while start <= #value do
-        local newline = value:find("\n", start, true)
-        local line
-        if newline then
-            line = value:sub(start, newline - 1)
-            start = newline + 1
-        else
-            line = value:sub(start)
-            start = #value + 1
+local function rejectUnknownKeys(value, allowed, label)
+    for key in pairs(value) do
+        if allowed[key] ~= true then
+            return nil, label .. " contains unsupported field: " .. tostring(key)
         end
-        if line:sub(-1) == "\r" then line = line:sub(1, -2) end
-        lines[#lines + 1] = line
     end
-    return lines, value:sub(-1) == "\n"
+    return true
 end
 
-local function patchLines(value)
-    local lines, hasFinalNewline = splitLines(value)
-    if #lines > 0 and value:sub(-1) == "\n" and lines[#lines] == "" then
-        lines[#lines] = nil
+local function arrayLength(value, label)
+    if type(value) ~= "table" then return nil, label .. " must be an array." end
+    local count = 0
+    for key in pairs(value) do
+        if type(key) ~= "number" or key < 1 or key ~= math.floor(key) then
+            return nil, label .. " must contain only consecutive numeric entries."
+        end
+        if key > count then count = key end
+    end
+    for index = 1, count do
+        if value[index] == nil then return nil, label .. " must not contain holes." end
+    end
+    return count
+end
+
+local function validateLineArray(value, label, characterCount)
+    local count, countError = arrayLength(value, label)
+    if not count then return nil, nil, countError end
+    local total = characterCount or 0
+    for index = 1, count do
+        local line = value[index]
+        if type(line) ~= "string" then
+            return nil, nil, label .. " entries must be strings."
+        end
+        if line:find("\r", 1, true) or line:find("\n", 1, true) then
+            return nil, nil, label .. " entries must be LF-free line text."
+        end
+        total = total + #line
+    end
+    return count, total
+end
+
+local function splitLines(value)
+    if value == "" then return {}, false end
+    local hasFinalNewline = value:sub(-1) == "\n"
+    local body = hasFinalNewline and value:sub(1, -2) or value
+    if body == "" then return { "" }, hasFinalNewline end
+
+    local lines = {}
+    local start = 1
+    while true do
+        local newline = body:find("\n", start, true)
+        if not newline then
+            lines[#lines + 1] = body:sub(start)
+            break
+        end
+        lines[#lines + 1] = body:sub(start, newline - 1)
+        start = newline + 1
     end
     return lines, hasFinalNewline
 end
 
-local function parseRange(value)
-    local start, count = value:match("^(%d+),(%d+)$")
-    if not start then
-        start = value:match("^(%d+)$")
-        count = start and "1" or nil
-    end
-    if not start then return nil, "Invalid hunk line range: " .. tostring(value) end
-    return tonumber(start), tonumber(count)
-end
-
-local function parseFileHeader(value)
-    local path = value:match("^([^%t]+)") or value
-    if path == "/dev/null" then return nil end
-    path = path:gsub("^[ab]/", "")
-    return path
-end
-
-local function parsePatch(value)
-    if type(value) ~= "string" or value == "" then
-        return nil, "patch must be a non-empty unified diff."
-    end
-
-    local lines, hasFinalNewline = patchLines(value)
-    local oldPath
-    local newPath
-    local hunks = {}
-    local index = 1
-    while index <= #lines do
-        local line = lines[index]
-        if line:sub(1, 4) == "--- " then
-            if oldPath ~= nil or newPath ~= nil then
-                return nil, "Only one file may be included in a patch."
-            end
-            oldPath = parseFileHeader(line:sub(5))
-            index = index + 1
-            if index > #lines or lines[index]:sub(1, 4) ~= "+++ " then
-                return nil, "Unified diff is missing its +++ file header."
-            end
-            newPath = parseFileHeader(lines[index]:sub(5))
-            index = index + 1
-        elseif line:sub(1, 3) == "@@ " then
-            if oldPath == nil and newPath == nil then
-                return nil, "Unified diff hunks must follow --- and +++ file headers."
-            end
-            local oldRange, newRange = line:match("^@@ %-([^ ]+) %+([^ ]+) @@")
-            if not oldRange or not newRange then
-                return nil, "Invalid unified diff hunk header: " .. line
-            end
-            local oldStart, oldCount = parseRange(oldRange)
-            local newStart, newCount = parseRange(newRange)
-            if not oldStart or not newStart then
-                return nil, "Invalid unified diff hunk header: " .. line
-            end
-
-            local hunk = {
-                oldStart = oldStart,
-                oldCount = oldCount,
-                newStart = newStart,
-                newCount = newCount,
-                lines = {},
-                noNewlineOld = false,
-                noNewlineNew = false,
-                added = 0,
-                removed = 0
-            }
-            index = index + 1
-            local previousKind
-            local actualOld = 0
-            local actualNew = 0
-            while index <= #lines and lines[index]:sub(1, 3) ~= "@@ " do
-                local hunkLine = lines[index]
-                local prefix = hunkLine:sub(1, 1)
-                if prefix == " " then
-                    local text = hunkLine:sub(2)
-                    hunk.lines[#hunk.lines + 1] = { kind = "context", text = text }
-                    actualOld = actualOld + 1
-                    actualNew = actualNew + 1
-                    previousKind = "context"
-                elseif prefix == "-" then
-                    hunk.lines[#hunk.lines + 1] = { kind = "remove", text = hunkLine:sub(2) }
-                    actualOld = actualOld + 1
-                    hunk.removed = hunk.removed + 1
-                    previousKind = "remove"
-                elseif prefix == "+" then
-                    hunk.lines[#hunk.lines + 1] = { kind = "add", text = hunkLine:sub(2) }
-                    actualNew = actualNew + 1
-                    hunk.added = hunk.added + 1
-                    previousKind = "add"
-                elseif hunkLine == "\\ No newline at end of file" then
-                    if not previousKind then
-                        return nil, "No-newline marker must follow a patch line."
-                    end
-                    if previousKind == "remove" then
-                        hunk.noNewlineOld = true
-                        hunk.noNewlineOldAt = actualOld
-                    end
-                    if previousKind == "add" then
-                        hunk.noNewlineNew = true
-                        hunk.noNewlineNewAt = actualNew
-                    end
-                    if previousKind == "context" then
-                        hunk.noNewlineOld = true
-                        hunk.noNewlineNew = true
-                        hunk.noNewlineOldAt = actualOld
-                        hunk.noNewlineNewAt = actualNew
-                    end
-                    previousKind = nil
-                elseif hunkLine ~= "" then
-                    return nil, "Unexpected line in unified diff hunk: " .. hunkLine
-                else
-                    return nil, "Empty unified diff lines must include a prefix."
-                end
-                index = index + 1
-            end
-
-            if actualOld ~= oldCount or actualNew ~= newCount then
-                return nil, string.format(
-                    "Hunk line counts do not match: expected -%d +%d, found -%d +%d.",
-                    oldCount, newCount, actualOld, actualNew
-                )
-            end
-            hunks[#hunks + 1] = hunk
-        elseif line == "" or line:sub(1, 5) == "diff " or line:sub(1, 6) == "index "
-            or line:sub(1, 9) == "old mode " or line:sub(1, 9) == "new mode "
-            or line:sub(1, 14) == "new file mode " then
-            index = index + 1
-        else
-            return nil, "Unexpected line before or between unified diff hunks: " .. line
-        end
-    end
-
-    if oldPath == nil and newPath == nil then return nil, "Unified diff has no file headers." end
-    if newPath == nil then return nil, "Deleting files is not supported by apply_file_patch." end
-    if #hunks == 0 then return nil, "Unified diff has no hunks." end
-    return {
-        oldPath = oldPath,
-        newPath = newPath,
-        hunks = hunks,
-        hasFinalNewline = hasFinalNewline
-    }
-end
-
-local function applyPatch(parsed, currentContent)
-    local oldLines, oldHasFinalNewline = splitLines(currentContent or "")
-    local output = {}
-    local cursor = 1
-    local added = 0
-    local removed = 0
-    local noNewlineOld = false
-    local noNewlineNew = false
-    local markedNewlinePositions = {}
-
-    for _, hunk in ipairs(parsed.hunks) do
-        local start
-        if hunk.oldCount == 0 then
-            start = hunk.oldStart == 0 and 1 or hunk.oldStart + 1
-        else
-            start = hunk.oldStart == 0 and 1 or hunk.oldStart
-        end
-        if start < cursor or start > #oldLines + 1 then
-            return nil, string.format("Hunk starts at old line %d, but the current file is at line %d.", start, cursor)
-        end
-        for line = cursor, start - 1 do output[#output + 1] = oldLines[line] end
-
-        local newOutputStart = #output
-        local position = start
-        for _, operation in ipairs(hunk.lines) do
-            if operation.kind == "context" or operation.kind == "remove" then
-                if oldLines[position] ~= operation.text then
-                    return nil, string.format(
-                        "Patch context mismatch at old line %d: expected %q, found %q.",
-                        position, operation.text, tostring(oldLines[position])
-                    )
-                end
-                if operation.kind == "context" then output[#output + 1] = operation.text end
-                position = position + 1
-            else
-                output[#output + 1] = operation.text
-            end
-        end
-        if hunk.noNewlineOldAt and start + hunk.noNewlineOldAt - 1 ~= #oldLines then
-            return nil, "No-newline marker does not identify the old file's final line."
-        end
-        if hunk.noNewlineNewAt then
-            markedNewlinePositions[#markedNewlinePositions + 1] = newOutputStart + hunk.noNewlineNewAt
-        end
-        if hunk.oldCount > 0 and position - 1 == #oldLines then
-            local expectedOldFinalNewline = not hunk.noNewlineOld
-            if expectedOldFinalNewline ~= oldHasFinalNewline then
-                return nil, "Patch old-side final newline state does not match the current file."
-            end
-        end
-        cursor = position
-        added = added + hunk.added
-        removed = removed + hunk.removed
-        noNewlineOld = noNewlineOld or hunk.noNewlineOld
-        noNewlineNew = noNewlineNew or hunk.noNewlineNew
-    end
-    for line = cursor, #oldLines do output[#output + 1] = oldLines[line] end
-    for _, position in ipairs(markedNewlinePositions) do
-        if position ~= #output then
-            return nil, "No-newline marker does not identify the new file's final line."
-        end
-    end
-
-    if noNewlineOld and oldHasFinalNewline then
-        return nil, "Patch expects the old file to have no final newline, but it does."
-    end
-    local newHasFinalNewline = not noNewlineNew and (oldHasFinalNewline or noNewlineOld)
-    if #oldLines == 0 then newHasFinalNewline = not noNewlineNew end
-    local content = table.concat(output, "\n")
-    if #output > 0 and newHasFinalNewline then content = content .. "\n" end
-    return {
-        content = content,
-        oldLines = #oldLines,
-        newLines = #output,
-        added = added,
-        removed = removed,
-        hunks = #parsed.hunks
-    }
+local function composeLines(lines, hasFinalNewline)
+    if #lines == 0 then return "" end
+    local content = table.concat(lines, "\n")
+    if hasFinalNewline then content = content .. "\n" end
+    return content
 end
 
 local function validRelativePath(value)
-    if type(value) ~= "string" or value == "" then return nil, "path must be a non-empty relative source path." end
+    if type(value) ~= "string" or value == "" then
+        return nil, "path must be a non-empty relative source path."
+    end
+    if value:find("\r", 1, true) or value:find("\n", 1, true) then
+        return nil, "path must not contain line-ending characters."
+    end
     if value:sub(1, 1) == "/" or value:sub(1, 1) == "\\" or value:find(":", 1, true) then
         return nil, "path must be relative to the Codex root."
     end
@@ -377,20 +266,22 @@ local function validRelativePath(value)
     end
     if value == "data" or value:sub(1, 5) == "data/"
         or value == "artifacts" or value:sub(1, 10) == "artifacts/" then
-        return nil, "Runtime data and artifacts cannot be patched."
+        return nil, "Runtime data and artifacts cannot be accessed."
     end
     if value == "docs/system_prompt.md" then
         return nil, "Authority-bearing provider instructions require an explicit user request."
     end
     for segment in value:gmatch("[^/]+") do
-        if RUNTIME_PATH_NAMES[segment] or segment:match("%.codex%-patch%.tmp$") then
-            return nil, "Runtime control and state paths cannot be patched."
+        if RUNTIME_PATH_NAMES[segment]
+            or segment:match("%.codex%-patch%.tmp$")
+            or segment:match("%.codex%-source%-edit%.tmp$") then
+            return nil, "Runtime control and state paths cannot be accessed."
         end
     end
     if value ~= "service.lua" then
         local root = value:match("^([^/]+)")
         if not SOURCE_DIRECTORIES[root] then
-            return nil, "Only Codex source paths can be patched."
+            return nil, "Only Codex source paths can be accessed."
         end
     end
     return value
@@ -405,18 +296,40 @@ local function readFile(fs, path)
     return content or ""
 end
 
-local function writeFile(fs, path, content)
-    local handle, openError = fs.open(path, "w")
-    if not handle then return nil, "Could not open temporary patch file: " .. tostring(openError) end
-    local ok, writeError = pcall(function()
-        handle.write(content)
-        handle.close()
-    end)
-    if not ok then
-        pcall(handle.close)
-        return nil, "Could not write temporary patch file: " .. tostring(writeError)
+local function sourceState(deps, relativePath)
+    local targetPath = deps.fs.combine(deps.root, relativePath)
+    local exists = deps.fs.exists(targetPath)
+    if exists and deps.fs.isDir(targetPath) then
+        return nil, "Source target is a directory: " .. relativePath
     end
-    return true
+
+    local content = ""
+    if exists then
+        local readContent, readError = readFile(deps.fs, targetPath)
+        if not readContent then return nil, readError end
+        content = readContent
+    end
+    if content:find("\r", 1, true) then
+        return nil, "Unsupported line endings: source files and edits must use LF only."
+    end
+    local maxCharacters = deps.maxSourceCharacters or DEFAULT_MAX_SOURCE_CHARACTERS
+    if #content > maxCharacters then
+        return nil, string.format(
+            "Source exceeds the bounded %d-character inspection limit.", maxCharacters
+        )
+    end
+    local digest, hashError = Sha256.hash(content, deps.bit32)
+    if not digest then return nil, hashError end
+    local lines, finalNewline = splitLines(content)
+    return {
+        targetPath = targetPath,
+        exists = exists,
+        content = content,
+        lines = lines,
+        lineCount = #lines,
+        finalNewline = finalNewline,
+        sha256 = digest
+    }
 end
 
 local function validateCandidate(deps, relativePath, content)
@@ -460,34 +373,78 @@ local function nextBackupPath(deps, relativePath, counter)
     return candidate, index
 end
 
-local function publish(deps, targetPath, relativePath, content, counter)
+local function writeTemporary(deps, path, content)
+    local handle, openError = deps.fs.open(path, "w")
+    if not handle then return nil, "Could not open temporary source-edit file: " .. tostring(openError) end
+    local ok, writeError = pcall(function()
+        handle.write(content)
+        handle.close()
+    end)
+    if not ok then
+        pcall(handle.close)
+        return nil, "Could not write temporary source-edit file: " .. tostring(writeError)
+    end
+    return true
+end
+
+local function publish(deps, state, relativePath, content, counter)
+    local targetPath = state.targetPath
     local directory = targetPath:match("^(.*)/[^/]+$")
     if directory and not deps.fs.exists(directory) then deps.fs.makeDir(directory) end
     if not deps.fs.exists(deps.backupDirectory) then deps.fs.makeDir(deps.backupDirectory) end
 
-    local temporaryPath = targetPath .. ".codex-patch.tmp"
+    local temporaryPath = targetPath .. ".codex-source-edit.tmp"
     if deps.fs.exists(temporaryPath) then
         local removed, removeError = filesystemCall(deps.fs.delete, temporaryPath)
-        if not removed then return nil, nil, "Could not remove stale patch temporary file: " .. tostring(removeError) end
+        if not removed then
+            return nil, nil, "Could not remove stale source-edit temporary file: " .. tostring(removeError)
+        end
     end
-    local written, writeError = writeFile(deps.fs, temporaryPath, content)
+    local written, writeError = writeTemporary(deps, temporaryPath, content)
     if not written then return nil, nil, writeError end
 
     local backupPath
     local staged = false
-    if deps.fs.exists(targetPath) then
+    if deps.fs.exists(targetPath) ~= state.exists then
+        pcall(deps.fs.delete, temporaryPath)
+        return nil, nil, "Source existence changed before publication; no file was written."
+    end
+    if state.exists then
         if deps.fs.isDir(targetPath) then
             pcall(deps.fs.delete, temporaryPath)
-            return nil, nil, "Patch target is a directory: " .. relativePath
+            return nil, nil, "Source target became a directory: " .. relativePath
         end
         local backupCounter
         backupPath, backupCounter = nextBackupPath(deps, relativePath, counter)
         local moved, moveError = filesystemCall(deps.fs.move, targetPath, backupPath)
         if not moved then
             pcall(deps.fs.delete, temporaryPath)
-            return nil, nil, "Could not preserve the original file: " .. tostring(moveError)
+            return nil, nil, "Could not preserve the original source: " .. tostring(moveError)
         end
         staged = true
+
+        local backupContent, backupReadError = readFile(deps.fs, backupPath)
+        local backupHash, backupHashError
+        if backupContent then backupHash, backupHashError = Sha256.hash(backupContent, deps.bit32) end
+        if not backupContent or not backupHash then
+            local restored = filesystemCall(deps.fs.move, backupPath, targetPath)
+            pcall(deps.fs.delete, temporaryPath)
+            if not restored then
+                return nil, backupPath, "Could not verify or restore the original source: "
+                    .. tostring(backupReadError or backupHashError)
+            end
+            return nil, nil, "Could not verify the original source before publication: "
+                .. tostring(backupReadError or backupHashError)
+        end
+        if backupHash ~= state.sha256 then
+            local restored, restoreError = filesystemCall(deps.fs.move, backupPath, targetPath)
+            pcall(deps.fs.delete, temporaryPath)
+            if not restored then
+                return nil, backupPath, "Source changed before publication and could not be restored: "
+                    .. tostring(restoreError)
+            end
+            return nil, nil, "Source changed before publication; the requested base was not written."
+        end
         counter = backupCounter
     end
 
@@ -497,100 +454,246 @@ local function publish(deps, targetPath, relativePath, content, counter)
         if staged then
             local restored, restoreError = filesystemCall(deps.fs.move, backupPath, targetPath)
             if not restored then
-                return nil, backupPath, "Could not publish the patch and the original could not be restored: "
+                return nil, backupPath, "Could not publish the source edit and the original could not be restored: "
                     .. tostring(restoreError)
             end
-            return nil, nil, "Could not publish the patch; the original was restored: " .. tostring(publishError)
+            return nil, nil, "Could not publish the source edit; the original was restored: "
+                .. tostring(publishError)
         end
-        return nil, nil, "Could not publish the patch: " .. tostring(publishError)
+        return nil, nil, "Could not publish the source edit: " .. tostring(publishError)
     end
     return true, backupPath, nil, counter
 end
 
-local function patch(deps, call, counter)
+local function validHash(value)
+    return type(value) == "string"
+        and #value == 64
+        and value:match("^[0-9a-f]+$") ~= nil
+end
+
+local function validateEdits(args, state, deps)
+    local editCount, editCountError = arrayLength(args.edits, "edits")
+    if not editCount then return nil, editCountError end
+    if editCount < 1 then return nil, "edits must contain at least one edit." end
+    if editCount > (deps.maxEdits or DEFAULT_MAX_EDITS) then
+        return nil, "edits exceeded the configured count limit."
+    end
+
+    local maxCharacters = deps.maxEditCharacters or DEFAULT_MAX_EDIT_CHARACTERS
+    local inputCharacters = 0
+    local previousEnd
+    local touchesEof = false
+    local normalized = {}
+    for index = 1, editCount do
+        local edit = args.edits[index]
+        if type(edit) ~= "table" then return nil, "Each edit must be an object." end
+        local known, knownError = rejectUnknownKeys(edit, {
+            start_line = true,
+            delete_count = true,
+            old_lines = true,
+            replacement_lines = true
+        }, "edit " .. index)
+        if not known then return nil, knownError end
+
+        local start = edit.start_line
+        local deleteCount = edit.delete_count
+        if type(start) ~= "number" or start < 1 or start ~= math.floor(start) then
+            return nil, "edit " .. index .. " start_line must be a positive integer."
+        end
+        if type(deleteCount) ~= "number" or deleteCount < 0 or deleteCount ~= math.floor(deleteCount) then
+            return nil, "edit " .. index .. " delete_count must be a non-negative integer."
+        end
+        if start > state.lineCount + 1 then
+            return nil, "edit " .. index .. " start_line must be at most line_count + 1."
+        end
+        if deleteCount > 0 and start + deleteCount - 1 > state.lineCount then
+            return nil, "edit " .. index .. " deletes beyond the base line count."
+        end
+        local occupiedEnd = start + math.max(deleteCount, 1) - 1
+        if previousEnd and start <= previousEnd then
+            return nil, "edits must be strictly ordered and non-overlapping in base coordinates."
+        end
+        previousEnd = occupiedEnd
+
+        local oldCount, oldCharacters, oldError = validateLineArray(
+            edit.old_lines, "edit " .. index .. " old_lines", inputCharacters
+        )
+        if not oldCount or oldCharacters == nil then return nil, oldError end
+        inputCharacters = oldCharacters
+        if oldCount ~= deleteCount then
+            return nil, "edit " .. index .. " old_lines length must equal delete_count."
+        end
+        local replacementCount, replacementCharacters, replacementError = validateLineArray(
+            edit.replacement_lines, "edit " .. index .. " replacement_lines", inputCharacters
+        )
+        if not replacementCount or replacementCharacters == nil then return nil, replacementError end
+        inputCharacters = replacementCharacters
+        if inputCharacters > maxCharacters then
+            return nil, "edits exceeded the configured character limit."
+        end
+
+        for lineIndex = 1, oldCount do
+            local actual = state.lines[start + lineIndex - 1]
+            if actual ~= edit.old_lines[lineIndex] then
+                return nil, string.format(
+                    "edit %d old_lines mismatch at base line %d; no search or re-anchoring is performed.",
+                    index, start + lineIndex - 1
+                )
+            end
+        end
+
+        if start == state.lineCount + 1
+            or (deleteCount > 0 and start + deleteCount - 1 == state.lineCount) then
+            touchesEof = true
+        end
+        normalized[#normalized + 1] = {
+            start = start,
+            deleteCount = deleteCount,
+            replacementLines = edit.replacement_lines
+        }
+    end
+
+    if args.final_newline ~= nil then
+        if type(args.final_newline) ~= "boolean" then
+            return nil, "final_newline must be a boolean when supplied."
+        end
+        if not touchesEof then
+            return nil, "final_newline is allowed only when an edit touches the base EOF."
+        end
+        if args.final_newline == state.finalNewline then
+            return nil, "final_newline may only be supplied when the EOF state changes."
+        end
+    end
+
+    return {
+        edits = normalized,
+        finalNewline = args.final_newline == nil and state.finalNewline or args.final_newline,
+        inputCharacters = inputCharacters
+    }
+end
+
+local function applyEdits(state, editSet)
+    local output = {}
+    local cursor = 1
+    local added = 0
+    local removed = 0
+    for _, edit in ipairs(editSet) do
+        while cursor < edit.start do
+            output[#output + 1] = state.lines[cursor]
+            cursor = cursor + 1
+        end
+        cursor = cursor + edit.deleteCount
+        for _, line in ipairs(edit.replacementLines) do
+            output[#output + 1] = line
+        end
+        added = added + #edit.replacementLines
+        removed = removed + edit.deleteCount
+    end
+    while cursor <= #state.lines do
+        output[#output + 1] = state.lines[cursor]
+        cursor = cursor + 1
+    end
+    return output, added, removed
+end
+
+local function readSource(deps, call)
+    local args, argumentError = parseArguments(deps, call.arguments)
+    if not args then return { ok = false, error = argumentError } end
+    local known, knownError = rejectUnknownKeys(args, { path = true }, "read_source_file arguments")
+    if not known then return { ok = false, error = knownError } end
+    local relativePath, pathError = validRelativePath(args.path)
+    if not relativePath then return { ok = false, error = pathError } end
+    local state, stateError = sourceState(deps, relativePath)
+    if not state then return { ok = false, error = stateError } end
+    return {
+        ok = true,
+        path = relativePath,
+        exists = state.exists,
+        content = state.content,
+        sha256 = state.sha256,
+        line_count = state.lineCount,
+        final_newline = state.finalNewline,
+        message = state.exists
+            and "Source read; use this exact sha256 and numbered base-line content for the edit."
+            or "Source does not exist; use base_exists=false and the returned empty-content sha256 to create it."
+    }
+end
+
+local function editSource(deps, call, counter)
     local args, argumentError = parseArguments(deps, call.arguments)
     if not args then return { ok = false, error = argumentError }, counter end
-    if type(args.apply) ~= "boolean" then
-        return { ok = false, error = "apply must be a boolean; use false for preview or true to write." }, counter
+    local known, knownError = rejectUnknownKeys(args, {
+        path = true,
+        base_exists = true,
+        base_sha256 = true,
+        edits = true,
+        final_newline = true
+    }, "edit_source_file arguments")
+    if not known then return { ok = false, error = knownError }, counter end
+    if type(args.base_exists) ~= "boolean" then
+        return { ok = false, error = "base_exists must be a boolean." }, counter
     end
+    if not validHash(args.base_sha256) then
+        return { ok = false, error = "base_sha256 must be exactly 64 lowercase hexadecimal characters." }, counter
+    end
+
     local relativePath, pathError = validRelativePath(args.path)
     if not relativePath then return { ok = false, error = pathError }, counter end
-    if type(args.patch) ~= "string" or args.patch == "" then
-        return { ok = false, error = "patch must be a non-empty unified diff." }, counter
+    local state, stateError = sourceState(deps, relativePath)
+    if not state then return { ok = false, error = stateError }, counter end
+    if args.base_exists ~= state.exists then
+        return {
+            ok = false,
+            error = "Base existence mismatch; the source changed before the edit and no file was written."
+        }, counter
     end
-    if #args.patch > (deps.maxPatchCharacters or 24000) then
-        return { ok = false, error = "patch exceeded the configured size limit." }, counter
+    if args.base_sha256 ~= state.sha256 then
+        return {
+            ok = false,
+            error = "Base SHA-256 mismatch; the source changed before the edit and no file was written."
+        }, counter
     end
-
-    local parsed, parseError = parsePatch(args.patch)
-    if not parsed then return { ok = false, error = parseError }, counter end
-    if parsed.newPath ~= relativePath then
-        return { ok = false, error = "The +++ patch path does not match the requested target path." }, counter
-    end
-    if parsed.oldPath and parsed.oldPath ~= relativePath then
-        return { ok = false, error = "The --- patch path does not match the requested target path." }, counter
-    end
-
-    local targetPath = deps.fs.combine(deps.root, relativePath)
-    local exists = deps.fs.exists(targetPath)
-    if parsed.oldPath == nil and exists then
-        return { ok = false, error = "Patch creates a file that already exists: " .. relativePath }, counter
-    end
-    if parsed.oldPath ~= nil and not exists then
-        return { ok = false, error = "Patch targets a file that does not exist: " .. relativePath }, counter
-    end
-    if exists and deps.fs.isDir(targetPath) then
-        return { ok = false, error = "Patch target is a directory: " .. relativePath }, counter
-    end
-    local readOnlyCall, readOnly = pcall(deps.fs.isReadOnly, targetPath)
+    local readOnlyCall, readOnly = pcall(deps.fs.isReadOnly, state.targetPath)
     if readOnlyCall and readOnly == true then
-        return { ok = false, error = "Patch target is read-only: " .. relativePath }, counter
+        return { ok = false, error = "Source target is read-only: " .. relativePath }, counter
     end
-
-    local current = ""
-    if exists then
-        local content, readError = readFile(deps.fs, targetPath)
-        if not content then return { ok = false, error = readError }, counter end
-        current = content
+    local editSet, editError = validateEdits(args, state, deps)
+    if not editSet then return { ok = false, error = editError }, counter end
+    local output, added, removed = applyEdits(state, editSet.edits)
+    local candidate = composeLines(output, editSet.finalNewline)
+    if candidate == state.content then
+        return { ok = false, error = "The numbered edits do not change the source." }, counter
     end
-    local applied, applyError = applyPatch(parsed, current)
-    if not applied then return { ok = false, error = applyError }, counter end
-    local valid, validationError = validateCandidate(deps, relativePath, applied.content)
+    local valid, validationError = validateCandidate(deps, relativePath, candidate)
     if not valid then return { ok = false, error = validationError }, counter end
-
-    local result = {
-        ok = true,
-        preview = not args.apply,
-        applied = false,
-        path = relativePath,
-        hunks = applied.hunks,
-        added_lines = applied.added,
-        removed_lines = applied.removed,
-        old_lines = applied.oldLines,
-        new_lines = applied.newLines,
-        message = args.apply and "Patch validated; publishing was requested." or "Patch validated; no file was changed."
-    }
-    if not args.apply then return result, counter end
 
     counter = counter + 1
     local published, backupPath, publishError, nextCounter = publish(
-        deps, targetPath, relativePath, applied.content, counter
+        deps, state, relativePath, candidate, counter
     )
     if nextCounter then counter = nextCounter end
     if not published then
-        result.ok = false
-        result.preview = false
-        result.error = publishError
-        result.backup_path = backupPath
-        return result, counter
+        return {
+            ok = false,
+            error = publishError,
+            backup_path = backupPath
+        }, counter
     end
-    result.preview = false
-    result.applied = true
-    result.backup_path = backupPath
-    result.message = backupPath
-        and "Patch applied atomically; the original was retained at the backup path."
-        or "Patch applied atomically; the new file has no previous version."
-    return result, counter
+    return {
+        ok = true,
+        applied = true,
+        path = relativePath,
+        base_sha256 = state.sha256,
+        old_lines = state.lineCount,
+        new_lines = #output,
+        added_lines = added,
+        removed_lines = removed,
+        final_newline = editSet.finalNewline,
+        backup_path = backupPath,
+        message = backupPath
+            and "Source edit applied atomically; the original was retained at the backup path."
+            or "Source edit applied atomically; the new file has no previous version."
+    }, counter
 end
 
 ---@param registry ToolRegistry
@@ -601,19 +704,21 @@ function FilePatch.register(registry, deps)
     assert(type(deps) == "table"
         and type(deps.fs) == "table"
         and type(deps.json) == "table"
+        and type(deps.bit32) == "table"
         and type(deps.root) == "string"
         and type(deps.backupDirectory) == "string"
         and type(deps.epoch) == "function"
-        and type(deps.validate) == "function", "file patch dependencies are required")
+        and type(deps.validate) == "function", "source edit dependencies are required")
+    local registered, registrationError = registry:register(READ_DESCRIPTOR, function(call)
+        return encode(deps, readSource(deps, call))
+    end)
+    if not registered then return nil, registrationError end
     local counter = 0
-    return registry:register(DESCRIPTOR, function(call)
+    return registry:register(EDIT_DESCRIPTOR, function(call)
         local result
-        result, counter = patch(deps, call, counter)
+        result, counter = editSource(deps, call, counter)
         return encode(deps, result)
     end)
 end
-
-FilePatch.parse = parsePatch
-FilePatch.apply = applyPatch
 
 return FilePatch

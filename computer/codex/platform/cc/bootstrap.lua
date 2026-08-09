@@ -70,7 +70,7 @@ end
 ---@param content string
 ---@return boolean|nil
 ---@return string|nil
-local function validateFilePatch(relativePath, content)
+local function validateSourceEdit(relativePath, content)
     if relativePath:sub(-4) ~= ".lua" then return true end
     -- Compilation checks syntax only. The returned chunk is deliberately never called,
     -- and an empty environment prevents candidate code from resolving CC globals.
@@ -271,15 +271,18 @@ function Bootstrap.build(config)
     requireRegistration("execute_cc_lua", tools:register(executeLua.descriptor, function(call)
         return executeLua:handle(call)
     end))
-    requireRegistration("file patch tool", FilePatchTools.register(tools, {
+    requireRegistration("source edit tools", FilePatchTools.register(tools, {
         fs = fileSystem,
         ---@diagnostic disable-next-line: assign-type-mismatch
         json = json,
+        bit32 = bit32,
         root = base,
         backupDirectory = path("data/patch-backups"),
         epoch = function() return os.epoch("utc") end,
-        validate = validateFilePatch,
-        maxPatchCharacters = 24000,
+        validate = validateSourceEdit,
+        maxSourceCharacters = 8000,
+        maxEditCharacters = 24000,
+        maxEdits = 64,
         maxValidationCharacters = 120000,
         maxResultCharacters = config.maxToolResultChars
     }))
