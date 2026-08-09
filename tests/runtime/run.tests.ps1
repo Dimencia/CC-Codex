@@ -35,7 +35,8 @@ if ($identityA.container_name -match 'ci-123' -or $identityA.image_name -match '
 
 Assert-Throws { Assert-ValidRunId -RunId 'bad/run' }
 Assert-Throws { Assert-ValidRunId -RunId ('x' * 65) }
-Assert-Throws { Assert-PathWithinRoot -Path (Join-Path $outputRoot '..\foreign') -Root $outputRoot }
+$foreignPath = Join-Path (Split-Path -Parent $outputRoot) 'foreign'
+Assert-Throws { Assert-PathWithinRoot -Path $foreignPath -Root $outputRoot }
 
 $tempRoot = Get-RuntimeTempRoot
 $fakeDocker = Join-Path $tempRoot "cc-codex-fake-docker-$([Guid]::NewGuid().ToString('N')).ps1"
