@@ -78,14 +78,14 @@ Active claims:
 
 | ID | Agent | Owning branch or PR | State |
 | --- | --- | --- | --- |
-| `CC-021` | Agent: Sprocket (feature worker) | `codex/cc-021-protected-prompt` | Allow a fresh install to create the canonical system prompt, preserve an existing player-edited prompt, and reject malformed packages before writes. |
+| *(none)* | | | |
 
 Completed claims: `CC-005` completed in PR #7 (merge `7948736`), `CC-019`
 completed in PR #10 (merge `ecfd636`), `CC-006` completed in PR #11 (merge
 `0316740`), `CC-017` completed in PR #12 (merge `d046e6f`), and `CC-018`
-completed in PR #13 (merge `b147c8c`). Each was refreshed onto the current
-base, passed exact-head CI/Runtime Integration and independent review, and was
-merged by Switchboard.
+completed in PR #13 (merge `b147c8c`), and `CC-021` completed in PR #15 (merge
+`4b57a39`). Each was refreshed onto the current base, passed exact-head
+CI/Runtime Integration and independent review, and was merged by Switchboard.
 
 `CC-003` request-scoped mailboxes are merged. The superseded remote ref
 `codex/cc-003-client-mailboxes` has no PR and is not an active claim; retain it
