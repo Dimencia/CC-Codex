@@ -89,16 +89,7 @@ local function check(name, fn)
 end
 
 check("standalone image command loads its modules", function()
-    local previousRunningProgram = shell.getRunningProgram
-    shell.getRunningProgram = function()
-        return stagedSourceRoot .. "/image/img2mon.lua"
-    end
-    local runner, loadError = loadfile(stagedSourceRoot .. "/image/img2mon.lua", "t", _ENV)
-    local ok, runError = false, loadError
-    if runner then ok, runError = pcall(runner, "--help") end
-    shell.getRunningProgram = previousRunningProgram
-    assert(runner, tostring(loadError))
-    assert(ok, tostring(runError))
+    assert(shell.run(stagedSourceRoot .. "/image/img2mon.lua", "--help"))
 end)
 
 check("computer identity", function()

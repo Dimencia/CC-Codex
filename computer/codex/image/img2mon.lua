@@ -38,3 +38,5 @@ Img2MonCommand:run({ ... }, {
     end,
     print = print
 })
+
+return true
