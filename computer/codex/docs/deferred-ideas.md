@@ -58,8 +58,8 @@ stay visible for independent, non-overlapping work.
 
 Release-safety gates before any live-model lane (not separate claims):
 
-- The installer must fail clearly or make room on a fresh default-quota
-  computer before staging the package; never leave a half-installed service.
+- CC-006 must establish quota-only pre-mutation safety before any live change;
+  crash-atomic updates are explicitly deferred.
 - Provider defaults must validate the effective model/output limit and bounded
   spend before sending a request; a model-facing limit mismatch or incomplete
   response is a user failure, not a benchmark result.
@@ -313,8 +313,12 @@ when a durable memory is useful. Keep the authoritative store local and
 append-only, support deterministic search, inspect, delete, and rebuild, record
 source/time, bound result size, and never store secrets automatically. Memory
 must persist across turns and restart until the user or model removes it.
-Verify the exact local Codex memory contract before implementation; hosted
-storage and embeddings are out of scope unless local search proves inadequate.
+Match the official local behavior as closely as the CC surface allows: memory is
+opt-in per chat, generated after an idle period rather than on every turn,
+separate from always-on checked-in rules, stored under the local Codex home,
+secret-redacted, and able to exclude chats that used external context. Verify
+the exact local Codex memory contract before implementation; hosted storage and
+embeddings are out of scope unless local search proves inadequate.
 
 #### CC-009 Image renderer measurement and fast path
 
