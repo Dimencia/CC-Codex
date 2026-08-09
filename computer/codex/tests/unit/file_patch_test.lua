@@ -302,6 +302,12 @@ return {
             })
             Harness.falsy(deps.json.last.ok)
             Harness.truthy(deps.json.last.error:find("Only Codex source", 1, true))
+            registry:dispatch({
+                name = "apply_file_patch",
+                arguments = { path = "docs/system_prompt.md", patch = "not used", apply = false }
+            })
+            Harness.falsy(deps.json.last.ok)
+            Harness.truthy(deps.json.last.error:find("Authority-bearing", 1, true))
         end
     }
 }

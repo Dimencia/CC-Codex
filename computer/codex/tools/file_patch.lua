@@ -379,6 +379,9 @@ local function validRelativePath(value)
         or value == "artifacts" or value:sub(1, 10) == "artifacts/" then
         return nil, "Runtime data and artifacts cannot be patched."
     end
+    if value == "docs/system_prompt.md" then
+        return nil, "Authority-bearing provider instructions require an explicit user request."
+    end
     for segment in value:gmatch("[^/]+") do
         if RUNTIME_PATH_NAMES[segment] or segment:match("%.codex%-patch%.tmp$") then
             return nil, "Runtime control and state paths cannot be patched."
