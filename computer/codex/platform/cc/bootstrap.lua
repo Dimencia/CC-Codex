@@ -153,6 +153,8 @@ function Bootstrap.build(config)
     local base = fs.getDir(shell.getRunningProgram())
     local function path(value) return fs.combine(base, value) end
     fs.makeDir(path("data"))
+    fs.makeDir(path("data/client-requests"))
+    fs.makeDir(path("data/client-results"))
     fs.makeDir(path("artifacts/images"))
 
     local json = jsonCodec()
@@ -330,8 +332,11 @@ function Bootstrap.build(config)
     local clientMailbox = ClientMailbox.new({
         fs = fileSystem,
         json = json,
-        requestPath = path("data/client-request.json"),
-        resultPath = path("data/client-result.json"),
+        requestDirectory = path("data/client-requests"),
+        resultDirectory = path("data/client-results"),
+        legacyRequestPath = path("data/client-request.json"),
+        legacyResultPath = path("data/client-result.json"),
+        pendingReplyRoutes = session:pending() and session:pending().replyRoutes,
         submit = submit,
         onError = function(message) console:error("Client mailbox: " .. message) end
     })

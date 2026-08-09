@@ -58,6 +58,23 @@ The provider owns model-visible conversation history. CC-local durable state
 contains the cursor, restart checkpoint, instruction refresh metadata, latest
 image path, and conversation-log identifier; separate files hold preferences,
 catalog and diagnostic logs, usage records, artifacts, and client mailbox data.
+Client requests and replies use one file per request ID under
+`data/client-requests/` and `data/client-results/`, so concurrent clients do
+not overwrite one shared result. A terminal acknowledges a result by deleting
+it after reading. The service reserves at most 32 distinct unread or in-flight
+scoped result slots and never evicts an unread file. Admission reserves a slot
+through progress and until final or error delivery is attempted. A successfully
+published terminal result continues occupying the slot until acknowledgement;
+a failed terminal publication reports an error and releases the ended route's
+in-memory reservation. A managed restart reconstructs reservations for its
+saved scoped continuation routes. At capacity, a new scoped request remains
+durable and unconsumed until a slot is released, normally when a terminal
+result is acknowledged. A second request using an occupied ID also waits;
+progress and final delivery for the admitted request may replace its own result.
+This bounds abandoned files while applying backpressure when clients do not
+acknowledge.
+The service temporarily reads the older singular mailbox paths for rollout
+compatibility.
 ComputerCraft settings contain the API key. The key is not source and must not
 be committed or placed in runtime request files.
 

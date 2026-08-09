@@ -2,6 +2,7 @@
 ---@field adapterId string
 ---@field address? unknown
 ---@field requestId? string
+---@field legacyMailbox? boolean
 
 ---@class ContinuationCheckpoint
 ---@field turnId integer

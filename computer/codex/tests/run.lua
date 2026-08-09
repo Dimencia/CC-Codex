@@ -44,6 +44,7 @@ local suiteModules = {
     "tests.unit.jsonl_test",
     "tests.unit.conversation_log_test",
     "tests.unit.conversation_catalog_test",
+    "tests.unit.client_mailbox_test",
     "tests.unit.turn_metrics_test",
     "tests.unit.component_text_test",
     "tests.unit.terminal_test",

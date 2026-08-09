@@ -16,6 +16,11 @@ Simplicity is a product requirement. Prefer a small amount of unsurprising code
 over general frameworks, speculative extension points, new dispatch layers, or
 one-file-per-concept organization.
 
+Evaluate native background operations or small local jobs with IDs and a wait
+operation. Keep ordinary tools directly callable from Lua; do not add a generic
+dispatcher without a concrete limitation to solve. But we want the agent to
+be able to start long running operations, then start more stuff, then
+decide that it's been a while and it should check in, etc
 Every change must include a small simplification and documentation audit:
 
 1. Look for code, branches, configuration, and files made obsolete by the
