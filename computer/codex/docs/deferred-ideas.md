@@ -63,23 +63,22 @@ Release-safety gates before any live-model lane (not separate claims):
 
 Ready, in order:
 
-1. `CC-021` - reconcile release package and protected files
-2. `CC-022` - durable accepted answers and restart recovery
-3. `CC-023` - mailbox fairness and blocked-request liveness
-4. `CC-024` - bounded file-patch resources and output
-5. `CC-025` - correct shipped-package diagnostic instructions
-6. `CC-020` - bounded local diagnostic storage
-7. `CC-016` - reproducible runtime and token-cost benchmarks
-8. `CC-004` - deterministic player/provider integration tests (after CC-017 fixture isolation)
-9. `CC-009` - image renderer measurement and fast path
-10. `CC-007` - bounded asynchronous jobs and goals
-11. `CC-008` - local searchable memory
+1. `CC-022` - durable accepted answers and restart recovery
+2. `CC-023` - mailbox fairness and blocked-request liveness
+3. `CC-024` - bounded file-patch resources and output
+4. `CC-025` - correct shipped-package diagnostic instructions
+5. `CC-020` - bounded local diagnostic storage
+6. `CC-016` - reproducible runtime and token-cost benchmarks
+7. `CC-004` - deterministic player/provider integration tests (after CC-017 fixture isolation)
+8. `CC-009` - image renderer measurement and fast path
+9. `CC-007` - bounded asynchronous jobs and goals
+10. `CC-008` - local searchable memory
 
 Active claims:
 
 | ID | Agent | Owning branch or PR | State |
 | --- | --- | --- | --- |
-| *(none)* | | | |
+| `CC-021` | Agent: Sprocket (feature worker) | `codex/cc-021-protected-prompt` | Allow a fresh install to create the canonical system prompt, preserve an existing player-edited prompt, and reject malformed packages before writes. |
 
 Completed claims: `CC-005` completed in PR #7 (merge `7948736`), `CC-019`
 completed in PR #10 (merge `ecfd636`), `CC-006` completed in PR #11 (merge
@@ -223,11 +222,13 @@ compression framework or a second history store.
 The release workflow now omits the full test tree, but it still packages
 `computer/codex/docs/system_prompt.md` while the installer rejects that
 authority-bearing path. A fresh player can therefore receive an archive that
-the installer refuses before the service starts. Decide one clear contract:
-keep the prompt local and omit it from releases, or allow creation while never
-overwriting an existing local prompt. Prove a fresh release install, an update
-with a player-edited prompt, preserved runtime data, and a clear package-list
-test. Do not silently weaken the authority boundary.
+the installer refuses before the service starts. Allow a fresh install to create
+the canonical prompt, but never overwrite an existing player-edited prompt;
+reject a missing prompt, a directory/type conflict, or a malformed package
+before any write. Require the release and `--archive-url` package to include
+exactly one prompt and zero test files. Prove fresh install, update preservation,
+runtime-data preservation, package-list checks, and no-write/no-reboot failures.
+Do not add prompt migration, merging, backups, or a source fallback.
 
 #### CC-022 Durable accepted answers and restart recovery
 
