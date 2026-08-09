@@ -77,7 +77,7 @@ Active claims:
 
 | ID | Agent | Owning branch or PR | State |
 | --- | --- | --- | --- |
-| `CC-006` | Spackle | `codex/cc-006-quota-safe-installer` | First step: check that enough quota/space is available before an install or update changes anything, preserve runtime data, and stop safely with a clear retry path when it is not. Recovery if the process crashes halfway through is deferred. |
+| `CC-006` | Spackle | `codex/cc-006-quota-safe-installer` | Quota-only pre-mutation safety; crash-atomic updates explicitly deferred. |
 
 Completed claims: `CC-005` completed in PR #7 (merge `7948736`), and
 `CC-019` completed in PR #10 (merge `ecfd636`). Both were refreshed onto the
@@ -271,18 +271,11 @@ The installer already resolves the latest GitHub release, stages its package,
 and preserves runtime data when the user runs `codex/install`. Build on that
 instead of adding a second updater.
 
-The first step is a release-safety fix, not an updater feature: the current
-package can exhaust a fresh default ComputerCraft quota while staging, even
-though the same install/reboot path passes with a temporary 4 MB quota. Remove
-the double-copy staging path, validate the complete package and protected
-destinations before changing any installed file, and fail with required bytes,
-available bytes, shortfall, and a retry instruction when the quota is too
-small. Preserve runtime data and test default and constrained quotas.
-
-This step guarantees that the known low-space failure is handled before files
-change. It does not yet guarantee that an update can recover cleanly if the
-process crashes or a disk operation fails halfway through; that needs a
-separate design and must not be hidden inside this small fix.
+The first step is quota-only pre-mutation safety. Current evidence shows the
+package can run out of room on a fresh default ComputerCraft quota while
+staging, although the same install/reboot path passes with a temporary 4 MB
+quota. Define and test the smallest behavior that handles that failure before
+any live mutation. Crash-atomic updates are explicitly deferred.
 
 Publish a source manifest with release version and hashes. Store the last
 installed manifest locally. On a bounded, idle-time check, compare base,
@@ -297,9 +290,8 @@ installed, and new hashes:
   install; show a clear explanation and the next safe action.
 
 Never overwrite a running checkout, silently merge source, or treat runtime
-data as source. The source-tree fallback is disabled in this first safety step
-unless it receives the same before-change guarantee; restore it as a separate
-compatibility task rather than leaving an unsafe escape hatch.
+data as source. Start with detection and reporting, then add unattended install
+only after rollback and live reboot tests pass.
 
 ### P2 - add leverage after the core is proven
 
@@ -450,9 +442,8 @@ contracts are green and independently reviewed:
   each other's output, and every result records exactly which source it tested;
 - source edits remain exact and deterministic without requiring a graphical
   diff/review surface from the player;
-- fresh/default and constrained installs stop before changing files when quota
-  is insufficient and preserve runtime data, with halfway-crash recovery
-  documented as an explicit future tradeoff;
+- CC-006 quota-only pre-mutation safety is verified, with crash-atomic updates
+  explicitly deferred and documented as a future tradeoff;
 - a final local-only live low-cost-model lane exercises the real player flow
   with the configured key, steering, a hard test budget, and no world-changing
   tools; the key never enters GitHub Actions;
