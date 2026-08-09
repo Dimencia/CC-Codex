@@ -125,7 +125,7 @@ try {
     $runScript = Join-Path $PSScriptRoot 'run.ps1'
     $failureOutput = & $powerShell -NoProfile -File $runScript -OutputPath $failureOutputRoot -RunId $failureRunId -DockerCommand $failureDocker 2>&1
     $failureExitCode = $LASTEXITCODE
-    $LASTEXITCODE = 0
+    $global:LASTEXITCODE = 0
     if ($failureExitCode -eq 0) { throw 'Runtime runner returned success after owned-container cleanup failed.' }
     $failureManifestPath = Join-Path $failureIdentity.output_path 'run-manifest.json'
     if (-not (Test-Path -LiteralPath $failureManifestPath)) { throw "Failed runtime did not preserve its manifest. Exit code: $failureExitCode; output: $($failureOutput -join "`n")" }
