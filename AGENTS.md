@@ -139,6 +139,15 @@ handoff, or assign the same callsign to multiple agents. Keep the required
 - Workers do not merge into `master` or delete worktrees or branches owned by
   other tasks.
 
+Coordination is event-driven: after delegating an active slice, continue
+independent work or bounded read-only analysis; do not poll or send unchanged
+status updates. Re-engage only for a new actionable finding, ownership/handoff
+change or collision, failed or blocked required gate, unsafe unexpected remote
+movement, explicit decision, or bounded completion. This exception-only rule
+suppresses routine status, not substantive findings: report a new actionable
+Puck finding with concise evidence, and deduplicate reviews or fix requests for
+the same head.
+
 Keep each change coherent and minimal. Preserve public APIs, serialized
 formats, configuration keys, command-line behavior, and network protocols
 unless the request explicitly requires a breaking change. Do not add a
