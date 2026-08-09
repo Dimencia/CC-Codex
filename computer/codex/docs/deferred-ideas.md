@@ -53,8 +53,8 @@ below even while an item is active so its contract remains readable.
 
 Queue mode: **Ready**. The stabilization slices are complete: PR #7 shipped
 deterministic source edits and PR #10 shipped visible durable request outcomes.
-No active claims remain. The next work starts with the release-safety gates
-below, then returns to the ordered Ready queue.
+One bounded release-safety slice is now active; the remaining Ready priorities
+stay visible for independent, non-overlapping work.
 
 Release-safety gates before any approved live-model lane (not separate claims):
 
@@ -66,17 +66,20 @@ Release-safety gates before any approved live-model lane (not separate claims):
 
 Ready, in order:
 
-1. `CC-006` - conflict-aware update detection and quota-safe installation
-2. `CC-017` - collision-free exact-head runtime fixtures
-3. `CC-004` - deterministic player/provider integration tests
-4. `CC-016` - reproducible runtime and token-cost benchmarks
-5. `CC-009` - image renderer measurement and fast path
-6. `CC-007` - bounded asynchronous jobs and goals
-7. `CC-008` - local searchable memory
+1. `CC-017` - collision-free exact-head runtime fixtures
+2. `CC-004` - deterministic player/provider integration tests
+3. `CC-016` - reproducible runtime and token-cost benchmarks
+4. `CC-009` - image renderer measurement and fast path
+5. `CC-007` - bounded asynchronous jobs and goals
+6. `CC-008` - local searchable memory
 
 Active claims:
 
-No active claims. `CC-005` completed in PR #7 (merge `7948736`), and
+| ID | Agent | Owning branch or PR | State |
+| --- | --- | --- | --- |
+| `CC-006` | Spackle | `codex/cc-006-quota-safe-installer` | First slice: preflight or safely stage the package on a fresh default ComputerCraft quota; preserve runtime data and leave a recoverable failure |
+
+Completed claims: `CC-005` completed in PR #7 (merge `7948736`), and
 `CC-019` completed in PR #10 (merge `ecfd636`). Both were refreshed onto the
 current base, passed exact-head CI/Runtime Integration and independent review,
 and were merged by Switchboard.
