@@ -83,12 +83,25 @@ The test suite and LuaLS check are complementary. Neither replaces a separate
 approved smoke check for the installer's GitHub requests, real event loop,
 HTTP request, Chat Box, monitor, Rednet target, or live model.
 
-The installer now prefers the latest release's uncompressed USTAR package and
-falls back to the GitHub source tree when no compatible package is available.
-`tests/installer/run.lua` exercises the archive parser's checksum, path, type,
-and package-layout checks. An exact release or CI package can be exercised with
-`install --archive-url URL`; this keeps a PR smoke test pointed at the tested
-artifact instead of silently installing `master`.
+The installer now uses the latest release's uncompressed USTAR package only.
+It keeps that archive in memory, validates destination types, parents, and
+protected runtime paths, and checks the free-space quota before the first live
+write. When the quota is short, the focused seam proves zero filesystem
+mutation and no reboot; a later retry with more space proves normal publication
+and preserved runtime sentinels. The source-tree fallback is disabled because
+it cannot make the same before-change guarantee; an unavailable latest release
+must be retried or supplied through `install --archive-url URL`.
+
+`tests/installer/run.lua` exercises archive checksum/path/type/layout checks,
+default and constrained quota behavior, the exact shortfall message, retry,
+protected paths, malformed or conflicting package preconditions, existing
+runtime-data preservation, active-installer behavior, and success/no-reboot
+outcomes. The tests use an injected filesystem and never claim crash recovery:
+after quota preflight, a process crash or disk-write failure can still leave a
+partial direct publication until a future rollback design is implemented. An
+exact release or CI package can be exercised with `install --archive-url URL`;
+this keeps a smoke test pointed at the tested artifact instead of silently
+installing `master`.
 
 ## Real Minecraft runtime integration
 
