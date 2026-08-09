@@ -231,7 +231,9 @@ as part of an ordinary source edit.
 
 Image rendering runs `image/img2mon.lua` with the same normal module
 environment. If that script cannot load or render an image, the tool reports a
-short error rather than terminating the Codex worker.
+short error rather than terminating the Codex worker. It can also be run
+directly, for example `lua codex/image/img2mon.lua --help`; the entrypoint
+derives the installed Codex root before using normal `require`.
 
 After changing loaded Lua, call the model-visible `restart_codex` tool. It
 validates `codex/service.lua` and the application source trees before saving the
