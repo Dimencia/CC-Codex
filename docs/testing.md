@@ -130,8 +130,24 @@ host build/run time and guest suite/integration time.
 Run the CC-only fixture locally with Docker Desktop running:
 
 ```powershell
-& .\tests\runtime\run.ps1
+& .\tests\runtime\run.tests.ps1
+& .\tests\runtime\run.ps1 -RunId local-smoke
 ```
+
+The first command is a host-only safety gate for deterministic scope/image
+names, RunId validation, output confinement, and ownership-checked fake-Docker
+cleanup. The real fixture requires a clean `computer/` and `tests/runtime/`
+input tree so its evidence can be bound to the exact checkout SHA. Each run
+gets an opaque scope derived from the canonical worktree and RunId; its output
+is isolated under `tests/runtime/output/<scope>/`. The wrapper writes a
+pre-run/final `run-manifest.json` and `runtime-evidence.json`, and only removes
+the captured container after matching ownership labels are verified. It never
+reuses or deletes a non-empty output directory, removes cached images, or
+performs broad Docker cleanup. An interrupted run may leave its container, but
+the manifest and captured ID make it safe to identify; cleanup fails closed if
+the ownership labels are missing or belong to another run. Full-server runs
+remain serialized because resource isolation does not eliminate JVM, disk, or
+network contention.
 
 Treat this fixture as routine validation, not as an optional external live
 action. Run it locally for changes that can affect shipped ComputerCraft

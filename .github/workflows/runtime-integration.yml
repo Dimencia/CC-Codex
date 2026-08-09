@@ -28,6 +28,13 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - name: Validate fixture identity and cleanup safeguards
+        shell: pwsh
+        run: |
+          & (Join-Path $env:GITHUB_WORKSPACE 'tests/runtime/run.tests.ps1')
 
       - name: Build and run real CC fixture
         shell: pwsh
@@ -35,6 +42,7 @@ jobs:
           $parameters = @{
             OutputPath = Join-Path $env:GITHUB_WORKSPACE "tests/runtime/output"
             TimeoutSeconds = 180
+            RunId = $env:GITHUB_RUN_ID
           }
           & (Join-Path $env:GITHUB_WORKSPACE "tests/runtime/run.ps1") @parameters
 
