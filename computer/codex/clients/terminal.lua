@@ -99,6 +99,15 @@ local function waitForResult(id)
     end
 
     while true do
+        if fs.exists(resultPath) then
+            local result = readJson(resultPath)
+            if result and result.id == id then
+                fs.delete(resultPath)
+                displayResult(result)
+                if result.kind ~= "progress" then return end
+            end
+        end
+
         local requestPending = fs.exists(requestPath)
         local deliveryPending = fs.exists(temporaryPath)
         if requestPending then
@@ -116,15 +125,6 @@ local function waitForResult(id)
                 "running",
                 "Running: Codex accepted the request and is waiting for the model."
             )
-        end
-
-        if fs.exists(resultPath) then
-            local result = readJson(resultPath)
-            if result and result.id == id then
-                fs.delete(resultPath)
-                displayResult(result)
-                if result.kind ~= "progress" then return end
-            end
         end
         statusAge = statusAge + 1
         sleep(requestPollSeconds)

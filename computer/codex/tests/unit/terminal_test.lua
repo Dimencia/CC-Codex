@@ -123,6 +123,7 @@ local function runClientProcess(outcome)
             requestPath = fs.combine("codex/data/client-requests", value.id .. ".json")
             resultPath = fs.combine("codex/data/client-results", value.id .. ".json")
             temporaryPath = resultPath .. ".tmp"
+            if outcome.initialResult then files[resultPath] = "result" end
             return "request"
         end,
         unserializeJSON = function(value)
@@ -364,6 +365,16 @@ return {
             })
             Harness.truthy(terminal.stopped)
             Harness.falsy(waited)
+        end
+    },
+    {
+        name = "terminal displays a ready result before reporting a running status",
+        fn = function()
+            local output, errors = runClientProcess({ kind = "final", initialResult = true })
+            local text = table.concat(output, "\n")
+            Harness.equal(0, #errors)
+            Harness.truthy(text:find("answer", 1, true))
+            Harness.equal(nil, text:find("Running: Codex accepted the request", 1, true))
         end
     },
     {

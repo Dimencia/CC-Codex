@@ -32,7 +32,14 @@ local function fileSystem(initial)
         end
         local parts = {}
         return {
-            write = function(value) parts[#parts + 1] = value end,
+            write = function(value)
+                if fs.failWritePath == path
+                    and (fs.failWriteCount == nil or fs.failWriteCount > 0) then
+                    if fs.failWriteCount ~= nil then fs.failWriteCount = fs.failWriteCount - 1 end
+                    error("simulated write failure")
+                end
+                parts[#parts + 1] = value
+            end,
             close = function() files[path] = table.concat(parts) end
         }
     end
@@ -328,6 +335,8 @@ return {
             Harness.equal(nil, deliveryError)
             Harness.equal("delivery_pending", deliveryReason)
             Harness.truthy(adapter.pendingResultPaths["results/client-a.json"])
+            fs.failWritePath = "results/client-a.json.tmp"
+            fs.failWriteCount = 1
 
             fs.files["requests/client-b.json"] = "request-b"
             Harness.falsy(adapter:poll())
@@ -344,6 +353,7 @@ return {
             })
             Harness.equal("client-a:final\n", fs.files["results/client-a.json"])
             Harness.falsy(adapter.pendingResultPaths["results/client-a.json"])
+            Harness.equal(1, #encoded)
 
             Harness.equal(1, #submitted)
             Harness.equal("request-b", fs.files["requests/client-b.json"])
@@ -380,7 +390,7 @@ return {
             })
             Harness.equal("client-a:error\n", fs.files["results/client-a.json"])
             Harness.falsy(adapter.pendingResultPaths["results/client-a.json"])
-            Harness.equal(5, #encoded)
+            Harness.equal(2, #encoded)
         end
     },
     {

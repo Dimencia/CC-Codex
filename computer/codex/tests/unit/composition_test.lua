@@ -280,6 +280,52 @@ return {
         end
     },
     {
+        name = "bootstrap reports an interruption through a disabled client mailbox",
+        fn = function()
+            local capture = {
+                files = { ["data/codex-state.json"] = "saved" },
+                decoded = {
+                    saved = {
+                        version = 3,
+                        checkpoint = {
+                            turn_id = 8,
+                            previous_response_id = "resp-disabled",
+                            input = {},
+                            reply_routes = {
+                                {
+                                    adapterId = "client_mailbox",
+                                    requestId = "client-disabled",
+                                    legacyMailbox = false
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            withCcGlobals(function()
+                local app = CcBootstrap.build(Config.new({
+                    apiKey = "test",
+                    chatBoxEnabled = false,
+                    clientEnabled = false
+                }))
+                Harness.falsy(hasInput(app, "client_mailbox"))
+                app:start()
+                Harness.falsy(app.session:pending())
+                Harness.truthy(fs.exists("data/client-results/client-disabled.json"))
+
+                local interruption
+                for _, encoded in ipairs(capture.encoded) do
+                    if encoded.id == "client-disabled" and encoded.kind == "error" then
+                        interruption = encoded
+                    end
+                end
+                assert(interruption)
+                Harness.truthy(interruption.message:find("interrupted", 1, true))
+            end, capture)
+        end
+    },
+    {
         name = "bootstrap forwards ephemeral delivery metadata to adapters",
         fn = function()
             local app = withCcGlobals(function()

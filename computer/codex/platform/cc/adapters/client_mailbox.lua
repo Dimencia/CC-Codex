@@ -419,6 +419,46 @@ local function clearPendingDelivery(self, resultPath)
 end
 
 ---@param self ClientMailbox
+---@param resultPath string
+---@param scoped boolean
+---@return boolean|nil
+---@return string|nil
+local function publishExistingTemporaryResult(self, resultPath, scoped)
+    if scoped then
+        local capacity, capacityError = ensureResultCapacity(self, resultPath, true)
+        if not capacity then return nil, capacityError end
+    end
+
+    local temporaryPath = resultPath .. ".tmp"
+    local temporaryExists, existsError = pathExists(self.options.fs, temporaryPath)
+    if temporaryExists == nil then
+        return nil, "Could not inspect client result temporary file: " .. tostring(existsError)
+    end
+    if not temporaryExists then
+        return nil, "Client result temporary file is missing."
+    end
+
+    local resultExists, resultError = pathExists(self.options.fs, resultPath)
+    if resultExists == nil then
+        return nil, "Could not inspect prior client result: " .. tostring(resultError)
+    end
+    if resultExists then
+        local removed, removeError = filesystemCall(self.options.fs.delete, resultPath)
+        if not removed then
+            return nil, "Could not replace prior client result: " .. tostring(removeError)
+        end
+    end
+
+    local moved, moveError = filesystemCall(self.options.fs.move, temporaryPath, resultPath)
+    if not moved then
+        -- The temporary file is the durable answer. Leave it in place so a
+        -- later retry or restart can still publish it.
+        return nil, "Could not publish client result: " .. tostring(moveError)
+    end
+    return true
+end
+
+---@param self ClientMailbox
 local function retryPendingDeliveries(self)
     for resultPath, pending in pairs(self.pendingDeliveries) do
         if not pending.failureResult and pending.attempts >= self.maxDeliveryRetries then
@@ -426,12 +466,24 @@ local function retryPendingDeliveries(self)
         end
 
         local result = pending.failureResult or pending.result
-        local published, publishError = publishResult(
-            self,
-            result,
-            resultPath,
-            pending.scoped
-        )
+        local published, publishError
+        if pending.failureResult then
+            published, publishError = publishResult(
+                self,
+                result,
+                resultPath,
+                pending.scoped
+            )
+        else
+            -- The original result is already closed in .tmp. Retry only the
+            -- final move so a failed write/close cannot erase the durable
+            -- answer before a restart can recover it.
+            published, publishError = publishExistingTemporaryResult(
+                self,
+                resultPath,
+                pending.scoped
+            )
+        end
         if published then
             clearPendingDelivery(self, resultPath)
         else

@@ -347,9 +347,12 @@ function Bootstrap.build(config)
         inputs[#inputs + 1] = terminal
         adapters[terminal.id] = terminal
     end
+    -- Keep the mailbox registered for saved-route interruption delivery even
+    -- when its input poller is disabled. A disabled input must not resume a
+    -- turn, but its accepted turn still needs an explicit client outcome.
+    adapters[clientMailbox.id] = clientMailbox
     if config.clientEnabled then
         inputs[#inputs + 1] = clientMailbox
-        adapters[clientMailbox.id] = clientMailbox
     end
     local chatBoxWarning = buildOptionalChatBox(config, json, submit, path, terminal, inputs, adapters)
 
@@ -364,6 +367,11 @@ function Bootstrap.build(config)
             return nil, "Saved continuation has no reply route."
         end
         for _, route in ipairs(checkpoint.replyRoutes) do
+            if type(route) == "table"
+                and route.adapterId == clientMailbox.id
+                and config.clientEnabled == false then
+                return nil, "Saved continuation client mailbox input is disabled."
+            end
             local adapter = type(route) == "table" and adapters[route.adapterId] or nil
             if not adapter then
                 return nil, "Saved continuation reply adapter is unavailable: "
