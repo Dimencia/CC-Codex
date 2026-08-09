@@ -171,6 +171,66 @@ return {
         end
     },
     {
+        name = "reserves result capacity for accepted requests until final acknowledgement",
+        fn = function()
+            local fs = fileSystem({
+                ["requests/client-a.json"] = "request-a",
+                ["requests/client-b.json"] = "request-b",
+                ["requests/client-c.json"] = "request-c"
+            })
+            local encoded, submitted = {}, {}
+            local adapter = mailbox(fs, {
+                ["request-a"] = { id = "client-a", action = "chat", text = "first" },
+                ["request-b"] = { id = "client-b", action = "chat", text = "second" },
+                ["request-c"] = { id = "client-c", action = "chat", text = "third" }
+            }, encoded, submitted, 2)
+
+            Harness.truthy(adapter:poll())
+            Harness.truthy(adapter:poll())
+            Harness.falsy(adapter:poll())
+            Harness.equal(2, #submitted)
+            Harness.equal("request-c", fs.files["requests/client-c.json"])
+
+            Harness.truthy(adapter:deliver(submitted[1].route, "working", "progress"))
+            fs.delete("results/client-a.json")
+            Harness.falsy(adapter:poll())
+            Harness.equal("request-c", fs.files["requests/client-c.json"])
+
+            Harness.truthy(adapter:deliver(submitted[1].route, "first", "final"))
+            Harness.falsy(adapter:poll())
+            fs.delete("results/client-a.json")
+            Harness.truthy(adapter:poll())
+            Harness.equal(3, #submitted)
+            Harness.equal("client-c", submitted[3].route.requestId)
+            Harness.equal(nil, fs.files["requests/client-c.json"])
+
+            Harness.truthy(adapter:deliver(submitted[2].route, "second", "final"))
+            Harness.truthy(adapter:deliver(submitted[3].route, "third", "final"))
+            Harness.equal(2, #fs.list("results"))
+        end
+    },
+    {
+        name = "processes legacy traffic while scoped admission is at capacity",
+        fn = function()
+            local fs = fileSystem({
+                ["results/client-full.json"] = "client-full:final\n",
+                ["requests/client-a.json"] = "request-a",
+                ["client-request.json"] = "legacy-request"
+            })
+            local encoded, submitted = {}, {}
+            local adapter = mailbox(fs, {
+                ["request-a"] = { id = "client-a", action = "chat", text = "scoped" },
+                ["legacy-request"] = { id = "legacy-a", action = "chat", text = "legacy" }
+            }, encoded, submitted, 1)
+
+            Harness.truthy(adapter:poll())
+            Harness.equal(1, #submitted)
+            Harness.equal("legacy-a", submitted[1].route.requestId)
+            Harness.truthy(submitted[1].route.legacyMailbox)
+            Harness.equal("request-a", fs.files["requests/client-a.json"])
+        end
+    },
+    {
         name = "reads the legacy mailbox during client rollout",
         fn = function()
             local fs = fileSystem({ ["client-request.json"] = "legacy-request" })

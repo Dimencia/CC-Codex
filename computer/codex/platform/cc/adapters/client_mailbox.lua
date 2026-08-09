@@ -24,6 +24,7 @@
 ---@field stopped boolean
 ---@field preferLegacy boolean
 ---@field maxRetainedResults number
+---@field pendingResultPaths table<string, boolean>
 local ClientMailbox = {}
 ClientMailbox.__index = ClientMailbox
 
@@ -104,7 +105,8 @@ function ClientMailbox.new(options)
         options = options,
         stopped = false,
         preferLegacy = false,
-        maxRetainedResults = maxRetainedResults
+        maxRetainedResults = maxRetainedResults,
+        pendingResultPaths = {}
     }, ClientMailbox)
 end
 
@@ -112,27 +114,28 @@ end
 ---@param resultPath string
 ---@return boolean|nil
 ---@return string|nil
----@return boolean|nil full
 local function ensureResultCapacity(self, resultPath)
     local names, listError = listFiles(self.options.fs, self.options.resultDirectory)
     if not names then return nil, "Could not inspect client results: " .. tostring(listError) end
 
-    local resultCount = 0
-    local resultPresent = false
+    local occupiedPaths = {}
     for _, name in ipairs(names) do
         if type(name) == "string" and name:match(REQUEST_FILE_PATTERN) then
-            resultCount = resultCount + 1
-            if self.options.fs.combine(self.options.resultDirectory, name) == resultPath then
-                resultPresent = true
-            end
+            occupiedPaths[self.options.fs.combine(self.options.resultDirectory, name)] = true
         end
     end
+    for pendingPath in pairs(self.pendingResultPaths) do occupiedPaths[pendingPath] = true end
 
-    if not resultPresent and resultCount >= self.maxRetainedResults then
-        return nil, string.format(
-            "Client result capacity is full (%d unread results); acknowledge an existing result before retrying.",
+    if occupiedPaths[resultPath] then return true end
+
+    local resultCount = 0
+    for _ in pairs(occupiedPaths) do resultCount = resultCount + 1 end
+
+    if resultCount >= self.maxRetainedResults then
+        return false, string.format(
+            "Client result capacity is full (%d unread or in-flight results); acknowledge an existing result before retrying.",
             self.maxRetainedResults
-        ), true
+        )
     end
     return true
 end
@@ -227,6 +230,7 @@ end
 ---@param scoped boolean
 local function publishFailure(self, result, resultPath, scoped)
     local published, publishError = publishResult(self, result, resultPath, scoped)
+    if published and scoped then self.pendingResultPaths[resultPath] = nil end
     if not published and self.options.onError then self.options.onError(publishError or "unknown error") end
 end
 
@@ -323,17 +327,17 @@ function ClientMailbox:poll()
     local function processScoped()
         if not scopedId or not scopedPath then return false end
         local resultPath = scopedResultPath(self, scopedId)
-        local capacity, capacityError, capacityFull = ensureResultCapacity(self, resultPath)
-        if not capacity then
-            if capacityFull then return false end
-            return nil, capacityError
-        end
+        local capacity, capacityError = ensureResultCapacity(self, resultPath)
+        if capacity == false then return false end
+        if capacity == nil then return nil, capacityError end
+        self.pendingResultPaths[resultPath] = true
         local consumed, processError = processRequest(
             self,
             scopedPath,
             scopedId,
             resultPath
         )
+        if consumed ~= true then self.pendingResultPaths[resultPath] = nil end
         if consumed == true then self.preferLegacy = true end
         return consumed, processError
     end
@@ -385,7 +389,7 @@ function ClientMailbox:deliver(route, message, kind, metadata)
         resultPath = scopedResultPath(self, requestIdValue)
     end
     if not resultPath then return nil, "Client reply route has an invalid request id." end
-    return publishResult(self, {
+    local delivered, deliveryError = publishResult(self, {
         id = requestIdValue,
         action = "chat",
         ok = kind ~= "error",
@@ -393,6 +397,12 @@ function ClientMailbox:deliver(route, message, kind, metadata)
         message = message,
         metadata = metadata
     }, resultPath, route.legacyMailbox ~= true)
+    if delivered
+        and route.legacyMailbox ~= true
+        and (kind == "final" or kind == "error") then
+        self.pendingResultPaths[resultPath] = nil
+    end
+    return delivered, deliveryError
 end
 
 ---@param self ClientMailbox
