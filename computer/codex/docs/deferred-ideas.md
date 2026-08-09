@@ -221,10 +221,11 @@ Extend the existing real headless Minecraft/CC:Tweaked fixture in two lanes:
   proves player input, service/client routing, tool rounds, steering while a
   turn is active, final delivery, conversation switching, restart continuation,
   and bounded failure behavior without secrets or spend.
-- A live lane uses the configured low-cost model/key, a hard test spend/call
-  limit, a bounded multi-turn transcript with steering, no world-changing
-  tools, and retained evidence. It may run as a normal explicit test job; it
-  must not silently run on every pull request or exceed its test budget.
+- A local-only live lane uses the configured low-cost model/key, a hard test
+  spend/call limit, a bounded multi-turn transcript with steering, no
+  world-changing tools, and retained evidence. Run it only as the final local
+  development gate after the deterministic gates pass; never put the key in
+  GitHub Actions or run this lane on a pull request.
 
 The live lane must never run merely because a pull request was opened. A fake
 provider is not a substitute for the live lane, and the live lane is not a
@@ -452,8 +453,9 @@ contracts are green and independently reviewed:
 - fresh/default and constrained installs stop before changing files when quota
   is insufficient and preserve runtime data, with halfway-crash recovery
   documented as an explicit future tradeoff;
-- a bounded live low-cost-model lane exercises the real player flow with the
-  configured key, steering, a hard test budget, and no world-changing tools;
+- a final local-only live low-cost-model lane exercises the real player flow
+  with the configured key, steering, a hard test budget, and no world-changing
+  tools; the key never enters GitHub Actions;
 - local memory has real model-facing tools, durable local search, inspect/delete,
   rebuild, and secret exclusion;
 - one durable goal can continue itself across bounded turns until completion,
