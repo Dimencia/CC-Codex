@@ -120,8 +120,11 @@ These are per-computer state, not shared source:
   retries the existing atomic temporary result through the mailbox task. After
   the bounded retry budget it changes the pending outcome to one explicit
   `delivery_failed` error result. A valid temporary result is rehydrated on
-  service startup, so a failed rename does not lose a model answer. The slot is
-  released only after the terminal reads and acknowledges the visible result.
+  service startup, including the older singular mailbox's temporary result, so
+  a failed rename does not lose a model answer. The terminal reports awaiting
+  delivery only while its request-scoped `.json.tmp` outcome exists; it keeps
+  reporting running for a slow model turn instead of guessing from elapsed
+  time. The slot is released only after the terminal reads and acknowledges the visible result.
   A saved continuation that cannot be queued or whose adapter route is no
   longer usable receives an interruption error for its original client and its
   checkpoint is cleared after that error is delivered. This bounds abandoned

@@ -86,7 +86,7 @@ end
 local function waitForResult(id)
     local resultPath = mailboxPath(resultDirectory, id)
     local requestPath = mailboxPath(requestDirectory, id)
-    local polls = 0
+    local temporaryPath = resultPath .. ".tmp"
     local lastStatus
     local statusAge = statusIntervalPolls
 
@@ -100,20 +100,21 @@ local function waitForResult(id)
 
     while true do
         local requestPending = fs.exists(requestPath)
+        local deliveryPending = fs.exists(temporaryPath)
         if requestPending then
             reportStatus(
                 "queued",
                 "Queued: waiting for available reply capacity; your request is safe on disk."
             )
-        elseif polls < statusIntervalPolls then
+        elseif deliveryPending then
             reportStatus(
-                "running",
-                "Running: Codex accepted the request and is waiting for the model."
+                "awaiting_delivery",
+                "Awaiting delivery: the service has an outcome and is retrying publication."
             )
         else
             reportStatus(
-                "awaiting_delivery",
-                "Awaiting delivery: the service is still trying to publish this request's outcome."
+                "running",
+                "Running: Codex accepted the request and is waiting for the model."
             )
         end
 
@@ -125,7 +126,6 @@ local function waitForResult(id)
                 if result.kind ~= "progress" then return end
             end
         end
-        polls = polls + 1
         statusAge = statusAge + 1
         sleep(requestPollSeconds)
     end

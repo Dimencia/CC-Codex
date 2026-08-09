@@ -52,20 +52,21 @@ local function fileSystem(initial)
     return fs
 end
 
-local function codec(decoded, encoded)
+local function codec(decoded, encoded, failKind)
     return {
         decode = function(body) return decoded[body] end,
         encode = function(value)
             encoded[#encoded + 1] = value
+            if value.kind == failKind then error("test encoder failure") end
             return value.id .. ":" .. value.kind
         end
     }
 end
 
-local function mailbox(fs, decoded, encoded, submitted, maxRetainedResults, pendingReplyRoutes)
+local function mailbox(fs, decoded, encoded, submitted, maxRetainedResults, pendingReplyRoutes, failKind)
     return ClientMailbox.new({
         fs = fs,
-        json = codec(decoded, encoded),
+        json = codec(decoded, encoded, failKind),
         requestDirectory = "requests",
         resultDirectory = "results",
         maxRetainedResults = maxRetainedResults,
@@ -283,6 +284,31 @@ return {
         end
     },
     {
+        name = "does not accept an outcome that never reached durable storage",
+        fn = function()
+            local fs = fileSystem({ ["requests/client-a.json"] = "request-a" })
+            local decoded = {
+                ["request-a"] = { id = "client-a", action = "chat", text = "first" }
+            }
+            local encoded, submitted = {}, {}
+            local adapter = mailbox(fs, decoded, encoded, submitted, nil, nil, "final")
+
+            Harness.truthy(adapter:poll())
+            local delivered, deliveryError, deliveryReason = adapter:deliver(
+                submitted[1].route, "first", "final"
+            )
+            Harness.falsy(delivered)
+            local errorText = assert(deliveryError)
+            Harness.truthy(errorText:find("encode", 1, true))
+            Harness.equal(nil, deliveryReason)
+            Harness.falsy(adapter.pendingDeliveries["results/client-a.json"])
+            Harness.equal(nil, fs.files["results/client-a.json.tmp"])
+
+            Harness.truthy(adapter:deliver(submitted[1].route, "The outcome failed", "error"))
+            Harness.equal("client-a:error\n", fs.files["results/client-a.json"])
+        end
+    },
+    {
         name = "retries a failed final publication without releasing its reservation",
         fn = function()
             local fs = fileSystem({ ["requests/client-a.json"] = "request-a" })
@@ -355,6 +381,31 @@ return {
             Harness.equal("client-a:error\n", fs.files["results/client-a.json"])
             Harness.falsy(adapter.pendingResultPaths["results/client-a.json"])
             Harness.equal(5, #encoded)
+        end
+    },
+    {
+        name = "rehydrates a pending legacy result from its temporary file after restart",
+        fn = function()
+            local fs = fileSystem({ ["client-result.json.tmp"] = "legacy-a:final\n" })
+            local decoded = {
+                ["legacy-a:final\n"] = {
+                    id = "legacy-a", action = "chat", ok = true,
+                    kind = "final", message = "old answer"
+                }
+            }
+            local encoded, submitted = {}, {}
+            local adapter = mailbox(fs, decoded, encoded, submitted)
+
+            Harness.truthy(adapter.pendingDeliveries["client-result.json"])
+            local cycles = 0
+            ---@diagnostic disable-next-line: missing-fields
+            adapter:run({
+                isCancelled = function() return cycles >= 1 end,
+                sleep = function() cycles = cycles + 1 end
+            })
+            Harness.equal("legacy-a:final\n", fs.files["client-result.json"])
+            Harness.falsy(fs.files["client-result.json.tmp"])
+            Harness.falsy(adapter.pendingDeliveries["client-result.json"])
         end
     },
     {

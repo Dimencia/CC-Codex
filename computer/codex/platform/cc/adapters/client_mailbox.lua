@@ -155,6 +155,23 @@ function ClientMailbox.new(options)
         end
     end
     local pendingDeliveries = {}
+    local legacyTemporaryPath = options.legacyResultPath
+        and (options.legacyResultPath .. ".tmp")
+        or nil
+    if legacyTemporaryPath and options.legacyResultPath then
+        local legacyResult = readTemporaryResult(options.fs, options.json, legacyTemporaryPath)
+        if legacyResult and type(legacyResult.id) == "string" and legacyResult.id ~= "" then
+            pendingDeliveries[options.legacyResultPath] = {
+                result = legacyResult,
+                resultPath = options.legacyResultPath,
+                scoped = false,
+                attempts = 0,
+                failureResult = nil,
+                lastError = "recovered pending legacy result publication",
+                failureReported = false
+            }
+        end
+    end
     local resultNames = listFiles(options.fs, options.resultDirectory) or {}
     for _, name in ipairs(resultNames) do
         local requestIdValue = type(name) == "string"
@@ -162,9 +179,6 @@ function ClientMailbox.new(options)
             or nil
         local temporaryPath = type(name) == "string"
             and options.fs.combine(options.resultDirectory, name)
-            or nil
-        local legacyTemporaryPath = options.legacyResultPath
-            and (options.legacyResultPath .. ".tmp")
             or nil
         if requestIdValue
             and temporaryPath ~= legacyTemporaryPath
@@ -241,10 +255,11 @@ end
 ---@param scoped boolean
 ---@return boolean|nil
 ---@return string|nil
+---@return boolean
 local function publishResult(self, result, resultPath, scoped)
     if scoped then
         local capacity, capacityError = ensureResultCapacity(self, resultPath, true)
-        if not capacity then return nil, capacityError end
+        if not capacity then return nil, capacityError, false end
     end
 
     local encodedOk, encoded, encodeError = pcall(self.options.json.encode, result)
@@ -253,13 +268,13 @@ local function publishResult(self, result, resultPath, scoped)
         encoded = nil
     end
     if type(encoded) ~= "string" then
-        return nil, "Could not encode client result: " .. tostring(encodeError)
+        return nil, "Could not encode client result: " .. tostring(encodeError), false
     end
 
     local temporaryPath = resultPath .. ".tmp"
     local handle, openError = openFile(self.options.fs, temporaryPath, "w")
     if not handle then
-        return nil, "Could not open client result temporary file: " .. tostring(openError)
+        return nil, "Could not open client result temporary file: " .. tostring(openError), false
     end
     local wrote, writeError = pcall(function()
         handle.write(encoded)
@@ -269,17 +284,17 @@ local function publishResult(self, result, resultPath, scoped)
     if not wrote then
         pcall(handle.close)
         pcall(self.options.fs.delete, temporaryPath)
-        return nil, "Could not write client result: " .. tostring(writeError)
+        return nil, "Could not write client result: " .. tostring(writeError), false
     end
 
     local resultExists, existsError = pathExists(self.options.fs, resultPath)
     if resultExists == nil then
-        return nil, "Could not inspect prior client result: " .. tostring(existsError)
+        return nil, "Could not inspect prior client result: " .. tostring(existsError), true
     end
     if resultExists then
         local removed, removeError = filesystemCall(self.options.fs.delete, resultPath)
         if not removed then
-            return nil, "Could not replace prior client result: " .. tostring(removeError)
+            return nil, "Could not replace prior client result: " .. tostring(removeError), true
         end
     end
     local moved, moveError = filesystemCall(
@@ -287,9 +302,11 @@ local function publishResult(self, result, resultPath, scoped)
         temporaryPath,
         resultPath
     )
-    if not moved then return nil, "Could not publish client result: " .. tostring(moveError) end
+    if not moved then
+        return nil, "Could not publish client result: " .. tostring(moveError), true
+    end
 
-    return true
+    return true, nil, false
 end
 
 ---@param request unknown
@@ -347,6 +364,31 @@ local function queuePendingDelivery(self, result, resultPath, scoped, deliveryEr
                 .. tostring(deliveryError or "unknown error")
         )
     end
+end
+
+---@param self ClientMailbox
+---@param result table
+---@param resultPath string
+---@param scoped boolean
+---@param deliveryError string|nil
+---@param temporaryWritten boolean|nil
+---@return boolean|nil
+---@return string|nil
+---@return string|nil
+local function queueDurablePendingDelivery(
+    self,
+    result,
+    resultPath,
+    scoped,
+    deliveryError,
+    temporaryWritten
+)
+    -- publishResult reports true only after the current outcome was fully
+    -- written and closed at resultPath .. ".tmp". Do not acknowledge an
+    -- in-memory-only result that a restart cannot recover.
+    if temporaryWritten ~= true then return nil, deliveryError end
+    queuePendingDelivery(self, result, resultPath, scoped, deliveryError)
+    return true, nil, "delivery_pending"
 end
 
 ---@param pending PendingClientDelivery
@@ -421,11 +463,29 @@ end
 ---@param resultPath string
 ---@param scoped boolean
 local function publishFailure(self, result, resultPath, scoped)
-    local published, publishError = publishResult(self, result, resultPath, scoped)
+    local published, publishError, temporaryWritten = publishResult(
+        self,
+        result,
+        resultPath,
+        scoped
+    )
     if published then
         if scoped then self.pendingResultPaths[resultPath] = nil end
     else
-        queuePendingDelivery(self, result, resultPath, scoped, publishError)
+        local retained, retryError = queueDurablePendingDelivery(
+            self,
+            result,
+            resultPath,
+            scoped,
+            publishError,
+            temporaryWritten
+        )
+        if not retained and self.options.onError then
+            self.options.onError(
+                "Client failure could not be retained for retry: "
+                    .. tostring(retryError or publishError or "unknown error")
+            )
+        end
     end
 end
 
@@ -606,41 +666,45 @@ function ClientMailbox:deliver(route, message, kind, metadata)
         resultPath = scopedResultPath(self, requestIdValue)
     end
     if not resultPath then return nil, "Client reply route has an invalid request id." end
-    local reserved = not scoped
-        or self.pendingResultPaths[resultPath] == true
-        or self.pendingDeliveries[resultPath] ~= nil
-    local delivered, deliveryError = publishResult(self, {
+    local result = {
         id = requestIdValue,
         action = "chat",
         ok = kind ~= "error",
         kind = kind,
         message = message,
         metadata = metadata
-    }, resultPath, scoped)
+    }
+    local reserved = not scoped
+        or self.pendingResultPaths[resultPath] == true
+        or self.pendingDeliveries[resultPath] ~= nil
+    local delivered, deliveryError, temporaryWritten = publishResult(
+        self,
+        result,
+        resultPath,
+        scoped
+    )
     if scoped and (kind == "final" or kind == "error") then
         if delivered then
             self.pendingResultPaths[resultPath] = nil
         elseif reserved then
-            queuePendingDelivery(self, {
-                id = requestIdValue,
-                action = "chat",
-                ok = kind ~= "error",
-                kind = kind,
-                message = message,
-                metadata = metadata
-            }, resultPath, scoped, deliveryError)
-            return true, nil, "delivery_pending"
+            return queueDurablePendingDelivery(
+                self,
+                result,
+                resultPath,
+                scoped,
+                deliveryError,
+                temporaryWritten
+            )
         end
     elseif not scoped and (kind == "final" or kind == "error") and not delivered and reserved then
-        queuePendingDelivery(self, {
-            id = requestIdValue,
-            action = "chat",
-            ok = kind ~= "error",
-            kind = kind,
-            message = message,
-            metadata = metadata
-        }, resultPath, scoped, deliveryError)
-        return true, nil, "delivery_pending"
+        return queueDurablePendingDelivery(
+            self,
+            result,
+            resultPath,
+            scoped,
+            deliveryError,
+            temporaryWritten
+        )
     end
     return delivered, deliveryError
 end

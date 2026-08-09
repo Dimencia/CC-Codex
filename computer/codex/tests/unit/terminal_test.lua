@@ -63,6 +63,7 @@ local function runClientProcess(outcome)
     local request
     local requestPath
     local resultPath
+    local temporaryPath
     local fs = {}
 
     function fs.combine(left, right)
@@ -105,10 +106,15 @@ local function runClientProcess(outcome)
     environment.sleep = function()
         sleeps = sleeps + 1
         if sleeps == (outcome.consumeAfter or 3) then files[requestPath] = nil end
+        if outcome.pendingAfter and sleeps == outcome.pendingAfter then
+            files[temporaryPath] = "pending"
+        end
         if outcome.kind == "final" and sleeps == (outcome.publishAfter or 25) then
             files[resultPath] = "result"
+            files[temporaryPath] = nil
         elseif outcome.kind == "error" and sleeps == (outcome.publishAfter or 3) then
             files[resultPath] = "result"
+            files[temporaryPath] = nil
         end
     end
     environment.textutils = {
@@ -116,6 +122,7 @@ local function runClientProcess(outcome)
             request = value
             requestPath = fs.combine("codex/data/client-requests", value.id .. ".json")
             resultPath = fs.combine("codex/data/client-results", value.id .. ".json")
+            temporaryPath = resultPath .. ".tmp"
             return "request"
         end,
         unserializeJSON = function(value)
@@ -360,16 +367,26 @@ return {
         end
     },
     {
-        name = "terminal reports queued running and awaiting-delivery states before one final outcome",
+        name = "terminal reports queued running and actual awaiting-delivery state before one final outcome",
         fn = function()
-            local output, errors = runClientProcess({ kind = "final" })
+            local output, errors = runClientProcess({ kind = "final", pendingAfter = 5 })
             local text = table.concat(output, "\n")
             Harness.equal(0, #errors)
             Harness.truthy(text:find("Queued: waiting for available reply capacity", 1, true))
             Harness.truthy(text:find("Running: Codex accepted the request", 1, true))
-            Harness.truthy(text:find("Awaiting delivery: the service is still trying", 1, true))
+            Harness.truthy(text:find("Awaiting delivery: the service has an outcome", 1, true))
             local first = assert(text:find("answer", 1, true))
             Harness.equal(nil, text:find("answer", first + 1, true))
+        end
+    },
+    {
+        name = "does not label a slow running request as awaiting delivery",
+        fn = function()
+            local output, errors = runClientProcess({ kind = "final", publishAfter = 30 })
+            local text = table.concat(output, "\n")
+            Harness.equal(0, #errors)
+            Harness.equal(nil, text:find("Awaiting delivery", 1, true))
+            Harness.truthy(text:find("Running: Codex accepted the request", 1, true))
         end
     },
     {
