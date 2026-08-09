@@ -379,7 +379,9 @@ return {
                 { path = "../core/app.lua", message = "traversal" },
                 { path = ".codex-restart", message = "Runtime control" },
                 { path = "state.json", message = "Only Codex source" },
-                { path = "docs/system_prompt.md", message = "Authority-bearing" }
+                { path = "docs/system_prompt.md", message = "Authority-bearing" },
+                { path = "docs/system_prompt.md/", message = "Authority-bearing" },
+                { path = "core/app.lua/", message = "without a trailing separator" }
             }
             for _, case in ipairs(cases) do
                 local result = call(deps, registry, "read_source_file", { path = case.path })

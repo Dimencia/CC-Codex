@@ -246,7 +246,7 @@ local function composeLines(lines, hasFinalNewline)
     return content
 end
 
-local function validRelativePath(value)
+local function validRelativePath(deps, value)
     if type(value) ~= "string" or value == "" then
         return nil, "path must be a non-empty relative source path."
     end
@@ -264,6 +264,14 @@ local function validRelativePath(value)
             return nil, "path traversal is not allowed."
         end
     end
+    local hadTrailingSeparator = value:sub(-1) == "/"
+    local canonicalInput = value:gsub("/+$", "")
+    if canonicalInput == "" then return nil, "path must name a source file." end
+    local canonical = deps.fs.combine("", canonicalInput)
+    if type(canonical) ~= "string" or canonical == "" or canonical == "." then
+        return nil, "path must name a source file."
+    end
+    value = canonical
     if value == "data" or value:sub(1, 5) == "data/"
         or value == "artifacts" or value:sub(1, 10) == "artifacts/" then
         return nil, "Runtime data and artifacts cannot be accessed."
@@ -284,6 +292,7 @@ local function validRelativePath(value)
             return nil, "Only Codex source paths can be accessed."
         end
     end
+    if hadTrailingSeparator then return nil, "path must name a file without a trailing separator." end
     return value
 end
 
@@ -601,7 +610,7 @@ local function readSource(deps, call)
     if not args then return { ok = false, error = argumentError } end
     local known, knownError = rejectUnknownKeys(args, { path = true }, "read_source_file arguments")
     if not known then return { ok = false, error = knownError } end
-    local relativePath, pathError = validRelativePath(args.path)
+    local relativePath, pathError = validRelativePath(deps, args.path)
     if not relativePath then return { ok = false, error = pathError } end
     local state, stateError = sourceState(deps, relativePath)
     if not state then return { ok = false, error = stateError } end
@@ -637,7 +646,7 @@ local function editSource(deps, call, counter)
         return { ok = false, error = "base_sha256 must be exactly 64 lowercase hexadecimal characters." }, counter
     end
 
-    local relativePath, pathError = validRelativePath(args.path)
+    local relativePath, pathError = validRelativePath(deps, args.path)
     if not relativePath then return { ok = false, error = pathError }, counter end
     local state, stateError = sourceState(deps, relativePath)
     if not state then return { ok = false, error = stateError }, counter end
