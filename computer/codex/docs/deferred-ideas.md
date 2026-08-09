@@ -64,18 +64,23 @@ Release-safety gates before any live-model lane (not separate claims):
 
 Ready, in order:
 
-1. `CC-020` - bounded local diagnostic storage
-2. `CC-016` - reproducible runtime and token-cost benchmarks
-3. `CC-004` - deterministic player/provider integration tests (after CC-017 fixture isolation)
-4. `CC-009` - image renderer measurement and fast path
-5. `CC-007` - bounded asynchronous jobs and goals
-6. `CC-008` - local searchable memory
+1. `CC-021` - reconcile release package and protected files
+2. `CC-022` - durable accepted answers and restart recovery
+3. `CC-023` - mailbox fairness and blocked-request liveness
+4. `CC-024` - bounded file-patch resources and output
+5. `CC-025` - correct shipped-package diagnostic instructions
+6. `CC-020` - bounded local diagnostic storage
+7. `CC-016` - reproducible runtime and token-cost benchmarks
+8. `CC-004` - deterministic player/provider integration tests (after CC-017 fixture isolation)
+9. `CC-009` - image renderer measurement and fast path
+10. `CC-007` - bounded asynchronous jobs and goals
+11. `CC-008` - local searchable memory
 
 Active claims:
 
 | ID | Agent | Owning branch or PR | State |
 | --- | --- | --- | --- |
-| `CC-017` | Agent: Quanta (benchmark tester) | `codex/cc-017-runtime-fixtures` | Owner-action blocked: Runtime Integration exits before the real fixture on head `a883506`; fix and rerun exact-head evidence. |
+| `CC-017` | Agent: Quanta (benchmark tester) | `codex/cc-017-runtime-fixtures` | Owner-action blocked: Runtime Integration still fails during pre-fixture host validation on head `51f5543`; the workflow also needs PR-head checkout for honest exact-head evidence. |
 
 Completed claims: `CC-005` completed in PR #7 (merge `7948736`), `CC-019`
 completed in PR #10 (merge `ecfd636`), `CC-006` completed in PR #11 (merge
@@ -161,6 +166,12 @@ output whose labels/manifest prove the same owner and scope; a foreign or
 ambiguous resource must fail closed. Keep images as cache by default and never
 use broad Docker cleanup.
 
+For pull requests, the workflow must check out and record the reviewed PR head,
+not only GitHub's synthetic merge ref. A local run must reject or exclude
+ignored runtime state such as `computer/codex/data/` and `artifacts/` from the
+source fingerprint and Docker build context, so a dirty computer cannot masquerade
+as exact-head evidence.
+
 Preserve serialized full Minecraft runs as the safe default because each JVM
 may reserve 2 GB plus mod/runtime overhead. Prove deterministic naming, foreign
 resource refusal, interruption cleanup, output confinement, and exact-head
@@ -206,6 +217,54 @@ model turn or make a player lose a visible reply. Test growth under the default
 quota, low-space logging, restart, conversation switching, and preserved
 authoritative state. Keep the policy local and plain JSONL; do not add a
 compression framework or a second history store.
+
+#### CC-021 Reconcile the release package and protected files
+
+The release workflow now omits the full test tree, but it still packages
+`computer/codex/docs/system_prompt.md` while the installer rejects that
+authority-bearing path. A fresh player can therefore receive an archive that
+the installer refuses before the service starts. Decide one clear contract:
+keep the prompt local and omit it from releases, or allow creation while never
+overwriting an existing local prompt. Prove a fresh release install, an update
+with a player-edited prompt, preserved runtime data, and a clear package-list
+test. Do not silently weaken the authority boundary.
+
+#### CC-022 Durable accepted answers and restart recovery
+
+After the service accepts a player's message, a failed encode/write or a
+restart must not make that message disappear. Today a request can be removed
+before its in-memory handoff is durable, and restart cleanup can lose retry
+state or leave a client waiting forever. Keep the existing mailbox contract,
+but persist an explicit queued, interrupted, or failed outcome before deleting
+the accepted request. Preserve evidence of delivery failures and retry state
+across restart. Test write failure, process interruption, restart, and a
+client's visible result from the player's point of view.
+
+#### CC-023 Mailbox fairness and blocked-request liveness
+
+When several scoped requests are present, attempting only the first sorted
+request lets one blocked client prevent later valid messages from running. Scan
+past blocked entries without violating reservations or ordering guarantees,
+and add a mixed-order regression. The player consequence is a different
+conversation appearing frozen while another request could have progressed.
+
+#### CC-024 Bounded file-patch resources and output
+
+The deterministic edit tool has separate read and validation limits, does not
+count empty replacement lines consistently, keeps backups indefinitely, and
+reports an empty output with a misleading zero-line count. Unify the limits,
+bound entry/backup growth, and make the result metadata describe empty files
+accurately. Keep the line-based contract and add focused regressions; do not
+build a review UI or general diff engine.
+
+#### CC-025 Correct shipped-package diagnostic instructions
+
+The normal player package no longer contains `codex/tests/`, but the CC-facing
+documentation still tells a fresh player to run `lua codex/tests/run.lua`.
+Update the instructions to distinguish a repository/Docker diagnostic from a
+deliberately installed test bundle, and make the failure message actionable.
+Keep this documentation-only and do not re-add the full suite to normal
+installs.
 
 #### CC-003 Finish the headless service and replace legacy composition
 

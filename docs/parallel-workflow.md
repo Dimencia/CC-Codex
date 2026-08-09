@@ -157,6 +157,12 @@ and untested live boundaries without editing its branch. Report prioritized,
 actionable findings with file/line evidence. Skip a current head that already
 has an adequate independent review instead of posting duplicate feedback.
 
+GitHub may show a generic review summary while storing the substantive findings
+as inline review comments. Before calling a review empty, inspect both the
+review body and the inline-comment list for the exact head SHA. Record each
+actionable comment's path, line, priority, and user-visible consequence; treat
+comments on older heads as history until the current head is checked.
+
 Normalize findings by user-visible risk, affected contract/path, and root cause.
 Keep one owner-action item for each distinct cause; later reviewers may mark it
 independently confirmed or add new evidence, but should not open another item
