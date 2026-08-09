@@ -88,6 +88,10 @@ local function check(name, fn)
     writeResult(record)
 end
 
+check("standalone image command loads its modules", function()
+    assert(shell.run(stagedSourceRoot .. "/image/img2mon.lua", "--help"))
+end)
+
 check("computer identity", function()
     assert(type(os.getComputerID()) == "number")
 end)

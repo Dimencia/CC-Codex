@@ -1,3 +1,22 @@
+-- A direct `lua codex/image/img2mon.lua ...` launch does not inherit the
+-- service's package path. Keep normal `require` semantics, but add the
+-- installed Codex root when this file is the running program.
+local runningProgram = type(shell) == "table"
+    and type(shell.getRunningProgram) == "function"
+    and shell.getRunningProgram()
+if type(runningProgram) == "string"
+    and runningProgram:match("image/img2mon%.lua$")
+    and type(fs) == "table"
+    and type(fs.getDir) == "function"
+    and type(fs.combine) == "function" then
+    local codexRoot = fs.getDir(fs.getDir(runningProgram))
+    package.path = table.concat({
+        fs.combine(codexRoot, "?.lua"),
+        fs.combine(codexRoot, "?/init.lua"),
+        package.path
+    }, ";")
+end
+
 local Img2MonCommand = require("image.command")
 
 local fileSystem = fs and {
