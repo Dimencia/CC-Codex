@@ -31,7 +31,16 @@ This reads the checkout directly, uses fake CC boundaries and synthetic
 fixtures, and does not require a Minecraft world, model request, or CC API key.
 The suite includes disk-worker capability storage, disk startup placement, the
 request-scoped client mailbox, and the authenticated `rednet_worker` request
-envelope. The standalone worker bootstrap is also syntax-checked independently
+envelope. Mailbox coverage includes full-result admission backpressure and
+acknowledgement, terminal queued/running/awaiting-delivery status based on the
+durable temporary-result signal rather than elapsed time, bounded
+publication retry with an explicit failure, temporary-result recovery after a
+restart for both scoped and legacy paths, rejection of an outcome that never
+reached durable storage, progress-temporary recovery/status handling,
+interruption of an unresumable saved continuation including mixed routes, and
+retention/retry when interruption checkpoint cleanup cannot be persisted.
+The standalone
+worker bootstrap is also syntax-checked independently
 because it runs outside the installed Codex module tree.
 The focused image suite is also available offline as:
 

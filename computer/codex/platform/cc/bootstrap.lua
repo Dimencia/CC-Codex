@@ -376,9 +376,22 @@ function Bootstrap.build(config)
         inputs[#inputs + 1] = terminal
         adapters[terminal.id] = terminal
     end
+    -- Keep the mailbox registered for saved-route interruption delivery even
+    -- when its input poller is disabled. A disabled input must not resume a
+    -- turn, but its accepted turn still needs an explicit client outcome.
+    adapters[clientMailbox.id] = clientMailbox
     if config.clientEnabled then
         inputs[#inputs + 1] = clientMailbox
-        adapters[clientMailbox.id] = clientMailbox
+    else
+        -- Saved client routes may still need bounded delivery retries even
+        -- when new client requests are disabled. Keep polling off while the
+        -- mailbox's existing lifecycle continues to retry staged outcomes.
+        inputs[#inputs + 1] = {
+            id = "client_mailbox_delivery",
+            critical = false,
+            run = function(_, context) clientMailbox:run(context, false) end,
+            stop = function() return clientMailbox:stop() end
+        }
     end
     local chatBoxWarning = buildOptionalChatBox(config, json, submit, path, terminal, inputs, adapters)
 
@@ -386,6 +399,29 @@ function Bootstrap.build(config)
         local adapter = adapters[route.adapterId]
         if not adapter then return nil, "Unknown reply adapter: " .. tostring(route.adapterId) end
         return adapter:deliver(route, message, kind, metadata)
+    end
+    local function canResume(checkpoint)
+        if type(checkpoint) ~= "table" or type(checkpoint.replyRoutes) ~= "table"
+            or #checkpoint.replyRoutes == 0 then
+            return nil, "Saved continuation has no reply route."
+        end
+        for _, route in ipairs(checkpoint.replyRoutes) do
+            if type(route) == "table"
+                and route.adapterId == clientMailbox.id
+                and config.clientEnabled == false then
+                return nil, "Saved continuation client mailbox input is disabled."
+            end
+            local adapter = type(route) == "table" and adapters[route.adapterId] or nil
+            if not adapter then
+                return nil, "Saved continuation reply adapter is unavailable: "
+                    .. tostring(type(route) == "table" and route.adapterId or "unknown")
+            end
+            if type(adapter.canDeliver) == "function" then
+                local valid, validationError = adapter:canDeliver(route)
+                if not valid then return nil, validationError end
+            end
+        end
+        return true
     end
     local function recordConversation(record)
         if not conversationLogId then return end
@@ -543,6 +579,7 @@ function Bootstrap.build(config)
         commands = commands,
         inputs = inputs,
         deliver = deliver,
+        canResume = canResume,
         console = console,
         onTurnCompleted = syncConversationCatalog
     })

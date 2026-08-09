@@ -12,6 +12,8 @@ local Text = require("core.text")
 
 local requestDirectory = "codex/data/client-requests"
 local resultDirectory = "codex/data/client-results"
+local requestPollSeconds = 0.25
+local statusIntervalPolls = 20
 local requestCounter = 0
 local computerId = type(os.computerID) == "function" and os.computerID() or 0
 local clientNonce = table.concat({
@@ -54,6 +56,12 @@ local function readJson(path)
     return decoded
 end
 
+local function isTerminalResult(result, id)
+    return type(result) == "table"
+        and result.id == id
+        and (result.kind == "final" or result.kind == "error")
+end
+
 local function writeRequest(request)
     ensureMailboxes()
     local requestPath = mailboxPath(requestDirectory, request.id)
@@ -77,8 +85,25 @@ local function displayResult(result)
     print(Text.toAscii(message))
 end
 
+local function displayStatus(message)
+    print(message)
+end
+
 local function waitForResult(id)
     local resultPath = mailboxPath(resultDirectory, id)
+    local requestPath = mailboxPath(requestDirectory, id)
+    local temporaryPath = resultPath .. ".tmp"
+    local lastStatus
+    local statusAge = statusIntervalPolls
+
+    local function reportStatus(status, message)
+        if status ~= lastStatus or statusAge >= statusIntervalPolls then
+            displayStatus(message)
+            lastStatus = status
+            statusAge = 0
+        end
+    end
+
     while true do
         if fs.exists(resultPath) then
             local result = readJson(resultPath)
@@ -88,7 +113,30 @@ local function waitForResult(id)
                 if result.kind ~= "progress" then return end
             end
         end
-        sleep(0.25)
+
+        local requestPending = fs.exists(requestPath)
+        local deliveryPending = false
+        if fs.exists(temporaryPath) then
+            deliveryPending = isTerminalResult(readJson(temporaryPath), id)
+        end
+        if requestPending then
+            reportStatus(
+                "queued",
+                "Queued: waiting for available reply capacity; your request is safe on disk."
+            )
+        elseif deliveryPending then
+            reportStatus(
+                "awaiting_delivery",
+                "Awaiting delivery: the service has an outcome and is retrying publication."
+            )
+        else
+            reportStatus(
+                "running",
+                "Running: Codex accepted the request and is waiting for the model."
+            )
+        end
+        statusAge = statusAge + 1
+        sleep(requestPollSeconds)
     end
 end
 

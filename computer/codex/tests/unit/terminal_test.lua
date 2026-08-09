@@ -3,6 +3,7 @@
 local Harness = require("tests.harness")
 local Text = require("core.text")
 local Terminal = require("platform.cc.adapters.terminal")
+local environment = _ENV
 
 local function publicMethods(value)
     local names = {}
@@ -39,6 +40,144 @@ local function options(overrides)
     }
     for key, item in pairs(overrides or {}) do value[key] = item end
     return value, writes
+end
+
+local function runClientProcess(outcome)
+    local previous = {
+        fs = environment.fs,
+        os = environment.os,
+        read = environment.read,
+        write = environment.write,
+        print = environment.print,
+        printError = environment.printError,
+        sleep = environment.sleep,
+        textutils = environment.textutils
+    }
+    local files = {}
+    local directories = {}
+    local output = {}
+    local errors = {}
+    local inputs = { "hello", "exit" }
+    local inputIndex = 0
+    local sleeps = 0
+    local request
+    local requestPath
+    local resultPath
+    local temporaryPath
+    local fs = {}
+
+    function fs.combine(left, right)
+        return left == "" and right or left .. "/" .. right
+    end
+    function fs.makeDir(path) directories[path] = true end
+    function fs.exists(path) return files[path] ~= nil or directories[path] == true end
+    function fs.open(path, mode)
+        if mode == "r" then
+            if files[path] == nil then return nil end
+            return {
+                readAll = function() return files[path] end,
+                close = function() end
+            }
+        end
+        local parts = {}
+        return {
+            write = function(value) parts[#parts + 1] = value end,
+            close = function() files[path] = table.concat(parts) end
+        }
+    end
+    function fs.delete(path) files[path] = nil end
+    function fs.move(from, to)
+        files[to], files[from] = files[from], nil
+    end
+
+    environment.fs = fs
+    environment.os = {
+        computerID = function() return 1 end,
+        epoch = function() return 42 end,
+        clock = function() return 0.5 end
+    }
+    environment.read = function()
+        inputIndex = inputIndex + 1
+        return inputs[inputIndex]
+    end
+    environment.write = function(value) output[#output + 1] = tostring(value) end
+    environment.print = function(value) output[#output + 1] = tostring(value or "") end
+    environment.printError = function(value) errors[#errors + 1] = tostring(value) end
+    environment.sleep = function()
+        sleeps = sleeps + 1
+        if sleeps == (outcome.consumeAfter or 3) then files[requestPath] = nil end
+        if outcome.pendingAfter and sleeps == outcome.pendingAfter then
+            files[temporaryPath] = outcome.pendingValue or "pending"
+        end
+        if outcome.kind == "final" and sleeps == (outcome.publishAfter or 25) then
+            files[resultPath] = "result"
+            files[temporaryPath] = nil
+        elseif outcome.kind == "error" and sleeps == (outcome.publishAfter or 3) then
+            files[resultPath] = "result"
+            files[temporaryPath] = nil
+        end
+    end
+    environment.textutils = {
+        serializeJSON = function(value)
+            request = value
+            requestPath = fs.combine("codex/data/client-requests", value.id .. ".json")
+            resultPath = fs.combine("codex/data/client-results", value.id .. ".json")
+            temporaryPath = resultPath .. ".tmp"
+            if outcome.initialResult then files[resultPath] = "result" end
+            return "request"
+        end,
+        unserializeJSON = function(value)
+            if value == "result" then
+                return {
+                    id = request.id,
+                    action = "chat",
+                    ok = outcome.kind == "final",
+                    kind = outcome.kind,
+                    message = outcome.kind == "final" and "answer" or nil,
+                    error = outcome.kind == "error" and "interrupted" or nil,
+                    error_code = outcome.kind == "error" and "interrupted" or nil
+                }
+            end
+            if value == "pending" then
+                return {
+                    id = request.id,
+                    action = "chat",
+                    ok = true,
+                    kind = "final",
+                    message = "pending"
+                }
+            end
+            if value == "progress" then
+                return {
+                    id = request.id,
+                    action = "chat",
+                    ok = true,
+                    kind = "progress",
+                    message = "working"
+                }
+            end
+            return request
+        end
+    }
+
+    local result = table.pack(pcall(function()
+        local chunk, loadError = loadfile(
+            Harness.sourcePath("clients/terminal.lua"), "t", environment
+        )
+        if not chunk then error(loadError, 0) end
+        return chunk()
+    end))
+
+    environment.fs = previous.fs
+    environment.os = previous.os
+    environment.read = previous.read
+    environment.write = previous.write
+    environment.print = previous.print
+    environment.printError = previous.printError
+    environment.sleep = previous.sleep
+    environment.textutils = previous.textutils
+    if not result[1] then error(result[2], 0) end
+    return output, errors
 end
 
 return {
@@ -244,6 +383,66 @@ return {
             })
             Harness.truthy(terminal.stopped)
             Harness.falsy(waited)
+        end
+    },
+    {
+        name = "terminal displays a ready result before reporting a running status",
+        fn = function()
+            local output, errors = runClientProcess({ kind = "final", initialResult = true })
+            local text = table.concat(output, "\n")
+            Harness.equal(0, #errors)
+            Harness.truthy(text:find("answer", 1, true))
+            Harness.equal(nil, text:find("Running: Codex accepted the request", 1, true))
+        end
+    },
+    {
+        name = "terminal reports queued running and actual awaiting-delivery state before one final outcome",
+        fn = function()
+            local output, errors = runClientProcess({ kind = "final", pendingAfter = 5 })
+            local text = table.concat(output, "\n")
+            Harness.equal(0, #errors)
+            Harness.truthy(text:find("Queued: waiting for available reply capacity", 1, true))
+            Harness.truthy(text:find("Running: Codex accepted the request", 1, true))
+            Harness.truthy(text:find("Awaiting delivery: the service has an outcome", 1, true))
+            local first = assert(text:find("answer", 1, true))
+            Harness.equal(nil, text:find("answer", first + 1, true))
+        end
+    },
+    {
+        name = "does not label a progress temporary file as awaiting delivery",
+        fn = function()
+            local output, errors = runClientProcess({
+                kind = "final",
+                pendingAfter = 5,
+                pendingValue = "progress"
+            })
+            local text = table.concat(output, "\n")
+            Harness.equal(0, #errors)
+            Harness.equal(nil, text:find("Awaiting delivery", 1, true))
+            Harness.truthy(text:find("Running: Codex accepted the request", 1, true))
+        end
+    },
+    {
+        name = "does not label a slow running request as awaiting delivery",
+        fn = function()
+            local output, errors = runClientProcess({ kind = "final", publishAfter = 30 })
+            local text = table.concat(output, "\n")
+            Harness.equal(0, #errors)
+            Harness.equal(nil, text:find("Awaiting delivery", 1, true))
+            Harness.truthy(text:find("Running: Codex accepted the request", 1, true))
+        end
+    },
+    {
+        name = "terminal displays an explicit interruption outcome from the client failure path",
+        fn = function()
+            local output, errors = runClientProcess({
+                kind = "error",
+                consumeAfter = 1,
+                publishAfter = 2
+            })
+            local text = table.concat(output, "\n")
+            Harness.truthy(text:find("Awaiting delivery", 1, true) == nil)
+            Harness.arrayEqual({ "interrupted" }, errors)
         end
     }
 }

@@ -10,6 +10,7 @@
 
 ---@class DisplayAdapter
 ---@field deliver fun(self: DisplayAdapter, route: ReplyRoute, text: string, kind: string, metadata: DeliveryMetadata|nil): boolean|nil, string|nil, string|nil
+---@field canDeliver? fun(self: DisplayAdapter, route: ReplyRoute): boolean|nil, string|nil
 
 ---@alias AppDelivery fun(route: ReplyRoute, text: string, kind: 'progress'|'final'|'error', metadata: DeliveryMetadata|nil): boolean|nil, string|nil, string|nil
 
@@ -26,6 +27,7 @@
 ---@field commands Commands
 ---@field inputs InputAdapter[]
 ---@field deliver AppDelivery
+---@field canResume? fun(checkpoint: ContinuationCheckpoint): boolean|nil, string|nil
 ---@field console ApplicationConsole
 ---@field onTurnCompleted? fun(result: AppTurnResult)
 
@@ -39,6 +41,7 @@
 ---@field commands Commands
 ---@field inputs InputAdapter[]
 ---@field deliver AppDelivery
+---@field canResume fun(checkpoint: ContinuationCheckpoint): boolean|nil, string|nil
 ---@field console ApplicationConsole
 ---@field onTurnCompleted fun(result: AppTurnResult)|nil
 ---@field private startedInputs InputAdapter[]
@@ -47,6 +50,11 @@
 ---@field private shuttingDown boolean
 local App = {}
 App.__index = App
+
+local INTERRUPTED_CONTINUATION_MESSAGE = table.concat({
+    "This request was interrupted during restart and could not be resumed.",
+    "The model has no active turn for it now; please send the message again."
+}, " ")
 
 ---@param console ApplicationConsole
 ---@param label string
@@ -81,6 +89,7 @@ function App.new(options)
         commands = options.commands,
         inputs = options.inputs,
         deliver = options.deliver,
+        canResume = options.canResume or function() return true end,
         console = options.console,
         onTurnCompleted = options.onTurnCompleted,
         startedInputs = {},
@@ -135,18 +144,78 @@ end
 ---@param request TurnRequest
 ---@param message string
 ---@param kind 'progress'|'final'|'error'
----@return boolean
+---@return boolean deliveredAny
+---@return integer failed
 function App:_reply(request, message, kind)
     local deliveredAny = false
+    local failed = 0
     for _, route in ipairs(request.replyRoutes or {}) do
         local delivered, deliveryError = self.deliver(route, message, kind)
         if delivered then
             deliveredAny = true
         else
+            failed = failed + 1
             self.console:error(deliveryError or "Reply delivery failed.")
         end
     end
-    return deliveredAny
+    return deliveredAny, failed
+end
+
+---@param self CodexApp
+---@return boolean|nil
+---@return string|nil
+local function persistInterruptedCheckpointCleanup(self)
+    local state = self.session:durableState()
+    local persisted, persistError
+    if state and (state.previousResponseId or state.conversationLogId) then
+        -- Save a copy with the checkpoint removed before changing the live
+        -- session. If this fails, the old checkpoint remains available for a
+        -- later startup to retry the interruption instead of replaying work.
+        state.checkpoint = nil
+        persisted, persistError = self.stateStore:save(state)
+    else
+        persisted, persistError = self.stateStore:clear()
+    end
+    if not persisted then return nil, persistError end
+
+    local cleared, clearError = self.session:checkpoint(nil)
+    if not cleared then return nil, clearError end
+    return true
+end
+
+---@param self CodexApp
+---@param checkpoint ContinuationCheckpoint
+---@param reason string|nil
+local function interruptPendingContinuation(self, checkpoint, reason)
+    local delivered, failed = self:_reply(
+        { id = checkpoint.turnId, replyRoutes = checkpoint.replyRoutes },
+        INTERRUPTED_CONTINUATION_MESSAGE,
+        "error"
+    )
+    if not delivered then
+        self.console:error(table.concat({
+            "Saved continuation was interrupted but its client failure could not be delivered",
+            reason and (": " .. tostring(reason)) or "."
+        }))
+        return
+    end
+    if failed > 0 then
+        -- One durable interruption is enough to prevent the old turn from
+        -- resuming. Unavailable routes are logged, but retaining this
+        -- checkpoint would replay an already interrupted request.
+        self.console:error(
+            "Saved continuation interruption reached some reply routes; "
+                .. "clearing the checkpoint so the old turn cannot resume."
+        )
+    end
+
+    local cleared, clearError = persistInterruptedCheckpointCleanup(self)
+    if not cleared then
+        self.console:error(
+            "Interrupted continuation was delivered, but its checkpoint could not be "
+                .. "persistently cleared; retaining it for retry: " .. tostring(clearError)
+        )
+    end
 end
 
 ---@param self CodexApp
@@ -199,13 +268,18 @@ end
 function App:_queuePendingContinuation()
     local checkpoint = self.session:pending()
     if not checkpoint then return end
+    local resumable, resumeError = self.canResume(checkpoint)
+    if not resumable then
+        interruptPendingContinuation(self, checkpoint, resumeError)
+        return
+    end
     local accepted, queueError = self.queue:submit({
         id = checkpoint.turnId,
         continuation = checkpoint,
         replyRoutes = checkpoint.replyRoutes or {}
     })
     if not accepted then
-        self.console:error("Saved continuation could not be queued: " .. tostring(queueError))
+        interruptPendingContinuation(self, checkpoint, queueError)
         return
     end
     self.nextTurnId = math.max(self.nextTurnId, checkpoint.turnId + 1)

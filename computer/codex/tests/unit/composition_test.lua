@@ -87,6 +87,13 @@ local function withCcGlobals(fn, capture)
         end,
         delete = function(path) capture.files[path] = nil end,
         move = function(from, to)
+            if capture.failMoveTo == to
+                and (capture.failMoveCount == nil or capture.failMoveCount > 0) then
+                if capture.failMoveCount ~= nil then
+                    capture.failMoveCount = capture.failMoveCount - 1
+                end
+                return false
+            end
             capture.files[to] = capture.files[from]
             capture.files[from] = nil
         end,
@@ -276,6 +283,68 @@ return {
                 Harness.truthy(app.chatEngine.deliver(route, "done", "final"))
                 Harness.truthy(fs.exists("data/client-result.json"))
                 Harness.falsy(fs.exists("data/client-results/legacy-active.json"))
+            end, capture)
+        end
+    },
+    {
+        name = "bootstrap reports and retries an interruption with client input disabled",
+        fn = function()
+            local capture = {
+                files = { ["data/codex-state.json"] = "saved" },
+                failMoveTo = "data/client-results/client-disabled.json",
+                failMoveCount = 1,
+                decoded = {
+                    saved = {
+                        version = 3,
+                        checkpoint = {
+                            turn_id = 8,
+                            previous_response_id = "resp-disabled",
+                            input = {},
+                            reply_routes = {
+                                {
+                                    adapterId = "client_mailbox",
+                                    requestId = "client-disabled",
+                                    legacyMailbox = false
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            withCcGlobals(function()
+                local app = CcBootstrap.build(Config.new({
+                    apiKey = "test",
+                    chatBoxEnabled = false,
+                    clientEnabled = false
+                }))
+                Harness.falsy(hasInput(app, "client_mailbox"))
+                local deliveryRunner
+                for _, adapter in ipairs(app.inputs) do
+                    if adapter.id == "client_mailbox_delivery" then deliveryRunner = adapter end
+                end
+                assert(deliveryRunner)
+                app:start()
+                Harness.falsy(app.session:pending())
+                Harness.truthy(fs.exists("data/client-results/client-disabled.json.tmp"))
+
+                local cycles = 0
+                ---@diagnostic disable-next-line: missing-fields
+                deliveryRunner:run({
+                    isCancelled = function() return cycles >= 1 end,
+                    sleep = function() cycles = cycles + 1 end
+                })
+                Harness.truthy(fs.exists("data/client-results/client-disabled.json"))
+                Harness.falsy(fs.exists("data/client-results/client-disabled.json.tmp"))
+
+                local interruption
+                for _, encoded in ipairs(capture.encoded) do
+                    if encoded.id == "client-disabled" and encoded.kind == "error" then
+                        interruption = encoded
+                    end
+                end
+                assert(interruption)
+                Harness.truthy(interruption.message:find("interrupted", 1, true))
             end, capture)
         end
     },
