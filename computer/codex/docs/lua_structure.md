@@ -71,8 +71,8 @@ explicit source-copy workflow to update the computer.
 - `codex/providers/responses/` contains the HTTP client, request builder, and response
   reader. It does not own CC or presentation behavior.
 - `codex/tools/` contains fixed model-visible tools: `execute_cc_lua`,
-  `write_preferences`, conversation listing/naming, compaction/restart,
-  `render_image_on_monitor`, `create_worker`, and optional
+  `read_source_file`, `edit_source_file`, `write_preferences`, conversation
+  listing/naming, compaction/restart, `render_image_on_monitor`, `create_worker`, and optional
   `execute_remote_lua` Rednet execution.
 - `codex/platform/cc/remote_bootstrap.lua` is a standalone worker program. The
   `create_worker` tool copies it to `startup/` and writes the per-target
@@ -252,6 +252,27 @@ then inspect the current source and tests before choosing an implementation
 slice. The ideas are allowed work, not instructions to implement themselves.
 Preserve the current source, provider, CC, and adapter boundaries while doing
 so.
+
+The `read_source_file` and `edit_source_file` tools form one agent-only source
+editing contract. The read tool returns bounded exact LF-only content, whether
+the path exists, its SHA-256, logical line count, and final-newline state. The
+edit tool accepts the confined path, the exact base existence/hash, and ordered
+non-overlapping base-coordinate edits. Each edit has a 1-based `start_line`,
+`delete_count`, exact `old_lines`, and `replacement_lines`; insertions are
+allowed only from line 1 through `line_count + 1`. Hash, existence, line-ending,
+bound, order, overlap, and old-line mismatches fail before any write. There is
+no unified-diff parser, search, fuzzy context, re-anchoring, preview token, or
+apply flag. The model explains the visible success or failure to the player in
+ordinary language.
+
+Final-newline state is preserved unless an EOF edit supplies an explicit
+`final_newline` change. New files use `base_exists=false`, the empty-content
+SHA-256, and an exact insertion at line 1. Runtime data, artifacts, control/state
+paths such as `.codex-restart`, and the authority-bearing `docs/system_prompt.md`
+are rejected. Lua candidates pass a bounded syntax-only `load` check in an
+empty environment before atomic publication; the returned chunk is never
+executed. Existing files retain a recoverable backup under
+`data/patch-backups/`.
 
 ## Safety and authority boundaries
 

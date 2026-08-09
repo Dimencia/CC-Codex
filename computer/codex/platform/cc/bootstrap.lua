@@ -7,6 +7,7 @@ local ClientMailbox = require("platform.cc.adapters.client_mailbox")
 local Commands = require("core.commands")
 local CreateWorkerTools = require("tools.create_worker")
 local ExecuteLua = require("tools.execute_lua")
+local FilePatchTools = require("tools.file_patch")
 local InstructionStore = require("storage.instructions")
 local InstructionTools = require("tools.instructions")
 local MaintenanceTools = require("tools.maintenance")
@@ -63,6 +64,19 @@ end
 ---@param failure string|nil
 local function requireRegistration(label, registered, failure)
     if not registered then error("Could not register " .. label .. ": " .. tostring(failure), 0) end
+end
+
+---@param relativePath string
+---@param content string
+---@return boolean|nil
+---@return string|nil
+local function validateSourceEdit(relativePath, content)
+    if relativePath:sub(-4) ~= ".lua" then return true end
+    -- Compilation checks syntax only. The returned chunk is deliberately never called,
+    -- and an empty environment prevents candidate code from resolving CC globals.
+    local chunk, loadError = load(content, "=" .. relativePath, "t", {})
+    if not chunk then return nil, "Lua syntax validation failed: " .. tostring(loadError) end
+    return true
 end
 
 ---@param config CodexConfig
@@ -257,6 +271,21 @@ function Bootstrap.build(config)
     requireRegistration("execute_cc_lua", tools:register(executeLua.descriptor, function(call)
         return executeLua:handle(call)
     end))
+    requireRegistration("source edit tools", FilePatchTools.register(tools, {
+        fs = fileSystem,
+        ---@diagnostic disable-next-line: assign-type-mismatch
+        json = json,
+        bit32 = bit32,
+        root = base,
+        backupDirectory = path("data/patch-backups"),
+        epoch = function() return os.epoch("utc") end,
+        validate = validateSourceEdit,
+        maxSourceCharacters = 8000,
+        maxEditCharacters = 24000,
+        maxEdits = 64,
+        maxValidationCharacters = 120000,
+        maxResultCharacters = config.maxToolResultChars
+    }))
     requireRegistration("write_preferences", InstructionTools.register(tools, {
         ---@diagnostic disable-next-line: assign-type-mismatch
         store = instructionStore, json = json, maxResultCharacters = config.maxToolResultChars
