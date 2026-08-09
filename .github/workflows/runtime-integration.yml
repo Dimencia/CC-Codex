@@ -31,7 +31,8 @@ jobs:
 
       - name: Validate fixture identity and cleanup safeguards
         shell: pwsh
-        run: & (Join-Path $env:GITHUB_WORKSPACE 'tests/runtime/run.tests.ps1')
+        run: |
+          & (Join-Path $env:GITHUB_WORKSPACE 'tests/runtime/run.tests.ps1')
 
       - name: Build and run real CC fixture
         shell: pwsh
