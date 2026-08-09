@@ -66,11 +66,10 @@ Release-safety gates before any live-model lane (not separate claims):
 
 Ready, in order:
 
-1. `CC-017` - collision-free exact-head runtime fixtures
-2. `CC-016` - reproducible runtime and token-cost benchmarks
-3. `CC-009` - image renderer measurement and fast path
-4. `CC-007` - bounded asynchronous jobs and goals
-5. `CC-008` - local searchable memory
+1. `CC-016` - reproducible runtime and token-cost benchmarks
+2. `CC-009` - image renderer measurement and fast path
+3. `CC-007` - bounded asynchronous jobs and goals
+4. `CC-008` - local searchable memory
 
 Active claims:
 
@@ -78,6 +77,7 @@ Active claims:
 | --- | --- | --- | --- |
 | `CC-006` | Agent: Spackle (feature worker) | `codex/cc-006-quota-safe-installer` | Quota-only pre-mutation safety; crash-atomic updates explicitly deferred. |
 | `CC-004` | Agent: Sprocket (feature worker) | `codex/cc-004-provider-gate` | Provider capability, incomplete-response, and local request-budget gate; shared runtime fixture remains CC-017. |
+| `CC-017` | Agent: Quanta (benchmark tester) | `codex/cc-017-runtime-fixtures` | Collision-free names, ownership-safe cleanup, and exact-head manifests/evidence; serialized full-server default. |
 
 Completed claims: `CC-005` completed in PR #7 (merge `7948736`), and
 `CC-019` completed in PR #10 (merge `ecfd636`). Both were refreshed onto the
