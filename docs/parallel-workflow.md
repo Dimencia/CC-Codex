@@ -36,6 +36,22 @@ workers but is not an authorization or lock. Never use a callsign as a temporary
 task or PR label, reuse it for another agent, or rename a worker during handoff.
 Do not alter required branch names to include the callsign.
 
+## Event-driven task resumption
+
+An idle or completed Codex task is resumable. When new owner action becomes
+concrete, send a follow-up to the existing named task instead of creating a
+replacement worker or requiring every worker to poll forever. A bounded task
+should finish its assignment, leave an exact handoff, and stop cleanly; the
+roadmap steward or coordinator resumes it when a review finding, merge, base
+change, or next assignment actually exists.
+
+Routine GitHub snapshots are not coordination deliverables. Report only an
+actionable finding, ownership or handoff change, failed gate, unsafe collision,
+decision needed, or completed milestone. Waiting tasks do not announce that
+they are still waiting or that nothing changed. If the current environment
+cannot resume an existing task, record that limitation explicitly and use one
+bounded user-approved follow-up mechanism rather than a busy loop.
+
 ## Ready-to-Active update is the lock
 
 The short Ready and Active entries in the canonical roadmap are the shared work
@@ -90,6 +106,8 @@ separate access paths; success in one does not prove or repair the other.
 Each handoff states:
 
 - work-item ID and branch;
+- the user process in plain language, including what success and failure look
+  like to the player and model;
 - exact behavior changed;
 - files and contracts affected;
 - tests and checks run, with results;
@@ -114,9 +132,9 @@ The coordinator may issue one deduplicated GitHub Codex fix request per head
 SHA. If that attempt finishes or fails without a new commit, the coordinator
 posts one `owner-action` escalation and reports it; it does not keep asking the
 same automation. The roadmap steward records the PR as blocked in Active and
-either wakes the original worker or explicitly assigns a replacement to the
-same branch. No other worker edits that branch without this handoff, and no one
-starts a duplicate implementation.
+either resumes the original named task with a concrete follow-up or explicitly
+assigns a replacement to the same branch. No other worker edits that branch
+without this handoff, and no one starts a duplicate implementation.
 
 When the PR queue backs up, the roadmap steward sets the canonical queue to
 Stabilization mode. Ready priorities stay visible but are temporarily
@@ -138,6 +156,19 @@ item: inspect its stated contract, diff, tests, simplification, documentation,
 and untested live boundaries without editing its branch. Report prioritized,
 actionable findings with file/line evidence. Skip a current head that already
 has an adequate independent review instead of posting duplicate feedback.
+
+Normalize findings by user-visible risk, affected contract/path, and root cause.
+Keep one owner-action item for each distinct cause; later reviewers may mark it
+independently confirmed or add new evidence, but should not open another item
+for the same behavior. Describe the player/model consequence before internal
+mechanics so the owner can distinguish a real blocker from compatibility polish.
+
+For a merge-only base refresh, compare the old and new heads first. Reuse the
+existing feature review when the implementation blobs and relevant contract are
+unchanged; review only the incoming base delta and interaction risks. Required
+CI and Runtime Integration still run on the exact new head. Repeat a full review
+only when the feature behavior, its dependencies, or the prior finding's cause
+changed.
 
 Opening a pull request authorizes this review pass, not merging, deploying,
 restarting ComputerCraft, making a live model request, or changing the other
@@ -217,3 +248,5 @@ On each check-in:
 6. Re-rank the ready queue and keep the number of active architecture changes
    small.
 7. Update the canonical roadmap through the roadmap steward's branch only.
+8. Resume only the named tasks that now have concrete work; let bounded tasks
+   stop instead of keeping them alive with status polling.

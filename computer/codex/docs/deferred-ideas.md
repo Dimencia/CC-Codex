@@ -23,15 +23,21 @@ be able to start long running operations, then start more stuff, then
 decide that it's been a while and it should check in, etc
 Every change must include a small simplification and documentation audit:
 
-1. Look for code, branches, configuration, and files made obsolete by the
+1. Start with the user process in plain language: who takes which action, what
+   they expect to see next, and what they see if it fails. Translate internal
+   risks such as eviction, retry, backpressure, and stale state into user harm
+   such as a silently lost message, an indefinite wait, a misleading success,
+   or model/player state divergence. Do not promote an implementation detail to
+   a blocker unless it protects that process or an explicit safety boundary.
+2. Look for code, branches, configuration, and files made obsolete by the
    change. Delete or combine them when that is safer than preserving them.
-2. Add a module only for a distinct lifecycle, reusable policy, or effect
+3. Add a module only for a distinct lifecycle, reusable policy, or effect
    boundary. Prefer a shorter existing method for a one-use behavior.
-3. Keep the patch focused. Do not mix a feature with unrelated cleanup.
-4. Re-read every document that describes the changed behavior, path, command,
+4. Keep the patch focused. Do not mix a feature with unrelated cleanup.
+5. Re-read every document that describes the changed behavior, path, command,
    setting, test, safety boundary, or deployment step. Update the host and
    CC-facing copies that actually need the information.
-5. Run focused, native, and real headless Minecraft/CC integration tests as
+6. Run focused, native, and real headless Minecraft/CC integration tests as
    applicable. Treat the repository Docker fixture as routine validation and
    state its result explicitly. Separately identify genuinely external
    boundaries such as live-model contact, persistent deployment/restart,
@@ -45,30 +51,31 @@ clear implementation that preserves the real contracts.
 Workers may claim only IDs in the Ready queue. The detailed specifications stay
 below even while an item is active so its contract remains readable.
 
-Queue mode: **Stabilization**. Ready remains ordered for the next round, but no
-new claim may start until the roadmap steward clears this mode. First make the
-current PR queue green, reviewed at each current head, and mergeable; resolve or
-explicitly reassign every owner-action blocker.
+Queue mode: **Stabilization**. Two independent owner-action slices are active:
+replace PR #7's overbroad patch parser, and close the remaining user-visible
+request-outcome gaps after PR #4. Ready priorities remain visible, but no new
+claim starts until both slices are reviewed at their exact heads.
 
 Ready, in order:
 
-1. `CC-004` - deterministic player/provider integration tests
-2. `CC-006` - conflict-aware update detection
-3. `CC-016` - reproducible runtime and token-cost benchmarks
-4. `CC-009` - image renderer measurement and fast path
-5. `CC-007` - bounded asynchronous jobs and goals
-6. `CC-008` - local searchable memory
+1. `CC-017` - collision-free exact-head runtime fixtures
+2. `CC-004` - deterministic player/provider integration tests
+3. `CC-006` - conflict-aware update detection
+4. `CC-016` - reproducible runtime and token-cost benchmarks
+5. `CC-009` - image renderer measurement and fast path
+6. `CC-007` - bounded asynchronous jobs and goals
+7. `CC-008` - local searchable memory
 
 Active claims:
 
 | ID | Agent | Owning branch or PR | State |
 | --- | --- | --- | --- |
-| `CC-003` | Sprocket | `codex/cc-003-client-scoped-mailboxes` / PR #4 | Current-base repair head is clean and green; independent exact-head review remains before merge |
-| `CC-005` | Spackle | `codex/file-patch-tool-9a7e` / PR #7 | Explicit same-branch handoff accepted; repaired head is green and reviewed but must refresh the latest `master` before merge |
+| `CC-005` | Spackle | `codex/file-patch-tool-9a7e` / PR #7 | Replace the current unified-diff parser on the same branch with exact-base deterministic line edits; do not merge the existing parser |
+| `CC-019` | Sprocket | `codex/cc-019-visible-request-outcomes` | Claimed for the smallest explicit queued, interrupted, and delivery-failure contract after merged PR #4 |
 
-The separate entrypoint-harness isolation follow-up remains PR #9 under Quill's
-QA ownership. Its reviewed head must also refresh the latest `master`; it is
-part of Stabilization even though it is not a separate roadmap feature claim.
+`CC-003` request-scoped mailboxes are merged. The superseded remote ref
+`codex/cc-003-client-mailboxes` has no PR and is not an active claim; retain it
+only until the coordinator or user performs an explicit verified branch cleanup.
 
 Claiming is an atomic documentation update on `master`, not a branch-name
 convention. Before feature edits, create a fresh roadmap-only branch from the
@@ -128,24 +135,72 @@ merges difficult.
 
 ### P1 - prove the core product
 
+#### CC-017 Collision-free exact-head runtime fixtures
+
+Remove the fixed Docker image, container, and output-directory collision that
+serializes local workers by name rather than by actual host capacity. Derive a
+bounded opaque scope key from the canonical worktree plus an explicit run ID;
+derive the image key from the exact source and fixture inputs. Use those keys
+for the container name, image tag, and isolated output directory without placing
+raw paths, branch names, or user-supplied identifiers in Docker resource names.
+
+Write a run manifest before execution and final evidence after execution. Bind
+both to the checked-out source SHA, run ID, image/container identity, output
+hashes, and exit status. Cleanup may touch only the captured container ID and
+output whose labels/manifest prove the same owner and scope; a foreign or
+ambiguous resource must fail closed. Keep images as cache by default and never
+use broad Docker cleanup.
+
+Preserve serialized full Minecraft runs as the safe default because each JVM
+may reserve 2 GB plus mod/runtime overhead. Prove deterministic naming, foreign
+resource refusal, interruption cleanup, output confinement, and exact-head
+evidence with non-Docker tests or a fake Docker shim, then run the real fixture.
+Only consider bounded parallel full runs after measuring the host. This item
+precedes `CC-004` so the larger end-to-end fixture does not reintroduce shared
+resource collisions.
+
 #### CC-003 Finish the headless service and replace legacy composition
 
-The first slice already exists: startup launches `codex/service.lua`, the
-service owns the conversation engine, and the terminal client uses a mailbox.
-Client-scoped mailbox work is actively claimed; do not start another copy.
-Finish the remaining work in small migrations after that claim lands:
+Startup launches `codex/service.lua`, the service owns the conversation engine,
+and the terminal client now uses request-scoped mailbox files with durable
+admission backpressure and restart recovery. Finish the remaining work in small
+migrations rather than reopening the completed mailbox slice:
 
 1. Define service discovery, readiness, single-instance behavior, request
    ownership, delivery, client disconnect, shutdown, and restart contracts.
-2. Replace the single shared request/result mailbox with client-scoped request
-   IDs or mailboxes so two clients cannot consume or overwrite each other.
-3. Add a second replaceable client, preferably a monitor or pocket client, to
+2. Add a second replaceable client, preferably a monitor or pocket client, to
    prove the service is presentation-independent.
-4. Remove the direct-terminal composition path and its configuration only after
+3. Remove the direct-terminal composition path and its configuration only after
    mailbox clients and live restart behavior are proven.
 
 Do not combine this migration with Git synchronization or provider-prompt
 changes. It needs an approved live ComputerCraft validation after offline tests.
+
+#### CC-019 Visible and durable request outcomes
+
+Close the narrow user-process gaps left after the request-scoped mailbox
+migration without replacing its reservation or restart-checkpoint machinery.
+The contract is: once the service accepts a player's message, the player gets
+exactly one visible final reply or explicit failure, and the terminal never
+waits forever without explaining whether the message is queued, running,
+interrupted, or awaiting delivery.
+
+Start with the smallest coherent slice. When capacity is full and the request
+remains safely on disk, show a bounded local queued/full status instead of
+looking frozen. Do not clear the request's reservation or durable reply route
+until the final result is actually published; retry a transient publication
+failure, and surface a bounded explicit failure when continued delivery is not
+possible. On startup, convert accepted work that cannot actually be resumed
+into an interruption result for its original client rather than leaving that
+client waiting on a turn that no longer exists.
+
+Keep per-request files, pre-consumption admission, reservations,
+acknowledgements, and managed-restart routes. Remove the singular mailbox
+compatibility path only after every installed client has migrated. Test the
+process from the terminal's point of view: saturation visibly queues without
+losing the message, a failed publication is retried or explicitly failed,
+restart cannot strand a waiter, and acknowledgement releases capacity. Do not
+turn this into a general message broker or arbitrary crash journal.
 
 #### CC-004 End-to-end player and low-cost-model integration tests
 
@@ -164,19 +219,33 @@ The live lane must never run merely because a pull request was opened. A fake
 provider is not a substitute for the live lane, and the live lane is not a
 substitute for deterministic CI.
 
-#### CC-005 Reviewable file patch and diff tools
+#### CC-005 Deterministic source edit tools
 
-Add a narrow file-patch tool before adding broad autonomous editing. Accept a
-standard unified patch or a smaller explicitly documented patch format. The
-workflow must provide preview, path confinement, stale-base detection,
-syntax/validation hooks, a recoverable backup or atomic replacement, a concise
-diff result, and clear failures. Do not expose an unrestricted generic file
-dispatcher.
+PR #7 remains open and must not merge in its current form. Replace raw unified
+diff input on the same owned branch with a deliberately smaller deterministic
+agent-only edit contract. A bounded read tool returns the current LF-only source,
+final-newline state, and exact base SHA-256. The edit tool accepts that confined
+path and hash plus ordered, non-overlapping base-file edits. Each edit uses a
+1-based `start_line`, `delete_count`, exact `old_lines`, and
+`replacement_lines`; insertions are valid only from line 1 through
+`line_count + 1`. Reject an existence, base hash, line-ending, bounds, ordering,
+or old-line mismatch before any write. Never search for nearby content, fuzz
+context, or re-anchor an edit.
 
-Follow with read-only diff and review commands so the agent and player can see
-pending changes before restart or synchronization. This is the CC analogue of
-desktop Codex's apply-patch and review workflow, not an attempt to reproduce its
-GUI.
+There is no in-CC patch preview, approval screen, or diff-review workflow. The
+player is not expected to be a developer. The model reads the bounded source,
+submits exact edits, and receives a concise success or failure result to explain
+in ordinary language. Preserve final-newline state unless an EOF edit explicitly
+changes it. Preserve bounded new-file support, source-path confinement,
+runtime/provider-instruction exclusions, non-executing Lua validation, atomic
+replacement, and recoverable backup.
+
+This is an intentional model-facing schema break; no persisted caller is known.
+Delete the hunk parser, Git metadata/path dialect, EOF-marker state machine, and
+their obsolete compatibility tests rather than repairing more patch-format
+edges. The player flow should be simple: the model proposes numbered edits, a
+tool applies them only while the exact base is unchanged, and the model reports
+the outcome. Do not add a graphical review surface or make the user inspect diffs.
 
 #### CC-006 Conflict-aware update detection and installation
 
@@ -329,7 +398,7 @@ The highest-value missing desktop-style capabilities map to roadmap items:
 
 - parallel chats, subagents, and worktrees -> `CC-001`;
 - long-running goals and background follow-up -> `CC-007`;
-- apply patch, visible diffs, and code review -> `CC-005`;
+- deterministic source inspection and exact edits -> `CC-005`;
 - local memory -> `CC-008`;
 - skills, plugins, MCP, and deferred tool loading -> `CC-011`;
 - scheduled tasks and notifications -> `CC-014`;

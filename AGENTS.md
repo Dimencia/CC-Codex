@@ -38,6 +38,10 @@ another runner when this interpreter is present.
 Simplicity is a product requirement. Before handing back every source, test, or
 runtime-composition change:
 
+- describe the affected user process in plain language, including what the
+  player and model observe on success and failure; translate internal risks
+  into visible harm such as a lost message, indefinite wait, misleading
+  success, or diverged context;
 - inspect the diff for obsolete code, duplicate responsibilities, unnecessary
   configuration, and avoidable files introduced or exposed by the change;
 - prefer deleting or shortening existing code to adding an abstraction; add a
@@ -160,12 +164,23 @@ item's claim. Workers do not merge their own pull requests or issue automated
 `@codex review`/`@codex fix` requests; the PR coordinator owns those requests
 and merging.
 
+Deduplicate review findings by user-visible risk, affected contract/path, and
+root cause. Record a later independent reproduction as confirmation of the same
+owner-action item instead of posting a second equivalent blocker. After a
+merge-only base refresh, inspect the head delta and interactions; if the feature
+implementation is unchanged, reuse its prior review and rerun exact-head gates
+instead of repeating the full review.
+
 The coordinator may try one GitHub Codex fix delegation for a head commit, but
 that delegation does not transfer ownership or prove that a fix happened. If it
 finishes or fails without a new commit, the coordinator marks the PR as needing
 owner action and reports it to the roadmap steward or user. The roadmap steward
-records the blocked state in Active and either wakes the original worker or
-explicitly reassigns the same branch; it does not create duplicate feature work.
+records the blocked state in Active and either resumes the original named task
+with a concrete follow-up or explicitly reassigns the same branch; it does not
+create duplicate feature work. Codex tasks are resumable: finish bounded work
+with a precise handoff and stop cleanly, then resume the same owner when action
+becomes real. Do not keep workers alive with GitHub polling or routine "no
+change" reports.
 
 On Windows, Codex shell commands may run as a sandbox account such as
 `codexsandboxonline` while `USERPROFILE` still points at the interactive user's
