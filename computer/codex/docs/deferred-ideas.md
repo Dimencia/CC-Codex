@@ -56,13 +56,13 @@ deterministic source edits and PR #10 shipped visible durable request outcomes.
 One bounded release-safety slice is now active; the remaining Ready priorities
 stay visible for independent, non-overlapping work.
 
-Release-safety gates before any approved live-model lane (not separate claims):
+Release-safety gates before any live-model lane (not separate claims):
 
 - The installer must fail clearly or make room on a fresh default-quota
   computer before staging the package; never leave a half-installed service.
 - Provider defaults must validate the effective model/output limit and bounded
-  spend before sending a request; a model-facing limit mismatch is a user
-  failure, not a benchmark result.
+  spend before sending a request; a model-facing limit mismatch or incomplete
+  response is a user failure, not a benchmark result.
 
 Ready, in order:
 
@@ -77,7 +77,7 @@ Active claims:
 
 | ID | Agent | Owning branch or PR | State |
 | --- | --- | --- | --- |
-| `CC-006` | Spackle | `codex/cc-006-quota-safe-installer` | First slice: preflight or safely stage the package on a fresh default ComputerCraft quota; preserve runtime data and leave a recoverable failure |
+| `CC-006` | Spackle | `codex/cc-006-quota-safe-installer` | First step: check that enough quota/space is available before an install or update changes anything, preserve runtime data, and stop safely with a clear retry path when it is not. Recovery if the process crashes halfway through is deferred. |
 
 Completed claims: `CC-005` completed in PR #7 (merge `7948736`), and
 `CC-019` completed in PR #10 (merge `ecfd636`). Both were refreshed onto the
@@ -221,10 +221,10 @@ Extend the existing real headless Minecraft/CC:Tweaked fixture in two lanes:
   proves player input, service/client routing, tool rounds, steering while a
   turn is active, final delivery, conversation switching, restart continuation,
   and bounded failure behavior without secrets or spend.
-- An opt-in live lane uses a low-cost model, a dedicated API key with a hard
-  spend limit, a bounded transcript, no world-changing tools, and retained
-  evidence. Keep it manual or approval-gated until cost and flake rates are
-  measured.
+- A live lane uses the configured low-cost model/key, a hard test spend/call
+  limit, a bounded multi-turn transcript with steering, no world-changing
+  tools, and retained evidence. It may run as a normal explicit test job; it
+  must not silently run on every pull request or exceed its test budget.
 
 The live lane must never run merely because a pull request was opened. A fake
 provider is not a substitute for the live lane, and the live lane is not a
@@ -270,12 +270,18 @@ The installer already resolves the latest GitHub release, stages its package,
 and preserves runtime data when the user runs `codex/install`. Build on that
 instead of adding a second updater.
 
-The first slice is a release-safety fix, not an updater feature: the current
+The first step is a release-safety fix, not an updater feature: the current
 package can exhaust a fresh default ComputerCraft quota while staging, even
-though the same install/reboot path passes with a temporary 4 MB quota. Add a
-bounded quota preflight or smaller safe staging path, preserve runtime data, and
-leave a clear recoverable failure when space is insufficient. Test the default
-and constrained quotas before unattended update detection.
+though the same install/reboot path passes with a temporary 4 MB quota. Remove
+the double-copy staging path, validate the complete package and protected
+destinations before changing any installed file, and fail with required bytes,
+available bytes, shortfall, and a retry instruction when the quota is too
+small. Preserve runtime data and test default and constrained quotas.
+
+This step guarantees that the known low-space failure is handled before files
+change. It does not yet guarantee that an update can recover cleanly if the
+process crashes or a disk operation fails halfway through; that needs a
+separate design and must not be hidden inside this small fix.
 
 Publish a source manifest with release version and hashes. Store the last
 installed manifest locally. On a bounded, idle-time check, compare base,
@@ -287,38 +293,35 @@ installed, and new hashes:
 - local changes that do not overlap changed release files: initially report
   them; only automate the verified three-way-safe case later;
 - overlap, missing base manifest, downgrade, or validation failure: do not
-  install; show a reviewable report.
+  install; show a clear explanation and the next safe action.
 
 Never overwrite a running checkout, silently merge source, or treat runtime
-data as source. Start with detection and reporting, then add unattended install
-only after rollback and live reboot tests pass.
+data as source. The source-tree fallback is disabled in this first safety step
+unless it receives the same before-change guarantee; restore it as a separate
+compatibility task rather than leaving an unsafe escape hatch.
 
 ### P2 - add leverage after the core is proven
 
-#### CC-007 Bounded asynchronous jobs and goals
+#### CC-007 One persistent goal and bounded turn continuation
 
-Add this only for a real operation that cannot fit one cooperative tool call.
-Use small local jobs with IDs, status, result/error, cancellation, expiry, and a
-`wait` or poll operation. Keep ordinary tools directly callable. Do not create
-a generic dispatcher.
-
-Once jobs exist, add a durable local goal record with outcome, constraints,
-verification, pause/resume, and explicit completion. Scheduled recurring work
-can follow later; it must remain permission-aware and must not contact a model
-or change the world without the authority granted for that run.
+Support exactly one durable active goal at a time. It persists until the model
+declares it complete, records its constraints, verification, outcome, and
+failure, and can be inspected, paused, resumed, or explicitly cleared. When a
+goal-owning model turn ends without completion, the service starts the next
+bounded turn for that same goal automatically. Keep cancellation, expiry, and
+failure visible; do not build a generic job dispatcher or allow concurrent
+goal loops.
 
 #### CC-008 Local, searchable, user-controlled memory
 
-Keep world state, files, and the service journal authoritative. Start with a
-small append-only local memory record and a deterministic token/substring index;
-ComputerCraft does not need a vector database for the first useful version.
-Separate user-authored durable facts from derived conversation notes, record
-source and time, support inspect/delete/rebuild, bound result size, and never
-store secrets automatically.
-
-Memory import from conversation logs should be opt-in. Hosted storage and
-embeddings are later experiments only if local search quality is measured as
-insufficient and the user explicitly approves what data may leave the machine.
+Mirror the current Codex sandbox memory behavior rather than inventing a CC-only
+summary system: the model gets real memory read/write/search tools and decides
+when a durable memory is useful. Keep the authoritative store local and
+append-only, support deterministic search, inspect, delete, and rebuild, record
+source/time, bound result size, and never store secrets automatically. Memory
+must persist across turns and restart until the user or model removes it.
+Verify the exact local Codex memory contract before implementation; hosted
+storage and embeddings are out of scope unless local search proves inadequate.
 
 #### CC-009 Image renderer measurement and fast path
 
@@ -389,17 +392,14 @@ bounded scripts and existing telemetry over a resident benchmark framework.
 
 ### P3 - experiments, not foundations
 
-#### CC-012 Manual model profiles before automatic selection
+#### CC-012 Simple automatic model selection with manual override
 
-First add a visible per-conversation manual override for model, reasoning, and
-service tier, plus telemetry for latency, tokens, retries, cache usage, and
-completion outcomes. Then test a few deterministic policies such as cheap
-default plus explicit escalation.
-
-Only add a classifier call if it lowers total cost or improves completion enough
-to pay for its own latency and tokens. Always keep a manual override and record
-which policy selected the model. Do not silently route sensitive work to a
-different provider.
+Keep the existing manual override, then add one small selector call using the
+cheap Luna low/medium lane. It returns the model tier needed for the prompt;
+the service uses that choice or falls back to the current default when the
+selector fails. Do not add a classifier framework or require deterministic
+selection, but keep the override, bounded selector budget, and selected model
+visible in usage records. The selector must not silently switch providers.
 
 #### CC-013 Permission-aware Minecraft visual feedback
 
@@ -435,6 +435,37 @@ The highest-value missing desktop-style capabilities map to roadmap items:
 - image inputs and environment observation -> `CC-013`;
 - per-task model controls -> `CC-012`;
 - Git/GitHub handoff and conflict isolation -> `CC-001` and `CC-006`.
+
+### Practical parity exit rubric
+
+Recommend declaring the parity program complete when these bounded, user-visible
+contracts are green and independently reviewed:
+
+- accepted player messages produce exactly one visible final reply or explicit
+  failure, including restart and delivery failure;
+- deterministic fake-provider tests cover player input, steering, tool rounds,
+  conversation continuation, and back-and-forth turns;
+- the Minecraft/CC fixture does not let simultaneous runs collide or delete
+  each other's output, and every result records exactly which source it tested;
+- source edits remain exact and deterministic without requiring a graphical
+  diff/review surface from the player;
+- fresh/default and constrained installs stop before changing files when quota
+  is insufficient and preserve runtime data, with halfway-crash recovery
+  documented as an explicit future tradeoff;
+- a bounded live low-cost-model lane exercises the real player flow with the
+  configured key, steering, a hard test budget, and no world-changing tools;
+- local memory has real model-facing tools, durable local search, inspect/delete,
+  rebuild, and secret exclusion;
+- one durable goal can continue itself across bounded turns until completion,
+  with visible pause, failure, cancellation, and expiry;
+- a small Luna low/medium selector can choose a cheaper model, has a safe
+  fallback and manual override, and records the selected model.
+
+The app-server bridge, renderer tuning, broad desktop surfaces, and other
+remaining differences stay optional unless a small, high-value slice emerges.
+Stop when the rubric is satisfied and the remaining gaps are marginal or would
+require disproportionate complexity; publish the tradeoffs instead of creating
+an endless research queue.
 
 Desktop capabilities that are poor near-term fits include a full graphical
 review pane, browser/computer control outside Minecraft, voice, pets, and broad
